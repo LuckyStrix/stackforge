@@ -156,7 +156,10 @@ def td_from_transmittance(thickness_mm, T):
         if ok.sum() < 2:
             continue
         y = -np.log(T[ok, c])
-        k = float((t[ok] * y).sum() / (t[ok] ** 2).sum())  # slope = 1/td
+        den = float((t[ok] ** 2).sum())
+        if den <= 0:
+            continue
+        k = float((t[ok] * y).sum() / den)  # slope = 1/td
         if k <= 0:
             continue
         td[c] = 1.0 / k
@@ -234,6 +237,12 @@ class SpotreadSession:
                 os.close(self._rfd)
             except OSError:
                 pass
+        else:
+            for f in (proc.stdin, proc.stdout):
+                try:
+                    f.close()
+                except OSError:
+                    pass
 
     def __enter__(self):
         self.start()
@@ -408,7 +417,7 @@ def cmd_transmission(args):
         if root is not None:
             root.destroy()
 
-    drift = max(abs(bare1[k] / bare0[k] - 1) for k in primaries)
+    drift = max(abs(bare1[k] / max(bare0[k], 1e-12) - 1) for k in primaries)
     bare = {k: (bare0[k] + bare1[k]) / 2 for k in primaries}
     T = np.array([[transmittance(r[k], bare[k]) for k in ("R", "G", "B")] for r in rows])
     Tw = np.array([float(transmittance(r["W"], bare["W"])) for r in rows])

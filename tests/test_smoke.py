@@ -21,6 +21,22 @@ class Smoke(unittest.TestCase):
             with zipfile.ZipFile(out) as z:
                 self.assertIn("3D/3dmodel.model", z.namelist())
 
+    def test_ranking_picks_a_subset_that_fits_the_slots(self):
+        from PIL import Image
+        with tempfile.TemporaryDirectory() as d:
+            img = os.path.join(d, "in.png")
+            Image.linear_gradient("L").resize((24, 16)).convert("RGB").save(img)
+            ids = ",".join(f"polymaker-pla-pro-{c}" for c in ("white", "black", "blue", "red", "yellow"))
+            r = subprocess.run(
+                [sys.executable, "stackforge.py", img, "--filaments", ids,
+                 "--base", "polymaker-pla-pro-white", "--slots", "3", "--width", "6",
+                 "--max-layers", "3", "--rank-samples", "50", "--top", "2",
+                 "--rank-sheet", os.path.join(d, "sheet.png")],
+                cwd=ROOT, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn("6 combinations", r.stdout)   # C(4,2), base always included
+            self.assertTrue(os.path.exists(os.path.join(d, "sheet.png")))
+
 
 if __name__ == "__main__":
     unittest.main()

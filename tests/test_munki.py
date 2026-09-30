@@ -1,7 +1,7 @@
 """munki.py against a fake spotread (transcript shape captured from a real
 ColorMunki Photo by the calibration-suite project), plus the pure maths.
 Hardware tests run only with STACKFORGE_MUNKI=1."""
-import os, stat, sys, tempfile, unittest
+import os, shutil, stat, sys, tempfile, unittest
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -46,6 +46,7 @@ while True:
 class FakeSpotread(unittest.TestCase):
     def setUp(self):
         self.d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.d, True)
         p = os.path.join(self.d, "spotread")
         with open(p, "w") as f:
             f.write(FAKE)
@@ -117,6 +118,21 @@ class Maths(unittest.TestCase):
             sets.append((tdcolor.linear_to_srgb(lin), base))
         td, *_ = calibrate.fit_td(sets, layer_h)
         self.assertAlmostEqual(float(td[0]), 0.35, delta=0.03)
+
+
+class Calibrate(unittest.TestCase):
+    def test_wedge_step_heights(self):
+        plate, decals, w, base_h = calibrate.build_wedge(4, 0.1, 5, 10.0, 14.0, 0.0, rows=2)
+        self.assertAlmostEqual(base_h, 0.5)
+        self.assertEqual(len(decals), 2)
+        for ext, v, t in decals:
+            self.assertAlmostEqual(v[:, 2].max(), 0.5 + 4 * 0.1)   # deepest step = 4 layers
+
+    def test_chips_are_standalone_and_stepped(self):
+        chips = calibrate.build_chips(3, 0.08, 20.0, 20.0, 2.0)
+        tops = [c.verts[:, 2].max() for c in chips]
+        self.assertTrue(np.allclose(tops, [0.08, 0.16, 0.24]))
+        self.assertTrue(all(c.verts[:, 2].min() == 0 for c in chips))
 
 
 @unittest.skipUnless(os.environ.get("STACKFORGE_MUNKI") == "1", "needs a ColorMunki; set STACKFORGE_MUNKI=1")

@@ -72,6 +72,27 @@ class Patterns(unittest.TestCase):
         self.assertTrue(((got >= 0) & (got < 3)).all())
 
 
+class ImagePatterns(unittest.TestCase):
+    def test_spherical_and_planar_pick_filament_by_image_colour(self):
+        import argparse
+        from PIL import Image
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "lr.png")
+            im = np.zeros((4, 8, 3), np.uint8)
+            im[:, :4] = 255                      # left half white, right half black
+            Image.fromarray(im).save(path)
+            pal = np.array([[255, 255, 255], [0, 0, 0]], float)
+            a = argparse.Namespace(image=path, lon_offset=0.0, axis="z")
+            # azimuth -pi..pi maps to u 0..1: theta = -pi/2 is the left (white) half
+            cd = sc.Coords(np.array([10.0, 10.0]), np.array([0.0, 20.0]), np.array([10.0, 10.0]),
+                           (20, 20, 20))
+            got = sc.evaluate("image-spherical", cd, a, pal)
+            self.assertEqual(got.tolist(), [0, 1] if cd.theta[0] < 0 else [1, 0])
+            self.assertEqual(sc.evaluate("image-planar", sc.Coords(
+                np.array([2.0, 18.0]), np.array([10.0, 10.0]), np.array([0.0, 0.0]),
+                (20, 20, 20)), a, pal).tolist(), [0, 1])
+
+
 class Boxes(unittest.TestCase):
     def test_boxes_sit_mid_layer_and_skip_base(self):
         edges = sc.layer_edges(0.6, 0.2, 0.2)
