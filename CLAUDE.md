@@ -37,3 +37,7 @@ I/O goes through `td3mf.py`. GUIs (`*_gui.py`) only wrap the CLIs and share `gui
   `--flavor prusa` writes (no Prusa profile is carried over, so nothing else sets them).
 - **munki.py is unverified on hardware.** Its spotread session is copied from calibration-suite (do not
   import it, the repos are independent). All-zero XYZ is refused: a stale ColorMunki dial prints zeros.
+- **`--nospos` = patched Argyll with no dial check** (`~/.local/bin/argyll-nospos`, unconditional
+  patch; `ARGYLL_NOSPOS=1` is only the wrapper's marker). Always go through the wrapper, never the
+  patched binary's path: the wrapper isolates its calibration cache. The white-paper, repeat and
+  wedge-reversal checks in munki.py stand in for the check the patch removed; keep them.

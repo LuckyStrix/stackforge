@@ -742,8 +742,9 @@ grid drop out on alternate layers).
 Measures printed wedges and plaques with a ColorMunki (or any ArgyllCMS spectro) and feeds
 `calibrate.py`. Reflectance wedges and plaque checks use `spotread`'s normal reflective mode;
 transmission uses a calibrated laptop screen as the backlight and standalone chips from
-`calibrate.py chips`. **Not yet run on real hardware.** Setup, the power-cycle workaround for a
-stale dial, and first-run checklist: `docs/measuring.md`.
+`calibrate.py chips`. **Not yet run on real hardware.** A ColorMunki with a stale dial report can
+use `--nospos` (patched ArgyllCMS via `argyll-nospos`, dial check off; munki.py adds its own
+checks). Setup, the power-cycle fallback, and first-run checklist: `docs/measuring.md`.
 
 ```sh
 python3 munki.py measure-wedge --steps 12 -o wedge.json

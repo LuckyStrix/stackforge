@@ -20,8 +20,14 @@ output and the transcript in `tests/test_munki.py`, not from a run on the
 instrument. In particular the `-s` spectrum layout and emissive-mode contact
 with a screen through a sample are assumptions -- see `docs/measuring.md`.
 
+ColorMunki with a stale dial report: `--nospos` runs the patched ArgyllCMS
+(`argyll-nospos`, dial check off). Nothing then checks the dial, so munki.py
+checks white paper after calibration, flags repeated readings and wedge
+reversals, and tells you when to turn the dial back.
+
     munki.py measure-wedge --steps 12 -o teal_white.json
-    munki.py transmission --filament teal --thickness 0.25,0.33,0.41,0.49
+    munki.py --nospos measure-wedge --steps 12 -o teal_white.json
+    munki.py transmission --thickness 0.25,0.33,0.41,0.49 -o teal_chips.json
     munki.py verify-plaque --predicted "#D8E6E4,#54A09E"
 """
 
@@ -57,6 +63,18 @@ RESULT_RE = re.compile(rf"Result is XYZ:\s*{_NUM}[,\s]+{_NUM}[,\s]+{_NUM}")
 LAB_RE = re.compile(rf"D50 Lab:\s*{_NUM}[,\s]+{_NUM}[,\s]+{_NUM}")
 SPECTRUM_RE = re.compile(r"Spectrum from\s*([\d.]+)\s*to\s*([\d.]+)\s*nm\s*in\s*(\d+)\s*steps")
 MAX_ACTION_PROMPTS = 6
+
+# The patched ArgyllCMS (dial-position check compiled out) is run through its
+# wrapper, which also keeps its calibrations in a separate cache. The wrapper
+# exports ARGYLL_NOSPOS=1; the patched binary itself never reads it.
+NOSPOS_WRAPPER = "argyll-nospos"
+NOSPOS_NOTE = ("  (patched Argyll: the dial position is NOT checked. Make sure it really is "
+               "where the prompt says.)")
+NOSPOS_DIAL_BACK = ("  >> Calibrated. Turn the dial back to the measuring position, then Enter "
+                    "(q + Enter to quit): ")
+WHITE_Y_RANGE = (70.0, 110.0)   # plain white paper, D50-relative Y, UV-cut illuminant
+SAME_READING_DE = 0.5           # two different patches closer than this look like a stuck dial
+WEDGE_REVERSAL_L = 1.5          # L* going the wrong way by more than this breaks a wedge
 
 
 class MunkiError(RuntimeError):
@@ -129,6 +147,51 @@ def xyz_d50_to_srgb(xyz, scale: float = 100.0) -> np.ndarray:
     return tdcolor.linear_to_srgb(lin)
 
 
+def xyz_d50_to_lab(xyz, scale: float = 100.0) -> np.ndarray:
+    """spotread's D50-relative XYZ -> CIE Lab (D50), no gamut clipping."""
+    white = np.array([96.422, 100.0, 82.521]) / 100.0
+    r = np.asarray(xyz, dtype=np.float64) / scale / white
+    f = np.where(r > (6 / 29) ** 3, np.cbrt(r), r / (3 * (6 / 29) ** 2) + 4 / 29)
+    return np.stack([116 * f[..., 1] - 16, 500 * (f[..., 0] - f[..., 1]),
+                     200 * (f[..., 1] - f[..., 2])], axis=-1)
+
+
+# --------------------------------------------------------------------------
+# wrong-dial guards (the patched Argyll no longer checks the dial itself)
+# --------------------------------------------------------------------------
+
+
+def check_white(reading):
+    """A reading of plain white paper must land near Y = 100. Far off means the
+    calibration was taken with the dial away from the calibration tile, which
+    rescales every reading after it."""
+    y = reading["xyz"][1]
+    lo, hi = WHITE_Y_RANGE
+    if not lo <= y <= hi:
+        raise MunkiError(
+            f"white paper read Y = {y:.1f} (expected {lo:.0f}-{hi:.0f}). The calibration was "
+            "probably taken with the dial away from the calibration position. Start again.")
+
+
+def same_reading(a, b) -> float | None:
+    """dE between two readings when it is small enough to look like the same
+    surface (dial left at the calibration position, or meter not moved)."""
+    de = float(np.linalg.norm(xyz_d50_to_lab(a["xyz"]) - xyz_d50_to_lab(b["xyz"])))
+    return de if de < SAME_READING_DE else None
+
+
+def wedge_reversals(lab_l, tol: float = WEDGE_REVERSAL_L) -> list[int]:
+    """1-based steps where L* moves against the wedge's overall trend by more
+    than `tol`. Each extra layer moves the colour further from the base, so a
+    wedge runs one way; a reversal is a misread (wrong patch or wrong dial)."""
+    L = np.asarray(lab_l, float)
+    trend = L[-1] - L[0] if len(L) > 1 else 0.0
+    if abs(trend) < tol:
+        return []
+    d = np.diff(L) * np.sign(trend)
+    return [i + 2 for i in np.flatnonzero(d < -tol)]
+
+
 # --------------------------------------------------------------------------
 # transmission maths (pure, so it is testable without an instrument)
 # --------------------------------------------------------------------------
@@ -191,8 +254,12 @@ class SpotreadSession:
     a pty on POSIX because spotread reads keys as a terminal would.
     """
 
-    def __init__(self, args=()):
+    def __init__(self, args=(), nospos=False):
         self.args = [str(a) for a in args]
+        under_wrapper = os.environ.get("ARGYLL_NOSPOS") == "1"
+        self.nospos = nospos or under_wrapper
+        self._wrap = nospos and not under_wrapper   # already inside the wrapper: PATH is set
+        self.command = None
         self._proc = None
         self._buf = ""
         self._lock = threading.Lock()
@@ -202,10 +269,17 @@ class SpotreadSession:
     def start(self):
         if self._proc is not None:
             return
-        exe = shutil.which("spotread")
-        if exe is None:
-            raise MunkiError("'spotread' is not on PATH (install ArgyllCMS)")
-        argv = [exe, *self.args]
+        if self._wrap:
+            wrapper = shutil.which(NOSPOS_WRAPPER)
+            if wrapper is None:
+                raise MunkiError(f"'{NOSPOS_WRAPPER}' is not on PATH (the patched ArgyllCMS)")
+            self.command = [wrapper, "spotread"]
+        else:
+            exe = shutil.which("spotread")
+            if exe is None:
+                raise MunkiError("'spotread' is not on PATH (install ArgyllCMS)")
+            self.command = [exe]
+        argv = [*self.command, *self.args]
         if pty is not None:
             master, slave = pty.openpty()
             self._proc = subprocess.Popen(argv, stdin=slave, stdout=slave, stderr=slave,
@@ -297,6 +371,9 @@ class SpotreadSession:
                 lambda b: READY_PROMPT in b or ACTION_PROMPT_RE.search(b) is not None, timeout)
             text = self._take()
             if READY_PROMPT in buf and not ACTION_PROMPT_RE.search(buf):
+                # spotread no longer insists on the measuring position; say it ourselves.
+                if self.nospos and actions and ask(NOSPOS_DIAL_BACK).strip().lower().startswith("q"):
+                    raise SessionAborted("quit at an instrument prompt")
                 return actions
             actions += 1
             if actions > MAX_ACTION_PROMPTS:
@@ -304,6 +381,8 @@ class SpotreadSession:
                     f"spotread still refusing after {MAX_ACTION_PROMPTS} attempts; the dial "
                     f"never reached the position it asked for. Last prompt:\n{_clean(text)[-400:]}")
             say(_clean(text)[-400:])
+            if self.nospos:
+                say(NOSPOS_NOTE)
             if ask("  >> Press Enter when done (q + Enter to quit): ").strip().lower().startswith("q"):
                 raise SessionAborted("quit at an instrument prompt")
             os.write(self._wfd, b" ")
@@ -345,30 +424,65 @@ def _stamp():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def _meta(mode, session_args):
+def _meta(mode, s):
     # No serial number: this goes into a public repo.
-    return {"tool": "munki.py", "mode": mode, "spotread_args": session_args, "at": _stamp(),
+    return {"tool": "munki.py", "mode": mode, "nospos": s.nospos,
+            "spotread": [os.path.basename(s.command[0]), *s.command[1:]],   # no home path
+            "spotread_args": s.args, "at": _stamp(),
             "note": "ColorMunki is UV-cut only (white-LED illuminant, no M0/M1): fluorescent "
                     "whiteners in PLA are not excited, so a white can read duller/yellower here "
                     "than under a UV-rich light."}
 
 
+def _white_check(s):
+    """On the patched Argyll, prove the calibration before trusting any patch."""
+    if not s.nospos:
+        return None
+    input("\nCheck: meter on plain white paper (tests the calibration), Enter to measure ")
+    r = s.measure()
+    check_white(r)
+    print(f"   white paper Y = {r['xyz'][1]:.1f}: calibration looks right")
+    return r
+
+
+def _read_patch(s, prompt, prev):
+    """One patch, re-measured on request when it matches the previous reading."""
+    while True:
+        input(prompt)
+        r = s.measure()
+        de = same_reading(r, prev) if prev is not None else None
+        if de is None:
+            return r
+        print(f"   ! same as the previous reading (dE {de:.2f}): is the dial still at the "
+              "calibration position, or the meter on the same patch?")
+        if not input("   Enter to keep it, r + Enter to measure again: ").strip().lower().startswith("r"):
+            return r
+
+
 def cmd_measure_wedge(args):
     sargs = REFLECT_ARGS + args.spotread_arg
     readings = []
-    with SpotreadSession(sargs) as s:
+    with SpotreadSession(sargs, nospos=args.nospos) as s:
         s.prepare()
+        white = _white_check(s)
         for i in range(args.steps):
-            input(f"\nstep {i + 1}/{args.steps} ({i + 1} layers): centre the aperture on the "
-                  f"patch, then press Enter to measure ")
-            r = s.measure()
+            r = _read_patch(s, f"\nstep {i + 1}/{args.steps} ({i + 1} layers): centre the aperture "
+                               f"on the patch, then press Enter to measure ",
+                            readings[-1] if readings else None)
             r["srgb"] = [round(float(v), 1) for v in xyz_d50_to_srgb(r["xyz"])]
             readings.append(r)
             print(f"   {tdcolor.to_hex(r['srgb'])}  Lab D50 {r.get('lab_d50')}")
+        meta = _meta("reflective", s)
+    bad = wedge_reversals([xyz_d50_to_lab(r["xyz"])[0] for r in readings])
+    if bad:
+        print(f"\n  ! L* runs against the wedge at step(s) {bad}: re-measure those before fitting")
     hexes = ",".join(tdcolor.to_hex(r["srgb"]) for r in readings)
     if args.output:
+        out = {**meta, "readings": readings, "hex": hexes, "reversed_steps": bad}
+        if white is not None:
+            out["white_check"] = white
         with open(args.output, "w") as f:
-            json.dump({**_meta("reflective", sargs), "readings": readings, "hex": hexes}, f, indent=1)
+            json.dump(out, f, indent=1)
         print(f"\nsaved {args.output}")
     print(f"\ncalibrate.py fit --filament <id> --base <hex or id> --measured \"{hexes}\"")
 
@@ -402,7 +516,7 @@ def cmd_transmission(args):
         return out
 
     try:
-        with SpotreadSession(sargs) as s:
+        with SpotreadSession(sargs, nospos=args.nospos) as s:
             print("Meter in emissive/display position, flat on the screen. Black card or foam\n"
                   "around the chip so no screen light reaches the aperture except through it.")
             s.prepare()
@@ -414,6 +528,7 @@ def cmd_transmission(args):
                 rows.append(read_all(s, f"{t:.2f} mm"))
             input("\nRemove the chip: Enter to re-read the bare screen (drift check) ")
             bare1 = read_all(s, "bare again")
+            meta = _meta("emissive-transmission", s)
     finally:
         if root is not None:
             root.destroy()
@@ -436,7 +551,7 @@ def cmd_transmission(args):
           "this value. Do not paste it into td_rgb as-is.")
     if args.output:
         with open(args.output, "w") as f:
-            json.dump({**_meta("emissive-transmission", sargs), "thickness_mm": thick,
+            json.dump({**meta, "thickness_mm": thick,
                        "bare": bare, "drift": drift, "T": T.tolist(), "T_white": Tw.tolist(),
                        "td_transmission_rgb": [None if np.isnan(v) else float(v) for v in td]}, f, indent=1)
         print(f"saved {args.output}")
@@ -445,13 +560,15 @@ def cmd_transmission(args):
 def cmd_verify(args):
     pred = np.array([tdcolor.parse_hex(t) for t in args.predicted.split(",")], float)
     sargs = REFLECT_ARGS + args.spotread_arg
-    got = []
-    with SpotreadSession(sargs) as s:
+    readings = []
+    with SpotreadSession(sargs, nospos=args.nospos) as s:
         s.prepare()
+        _white_check(s)
         for i, p in enumerate(pred):
-            input(f"\npatch {i + 1}/{len(pred)} (predicted {tdcolor.to_hex(p)}): Enter to measure ")
-            got.append(xyz_d50_to_srgb(s.measure()["xyz"]))
-    got = np.array(got)
+            readings.append(_read_patch(
+                s, f"\npatch {i + 1}/{len(pred)} (predicted {tdcolor.to_hex(p)}): Enter to measure ",
+                readings[-1] if readings else None))
+    got = np.array([xyz_d50_to_srgb(r["xyz"]) for r in readings])
     de = delta_e(pred, got)
     print(f"\n{'patch':>5} {'predicted':>10} {'measured':>10} {'dE':>6}")
     for i, (p, g, d) in enumerate(zip(pred, got, de), 1):
@@ -466,6 +583,10 @@ def main(argv=None):
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--spotread-arg", action="append", default=[], metavar="ARG",
                     help="extra argument passed through to spotread (repeatable)")
+    ap.add_argument("--nospos", action="store_true",
+                    help=f"run the patched ArgyllCMS through '{NOSPOS_WRAPPER}' (ColorMunki dial "
+                         "check off); adds a white-paper calibration check. Implied when already "
+                         "run under the wrapper")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("measure-wedge", help="reflectance of each step of a printed wedge")

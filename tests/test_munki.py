@@ -86,6 +86,65 @@ class FakeSpotread(unittest.TestCase):
         self.assertEqual((sp["nm_from"], sp["nm_to"]), (380.0, 730.0))
 
 
+    def _wrapper(self):
+        """A fake argyll-nospos: marks the environment and runs the command, as the real one does."""
+        p = os.path.join(self.d, "argyll-nospos")
+        with open(p, "w") as f:
+            f.write('#!/bin/sh\nexport ARGYLL_NOSPOS=1\nexec "$@"\n')
+        os.chmod(p, os.stat(p).st_mode | stat.S_IEXEC)
+        return p
+
+    def test_nospos_runs_through_wrapper(self):
+        wrapper = self._wrapper()
+        asked = []
+        with munki.SpotreadSession(nospos=True) as s:
+            s.prepare(lambda _: None, lambda q: asked.append(q) or "")
+            self.assertEqual(s.command, [wrapper, "spotread"])
+            self.assertEqual(s.measure()["xyz"], (10, 20, 30))
+        self.assertEqual(asked[-1], munki.NOSPOS_DIAL_BACK)  # told to turn the dial back
+
+    def test_nospos_implied_under_wrapper(self):
+        os.environ["ARGYLL_NOSPOS"] = "1"
+        self.addCleanup(os.environ.pop, "ARGYLL_NOSPOS")
+        said = []
+        with munki.SpotreadSession() as s:
+            s.prepare(said.append, lambda _: "")
+            self.assertTrue(s.nospos)
+            self.assertEqual(len(s.command), 1)   # PATH already has the patched build
+        self.assertIn(munki.NOSPOS_NOTE, said)
+
+    def test_system_build_unchanged(self):
+        asked = []
+        with munki.SpotreadSession() as s:
+            s.prepare(lambda _: None, lambda q: asked.append(q) or "")
+            self.assertFalse(s.nospos)
+        self.assertNotIn(munki.NOSPOS_DIAL_BACK, asked)
+
+
+class Guards(unittest.TestCase):
+    def test_white_paper_accepted(self):
+        munki.check_white({"xyz": (88.0, 91.0, 75.0)})
+
+    def test_off_position_calibration_refused(self):
+        for y in (40.0, 180.0):
+            with self.assertRaises(munki.MunkiError):
+                munki.check_white({"xyz": (y, y, y)})
+
+    def test_same_reading_flagged(self):
+        a = {"xyz": (40.0, 42.0, 35.0)}
+        self.assertIsNotNone(munki.same_reading(a, {"xyz": (40.02, 42.01, 35.0)}))
+        self.assertIsNone(munki.same_reading(a, {"xyz": (30.0, 32.0, 30.0)}))
+
+    def test_lab_white(self):
+        self.assertTrue(np.allclose(munki.xyz_d50_to_lab([96.422, 100, 82.521]), [100, 0, 0], atol=1e-3))
+
+    def test_wedge_reversals(self):
+        self.assertEqual(munki.wedge_reversals([90, 80, 72, 65, 60]), [])
+        self.assertEqual(munki.wedge_reversals([20, 30, 38, 45]), [])          # light over black
+        self.assertEqual(munki.wedge_reversals([90, 80, 95, 65, 60]), [3])     # step 3 misread
+        self.assertEqual(munki.wedge_reversals([60, 60.5, 60, 60.4]), [])      # flat: no trend
+
+
 class Maths(unittest.TestCase):
     def test_d50_white_is_white(self):
         rgb = munki.xyz_d50_to_srgb([96.42, 100.0, 82.49])

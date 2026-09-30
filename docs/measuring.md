@@ -8,8 +8,19 @@ run against the instrument yet.** Treat every section below as a checklist for t
    Argyll's `libusb` install, or root.
 2. The dial: if your unit's dial position reports stale, `spotread` may print an all-zero XYZ at
    the calibration position instead of complaining. `munki.py` refuses zero readings (`DeadReading`).
-   If that happens: power-cycle the meter with the dial at the calibration position, then
-   the measure position, and re-run. (The same workaround is documented in the calibration-suite repo.)
+   **Fix: the patched Argyll.** `~/.local/bin/argyll-nospos` runs an ArgyllCMS 2.3.1 build with the
+   dial-position check compiled out (same commands and prompts; its own calibration cache in
+   `~/.cache/argyll-nospos`). Use `munki.py --nospos ...` (or `argyll-nospos python3 munki.py ...`).
+   Nothing then checks the dial, so on that build `munki.py`:
+   - says when to turn the dial back to measuring after calibration (spotread no longer insists);
+   - asks for one reading of plain white paper and stops unless Y is 70-110 (a calibration taken
+     off the calibration tile rescales every later reading);
+   - flags a reading within dE 0.5 of the previous one (dial left at calibration, or meter not
+     moved) and offers a re-measure;
+   - after a wedge, lists steps where L* runs against the wedge's trend (all builds).
+   The output JSON records the `spotread` command and `nospos`.
+   Fallback on the system build: power-cycle the meter with the dial at the calibration position,
+   then the measure position, and re-run. (The same workaround is documented in the calibration-suite repo.)
 
 ## Reflectance (wedges and plaques)
 `munki.py measure-wedge --steps 12 -o wedge.json` runs `spotread -s -i D50 -Q 1931_2` (reflective is
