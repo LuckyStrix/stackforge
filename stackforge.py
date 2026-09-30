@@ -134,13 +134,17 @@ class Gamut:
         if verbose:
             print(f"  gamut: {len(self.colors)} colors, built in {time.time()-t0:.1f}s")
 
+    # Dedup quantizes the sRGB *encoding*, not linear light. A linear grid is
+    # perceptually lopsided: its first cell spans L* 0..5 at grid 192, so
+    # distinct darks collapse into one state. Measured on white/black/blue/red,
+    # 10 layers: dark (L* < 25) reach error p99 2.6 -> 0.5 dE for ~35% more states.
     @staticmethod
     def _key(c, grid):
-        return tuple((np.clip(c, 0, 1) * grid).astype(np.int32))
+        return tuple((tdcolor.linear_to_srgb(c) * (grid / 255.0)).astype(np.int32))
 
     @staticmethod
     def _keys(c, grid):
-        q = (np.clip(c, 0, 1) * grid).astype(np.int32)
+        q = (tdcolor.linear_to_srgb(c) * (grid / 255.0)).astype(np.int32)
         return [tuple(r) for r in q]
 
     def srgb(self) -> np.ndarray:
@@ -166,7 +170,9 @@ class Gamut:
         for i, f in enumerate(self.filaments):
             if f.id == self.base.id:
                 return i
-        return 0
+        # Falling back to some other index would print the plate in the wrong
+        # filament while the colours were solved over this base.
+        raise ValueError(f"base {self.base.id} is not among the gamut's filaments")
 
     def query(self, srgb_pixels: np.ndarray) -> np.ndarray:
         lab = tdcolor.srgb_to_lab(np.asarray(srgb_pixels, dtype=np.float64))
@@ -284,6 +290,24 @@ def build_geometry(labels, width_mm, res, layer_h, base_h, base_index, n_fil):
     return plate, decals, total_h
 
 
+def write_plaque(path, flavor, plate, decals, fils, base_index, part_type,
+                 template, layer_height, first_layer_height, solid=True):
+    """Write the 3MF. Shared by the CLI and the GUI so both force solid infill."""
+    kw = {}
+    if solid and flavor == "orca":
+        # Orca discards project-level values whose preset name matches a
+        # system preset; per-object overrides survive. write_prusa has no
+        # per-object settings, so it only gets the profile rewrite.
+        kw["object_settings"] = {"sparse_infill_density": "100%",
+                                 "infill_combination": "0"}
+    td3mf.get_writer(flavor)(
+        path, [plate], {0: decals}, base_index + 1, part_type,
+        template=template, colors=[f.color for f in fils],
+        layer_height=layer_height, first_layer_height=first_layer_height,
+        solid=solid, **kw,
+    )
+
+
 # --------------------------------------------------------------------------
 # subset ranking
 # --------------------------------------------------------------------------
@@ -356,7 +380,7 @@ def render_candidates(results, base, args, img, top, progress=None):
         g = Gamut(r["fils"], base, args.layer_height, args.max_layers,
                   args.grid, args.cap, verbose=False)
         state = g.query(img)
-        out.append(dict(r, image=g.srgb()[state].astype(np.uint8)))
+        out.append(dict(r, image=np.round(g.srgb()[state]).astype(np.uint8)))
         if progress:
             progress(i / top, f"rendering candidate {i}/{top}")
     return out
@@ -505,13 +529,15 @@ def main(argv=None):
     g.add_argument("--rank", action="store_true",
                    help="force ranking mode (automatic when --filaments exceeds --slots)")
     g.add_argument("--no-rank", action="store_true",
-                   help="skip ranking and use the first --slots filaments as listed")
+                   help="skip ranking and use the base plus the first --slots-1 others as listed")
     g.add_argument("--top", type=int, default=5, help="combinations to render")
     g.add_argument("--rank-by", choices=["mean", "p95"], default="mean")
     g.add_argument("--rank-samples", type=int, default=4000,
                    help="pixels sampled when scoring; scoring every pixel is wasted effort")
     g.add_argument("--rank-sheet", default="combos.png", help="contact sheet output")
     args = ap.parse_args(argv)
+    if args.slots < 2:
+        ap.error("--slots counts the base, so it needs at least 2")
 
     db = DB(args.db)
     fils = db.resolve(args.filaments)
@@ -547,7 +573,7 @@ def main(argv=None):
 
     # --- geometry grid ---
     w_px = max(1, int(round(args.width / args.resolution)))
-    im = Image.open(args.image)
+    im = tdcolor.open_image(args.image)
     h_px = (
         max(1, int(round(args.height / args.resolution)))
         if args.height > 0
@@ -567,8 +593,12 @@ def main(argv=None):
         cmd_rank(fils, base, args, img)
         return
     if len(fils) > args.slots:
-        fils = fils[: args.slots]
-        print(f"  --no-rank: using the first {args.slots} as listed")
+        # The base always takes a slot, wherever it was listed.
+        others = [f for f in fils if f.id != base.id][: args.slots - 1]
+        keep = {base.id} | {f.id for f in others}
+        fils = [f for f in fils if f.id in keep]
+        print(f"  --no-rank: using {', '.join(f.name for f in fils)} "
+              f"(base plus the first {args.slots - 1} others as listed)")
 
     if not args.output:
         raise SystemExit("-o/--output is required when producing a plaque")
@@ -583,7 +613,7 @@ def main(argv=None):
     print(f"  solved {state.size} pixels in {time.time()-t0:.1f}s "
           f"({args.dither} dither)")
 
-    achieved = gamut.srgb()[state]
+    achieved = np.round(gamut.srgb()[state])
     err = np.linalg.norm(
         tdcolor.srgb_to_lab(achieved.astype(np.float64)) - tdcolor.srgb_to_lab(img.astype(np.float64)),
         axis=-1,
@@ -647,16 +677,10 @@ def main(argv=None):
     changes = sum(len(np.unique(labels[li])) for li in range(labels.shape[0]))
     print(f"  ~{changes} tool changes ({changes/labels.shape[0]:.1f} per layer)")
 
-    td3mf.get_writer(args.flavor)(
-        args.output, [plate], {0: decals}, gamut.base_index + 1, args.part_type,
-        template=args.template, colors=[f.color for f in fils],
-        layer_height=args.layer_height,
-        first_layer_height=args.first_layer_height,
-        solid=not args.no_force_solid,
-        object_settings=None if args.no_force_solid else {
-            "sparse_infill_density": "100%",
-            "infill_combination": "0",
-        },
+    write_plaque(
+        args.output, args.flavor, plate, decals, fils, gamut.base_index,
+        args.part_type, args.template, args.layer_height,
+        args.first_layer_height, solid=not args.no_force_solid,
     )
     print(f"wrote {args.output}")
     print(f"\nSlice with layer height EXACTLY {args.layer_height} mm and first "

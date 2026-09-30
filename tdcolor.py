@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 
 D65 = np.array([0.95047, 1.0, 1.08883])
 _M_RGB2XYZ = np.array(
@@ -233,8 +233,23 @@ def quantize(img, palette, mask, mode):
     return out
 
 
+def open_image(path, background=(255, 255, 255)) -> Image.Image:
+    """Load as RGB the way a viewer shows it.
+
+    Phone photos store pixels sideways plus an EXIF orientation tag; ignoring
+    the tag prints them rotated. Transparent pixels are composited over
+    `background` rather than keeping whatever colour the encoder left in them.
+    """
+    im = ImageOps.exif_transpose(Image.open(path))
+    if im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info):
+        im = im.convert("RGBA")
+        bg = Image.new("RGBA", im.size, tuple(background) + (255,))
+        im = Image.alpha_composite(bg, im)
+    return im.convert("RGB")
+
+
 def fit_image(path, w, h, mode="contain", rotate=0, flip=False, pad=(255, 255, 255)):
-    im = Image.open(path).convert("RGB")
+    im = open_image(path, pad)
     if rotate:
         im = im.rotate(-rotate, expand=True)
     if flip:

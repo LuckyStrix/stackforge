@@ -578,7 +578,7 @@ class App(tk.Tk):
 
     def _load_image(self, path):
         try:
-            self.source_img = Image.open(path).convert("RGB")
+            self.source_img = tdcolor.open_image(path)
         except Exception as exc:
             messagebox.showerror(APP, f"Could not open {path}:\n{exc}")
             return
@@ -770,12 +770,11 @@ class App(tk.Tk):
                 r["labels"], a.width, a.resolution, a.layer_height,
                 a.first_layer_height + (a.base_layers - 1) * a.layer_height,
                 r["gamut"].base_index, len(r["fils"]))
-            td3mf.get_writer(self.v_flavor.get())(
-                p, [plate], {0: decals}, r["gamut"].base_index + 1, self.v_part.get(),
-                template=self.v_template.get() or None,
-                colors=[f.color for f in r["fils"]],
-                layer_height=a.layer_height,
-                first_layer_height=a.first_layer_height)
+            sf.write_plaque(
+                p, self.v_flavor.get(), plate, decals, r["fils"],
+                r["gamut"].base_index, self.v_part.get(),
+                self.v_template.get() or None, a.layer_height,
+                a.first_layer_height)
         except Exception as exc:
             messagebox.showerror(APP, f"Export failed:\n{exc}")
             return

@@ -502,7 +502,7 @@ slots there are `C(N-1, S-1)` combinations — 8 filaments and 4 slots gives
 
 `--rank-by p95` optimizes worst-case error instead of average — worth it when
 a few badly-wrong regions bother you more than a slight overall shift.
-`--no-rank` skips it and uses the first `--slots` filaments as listed.
+`--no-rank` skips it and uses the base plus the first `--slots`-1 others as listed.
 
 As a sanity check: given a target sweeping the full hue circle, the ranker
 picks white + blue + yellow + magenta — it rediscovers subtractive primaries
