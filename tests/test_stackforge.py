@@ -52,6 +52,14 @@ class Cli(unittest.TestCase):
         self.assertIn('type="object" key="fill_density" value="100%"', cfg)
         self.assertIn('type="object" key="layer_height" value="0.08"', cfg)
 
+    def test_nonsense_sizes_are_refused(self):
+        for flag, val in (("--base-layers", "0"), ("--resolution", "0"),
+                          ("--layer-height", "-0.1"), ("--max-layers", "0")):
+            r = run("--filaments", ",".join(IDS[:4]), flag, val,
+                    "-o", os.path.join(self.d, "o.3mf"), img=self.img)
+            self.assertNotEqual(r.returncode, 0, flag)
+            self.assertIn(flag, r.stderr)
+
     def test_rank_and_no_rank_conflict(self):
         r = run("--filaments", ",".join(IDS), "--rank", "--no-rank", img=self.img)
         self.assertNotEqual(r.returncode, 0)
@@ -87,6 +95,17 @@ class Gamut(unittest.TestCase):
         dark = ref.lab[ref.lab[:, 0] < 25]
         self.assertGreater(len(dark), 100)
         self.assertLess(np.percentile(g.tree.query(dark)[0], 99), 1.0)
+
+
+class Trim(unittest.TestCase):
+    def test_drops_uniform_base_layers_but_keeps_one(self):
+        labels = np.zeros((4, 2, 2), np.int16)
+        labels[2, 0, 0] = 1
+        got, n = sf.trim_base_layers(labels, 0)
+        self.assertEqual(n, 2)
+        self.assertEqual(got[0, 0, 0], 1)
+        got, n = sf.trim_base_layers(np.zeros((3, 2, 2), np.int16), 0)
+        self.assertEqual((n, len(got)), (2, 1))
 
 
 class ContactSheet(unittest.TestCase):

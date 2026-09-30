@@ -529,7 +529,8 @@ class App(tk.Tk):
             return
         sel = self.selected()
         n, slots = len(sel), a.slots
-        total = a.base_layers * a.layer_height + a.max_layers * a.layer_height
+        total = (a.first_layer_height
+                 + (a.base_layers - 1 + a.max_layers) * a.layer_height)
         w_px = max(1, int(round(a.width / a.resolution)))
         if self.source_img is not None:
             h_px = (max(1, int(round(a.height / a.resolution))) if a.height > 0
@@ -646,7 +647,7 @@ class App(tk.Tk):
             tdcolor.srgb_to_lab(achieved.astype(np.float64))
             - tdcolor.srgb_to_lab(img.astype(np.float64)), axis=-1)
         self.worker.progress(0.95, "building layer labels")
-        labels = sf.layer_labels(g, state)
+        labels, _ = sf.trim_base_layers(sf.layer_labels(g, state), g.base_index)
         return {"gamut": g, "labels": labels, "achieved": achieved, "err": err,
                 "fils": sel, "base": base, "args": a}
 

@@ -258,6 +258,19 @@ def layer_labels(gamut, state_idx):
     return table[inv].reshape(h, w, gamut.max_layers).transpose(2, 0, 1)
 
 
+def trim_base_layers(labels, base_index):
+    """Drop bottom colour layers that came out uniformly base -> (labels, n).
+
+    They are just extra base plate -- base filament padding sitting on a
+    base-filament plate -- so dropping them is optically identical and that
+    much less to print. At least one colour layer is always kept.
+    """
+    trim = 0
+    while trim < len(labels) - 1 and (labels[trim] == base_index).all():
+        trim += 1
+    return labels[trim:], trim
+
+
 def build_geometry(labels, width_mm, res, layer_h, base_h, base_index, n_fil):
     """labels (L,h,w) -> plaque mesh + one modifier volume per filament."""
     L, h, w = labels.shape
@@ -544,6 +557,17 @@ def main(argv=None):
     args = ap.parse_args(argv)
     if args.slots < 2:
         ap.error("--slots counts the base, so it needs at least 2")
+    for name in ("width", "resolution"):
+        if getattr(args, name) <= 0:
+            ap.error(f"--{name} must be positive")
+    for name in ("layer_height", "first_layer_height"):
+        if getattr(args, name) is not None and getattr(args, name) <= 0:
+            ap.error(f"--{name.replace('_', '-')} must be positive")
+    # base_h is first_layer + (base_layers - 1) * layer: with no base layer
+    # the first colour layer would be the thick first layer.
+    for name in ("max_layers", "base_layers", "grid", "rank_samples"):
+        if getattr(args, name) < 1:
+            ap.error(f"--{name.replace('_', '-')} must be at least 1")
 
     db = DB(args.db)
     fils = db.resolve(args.filaments)
@@ -643,14 +667,8 @@ def main(argv=None):
     # --- geometry ---
     labels = layer_labels(gamut, state)
 
-    # Colour layers at the bottom that came out uniformly base are just extra
-    # base plate -- base filament padding sitting on a base-filament plate. It
-    # is optically identical to drop them, and it is that much less to print.
-    trim = 0
-    while trim < len(labels) - 1 and (labels[trim] == gamut.base_index).all():
-        trim += 1
+    labels, trim = trim_base_layers(labels, gamut.base_index)
     if trim:
-        labels = labels[trim:]
         print(f"  trimmed {trim} bottom colour layer(s) that were uniformly "
               f"{base.name} ({trim*args.layer_height:.2f} mm), optically identical")
 
