@@ -10,6 +10,7 @@ the code first.
 - `td_from_transmittance` had an unguarded denominator. Guarded.
 - `SpotreadSession.close()` left the pipe file objects open on the non-pty path. Now closed.
 - `tests/test_munki.py` leaked its fake-spotread temp dir. Now cleaned up.
+- README tools table omitted `make_fixture.py` (docs-accuracy pass; the only mismatch it found).
 - Added tests: `calibrate.build_wedge` / `build_chips` geometry, image-pattern mapping in
   `surfacecolor`, and a `stackforge --rank` end-to-end run (the rank path had no coverage).
 

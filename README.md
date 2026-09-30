@@ -53,6 +53,7 @@ so nothing here tries to minimize them.
 | `surfacecolor.py` | colour any 3MF from a pattern or a wrapped image, anywhere on its surface |
 | `munki.py` | measure wedges, plaques and chip transmission with a ColorMunki / ArgyllCMS |
 | `halftone_compare.py` | score stackforge's dither modes by blurred dE |
+| `make_fixture.py` | generate `fabric.3mf` and `badge.3mf` test models |
 | `stackforge.py` | flat full-color plaques from per-pixel filament stacks |
 | `stackforge_gui.py` | desktop front end for stackforge |
 | `td3mf.py`, `tdcolor.py` | shared 3MF I/O and color math |
