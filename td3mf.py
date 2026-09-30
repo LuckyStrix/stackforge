@@ -456,8 +456,13 @@ def _patch_colors(settings, colors) -> None:
 
 def write_prusa(out_path, items, decals, base_ext, part_type="modifier",
                 template=None, colors=None, layer_height=None,
-                first_layer_height=None, solid=False):
-    """One object per item; extra volumes are triangle ranges in the same mesh."""
+                first_layer_height=None, solid=False, object_settings=None):
+    """One object per item; extra volumes are triangle ranges in the same mesh.
+
+    `object_settings` become per-object overrides, PrusaSlicer's equivalent of
+    the Orca ones: the template's Prusa profile is not carried over, so they
+    are the only way a setting reaches the slicer.
+    """
     vtype = "ModifierMesh" if part_type == "modifier" else "ModelPart"
     res_xml, cfg_xml, build_xml = [], [], []
     for oid, item in enumerate(items, start=1):
@@ -491,6 +496,8 @@ def write_prusa(out_path, items, decals, base_ext, part_type="modifier",
         cfg_xml.append(
             f' <object id="{oid}">\n'
             f'  <metadata type="object" key="name" value="{item.name}"/>\n'
+            + "".join(f'  <metadata type="object" key="{k}" value="{v}"/>\n'
+                      for k, v in (object_settings or {}).items())
             + "".join(vols)
             + " </object>\n"
         )

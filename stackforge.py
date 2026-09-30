@@ -293,18 +293,21 @@ def build_geometry(labels, width_mm, res, layer_h, base_h, base_index, n_fil):
 def write_plaque(path, flavor, plate, decals, fils, base_index, part_type,
                  template, layer_height, first_layer_height, solid=True):
     """Write the 3MF. Shared by the CLI and the GUI so both force solid infill."""
-    kw = {}
-    if solid and flavor == "orca":
-        # Orca discards project-level values whose preset name matches a
-        # system preset; per-object overrides survive. write_prusa has no
-        # per-object settings, so it only gets the profile rewrite.
-        kw["object_settings"] = {"sparse_infill_density": "100%",
-                                 "infill_combination": "0"}
+    # Orca discards project-level values whose preset name matches a system
+    # preset, so solid infill goes in per-object overrides, which survive.
+    # The prusa writer carries no profile at all, so the layer height has to
+    # ride along the same way (its first layer is a print-only setting).
+    if flavor == "orca":
+        obj = {"sparse_infill_density": "100%", "infill_combination": "0"} if solid else {}
+    else:
+        obj = {"layer_height": f"{layer_height:g}"}
+        if solid:
+            obj.update(fill_density="100%", infill_every_layers="1")
     td3mf.get_writer(flavor)(
         path, [plate], {0: decals}, base_index + 1, part_type,
         template=template, colors=[f.color for f in fils],
         layer_height=layer_height, first_layer_height=first_layer_height,
-        solid=solid, **kw,
+        solid=solid, object_settings=obj or None,
     )
 
 
@@ -322,13 +325,11 @@ def sample_pixels(img, n, seed=0):
     return flat[rng.choice(len(flat), n, replace=False)]
 
 
-def score_subset(fils, base, args, samples_rgb, samples_lab):
-    """Mean/p95 dE of the best achievable match for a sampled set of colors."""
+def score_subset(fils, base, args, samples_lab):
+    """dE of the best achievable match for each sampled color."""
     g = Gamut(fils, base, args.layer_height, args.max_layers,
               args.grid, args.cap, verbose=False)
-    idx = g.tree.query(samples_lab, workers=-1)[1]
-    de = np.linalg.norm(g.lab[idx] - samples_lab, axis=-1)
-    return de, g
+    return g.tree.query(samples_lab, workers=-1)[0]
 
 
 def rank_subsets(all_fils, base, args, img, progress=None, verbose=True):
@@ -353,7 +354,7 @@ def rank_subsets(all_fils, base, args, img, progress=None, verbose=True):
     t0 = time.time()
     for i, combo in enumerate(combos, 1):
         subset = [base] + list(combo)
-        de, _ = score_subset(subset, base, args, samples_rgb, samples_lab)
+        de = score_subset(subset, base, args, samples_lab)
         results.append({
             "fils": subset,
             "mean": float(de.mean()),
@@ -411,7 +412,11 @@ def contact_sheet(path, entries, target, cols=3, thumb=280, pad=14):
     ]
     f_big, f_small = _font(15), _font(12)
     sw_h, txt_h = 20, 40
-    cell_h = thumb + sw_h + txt_h
+    # Keep the image's aspect: fit it inside a thumb x thumb square.
+    ih, iw = target.shape[:2]
+    s = thumb / max(ih, iw)
+    tw, th = max(1, round(iw * s)), max(1, round(ih * s))
+    cell_h = th + sw_h + txt_h
     rows = (len(cells) + cols - 1) // cols
     W = cols * thumb + (cols + 1) * pad
     H = rows * cell_h + (rows + 1) * pad
@@ -422,10 +427,10 @@ def contact_sheet(path, entries, target, cols=3, thumb=280, pad=14):
     for i, c in enumerate(cells):
         cx = pad + (i % cols) * (thumb + pad)
         cy = pad + (i // cols) * (cell_h + pad)
-        im = Image.fromarray(c["image"]).resize((thumb, thumb), Image.LANCZOS)
-        sheet.paste(im, (cx, cy))
+        im = Image.fromarray(c["image"]).resize((tw, th), Image.LANCZOS)
+        sheet.paste(im, (cx + (thumb - tw) // 2, cy))
 
-        y = cy + thumb + 5
+        y = cy + th + 5
         if c["fils"]:
             sw_w = thumb // len(c["fils"])
             for j, fil in enumerate(c["fils"]):
@@ -526,10 +531,11 @@ def main(argv=None):
     g.add_argument("--slots", type=int, default=4,
                    help="toolheads available, COUNTING THE BASE. --slots 4 means four "
                         "spools total, so 4 combines the base with 3 others")
-    g.add_argument("--rank", action="store_true",
-                   help="force ranking mode (automatic when --filaments exceeds --slots)")
-    g.add_argument("--no-rank", action="store_true",
-                   help="skip ranking and use the base plus the first --slots-1 others as listed")
+    mx = g.add_mutually_exclusive_group()
+    mx.add_argument("--rank", action="store_true",
+                    help="force ranking mode (automatic when --filaments exceeds --slots)")
+    mx.add_argument("--no-rank", action="store_true",
+                    help="skip ranking and use the base plus the first --slots-1 others as listed")
     g.add_argument("--top", type=int, default=5, help="combinations to render")
     g.add_argument("--rank-by", choices=["mean", "p95"], default="mean")
     g.add_argument("--rank-samples", type=int, default=4000,
@@ -590,6 +596,9 @@ def main(argv=None):
             raise SystemExit(
                 f"--rank needs more than --slots ({args.slots}) filaments to choose between"
             )
+        if args.output:
+            print(f"  - ranking only; {args.output} is not written. Re-run with the "
+                  f"combination it recommends to produce the plaque.")
         cmd_rank(fils, base, args, img)
         return
     if len(fils) > args.slots:
@@ -620,6 +629,9 @@ def main(argv=None):
     )
     print(f"  color error dE: mean {err.mean():.1f}, p95 {np.percentile(err, 95):.1f}, "
           f"max {err.max():.1f}")
+    # Per-pixel error always penalises a dither; compare dither modes on this.
+    bm, bp = tdcolor.blurred_de(achieved, img)
+    print(f"  at arm's length (blurred dE): mean {bm:.1f}, p95 {bp:.1f}")
 
     if args.preview:
         Image.fromarray(achieved.astype(np.uint8)).save(args.preview)

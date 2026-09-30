@@ -22,6 +22,9 @@ I/O goes through `td3mf.py`. GUIs (`*_gui.py`) only wrap the CLIs and share `gui
   shells (the badge fixture) flip parity and leave a hollow; `tests/test_surfacecolor.py` covers it.
 - **surfacecolor `--expr` is `eval`.** Builtins stripped, dunders refused; still only for trusted input.
 - **Dither only helps shallow stacks.** `mix_pairs` in `stackforge.py` averages two gamut states; nudging
-  the target before the query changed nothing (that was the old implementation).
+  the target before the query changed nothing (that was the old implementation). Floyd diffusing
+  error in linear light instead of sRGB was measured too: no better than `none`, not adopted.
+- Unverified: PrusaSlicer honouring the per-object `layer_height`/`fill_density` that
+  `--flavor prusa` writes (no Prusa profile is carried over, so nothing else sets them).
 - **munki.py is unverified on hardware.** Its spotread session is copied from calibration-suite (do not
   import it, the repos are independent). All-zero XYZ is refused: a stale ColorMunki dial prints zeros.

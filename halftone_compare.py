@@ -18,7 +18,6 @@ import argparse
 
 import numpy as np
 from PIL import Image, ImageDraw
-from scipy.ndimage import gaussian_filter
 
 import stackforge as sf
 import tdcolor
@@ -26,15 +25,7 @@ from filamentdb import DB
 
 MODES = ["none", "ordered", "blue", "floyd"]
 
-
-def blurred_de(a, b, sigma):
-    """Mean/p95 dE between two sRGB uint8 images after a linear-light blur."""
-    def prep(x):
-        lin = tdcolor.srgb_to_linear(x.astype(np.float64))
-        lin = np.stack([gaussian_filter(lin[..., c], sigma) for c in range(3)], -1)
-        return tdcolor.linear_to_lab(lin)
-    d = np.linalg.norm(prep(a) - prep(b), axis=-1)
-    return float(d.mean()), float(np.percentile(d, 95))
+blurred_de = tdcolor.blurred_de  # moved to tdcolor; kept importable here
 
 
 def main(argv=None):
@@ -55,14 +46,14 @@ def main(argv=None):
     fils = db.resolve(args.filaments)
     base = db.get(args.base) if args.base else fils[0]
     w = max(1, round(args.width / args.resolution))
-    im = Image.open(args.image)
+    im = tdcolor.open_image(args.image)
     h = max(1, round(w * im.height / im.width))
     img = tdcolor.fit_image(args.image, w, h, "cover")
     gamut = sf.Gamut(fils, base, args.layer_height, args.max_layers, verbose=False)
 
     rows, tiles = [], [("target", img)]
     for mode in MODES:
-        got = gamut.srgb()[sf.solve_image(gamut, img, mode)].astype(np.uint8)
+        got = np.round(gamut.srgb()[sf.solve_image(gamut, img, mode)]).astype(np.uint8)
         px = np.linalg.norm(tdcolor.srgb_to_lab(got.astype(float))
                             - tdcolor.srgb_to_lab(img.astype(float)), axis=-1)
         bm, bp = blurred_de(got, img, args.blur)

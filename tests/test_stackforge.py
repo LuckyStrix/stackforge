@@ -47,7 +47,21 @@ class Cli(unittest.TestCase):
         r = run("--filaments", ",".join(IDS[:4]), "--flavor", "prusa", "-o", out, img=self.img)
         self.assertEqual(r.returncode, 0, r.stderr)
         with zipfile.ZipFile(out) as z:
-            self.assertIn("Metadata/Slic3r_PE_model.config", z.namelist())
+            cfg = z.read("Metadata/Slic3r_PE_model.config").decode()
+        # No Prusa profile is carried over, so these must be per-object.
+        self.assertIn('type="object" key="fill_density" value="100%"', cfg)
+        self.assertIn('type="object" key="layer_height" value="0.08"', cfg)
+
+    def test_rank_and_no_rank_conflict(self):
+        r = run("--filaments", ",".join(IDS), "--rank", "--no-rank", img=self.img)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("not allowed with", r.stderr)
+
+    def test_blurred_error_is_reported(self):
+        r = run("--filaments", ",".join(IDS[:4]), "--dither", "blue",
+                "-o", os.path.join(self.d, "o.3mf"), img=self.img)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("blurred dE", r.stdout)
 
     def test_slots_below_two_is_refused(self):
         r = run("--filaments", ",".join(IDS), "--slots", "1", img=self.img)
@@ -73,6 +87,21 @@ class Gamut(unittest.TestCase):
         dark = ref.lab[ref.lab[:, 0] < 25]
         self.assertGreater(len(dark), 100)
         self.assertLess(np.percentile(g.tree.query(dark)[0], 99), 1.0)
+
+
+class ContactSheet(unittest.TestCase):
+    def test_keeps_aspect(self):
+        # A 3:1 target used to be squashed into a square thumbnail.
+        tgt = np.zeros((10, 30, 3), np.uint8)
+        tgt[:, :15] = 255
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "sheet.png")
+            sf.contact_sheet(p, [], tgt, cols=1, thumb=90, pad=0)
+            sheet = np.asarray(Image.open(p).convert("L"))
+        self.assertEqual(sheet.shape[1], 90)
+        self.assertGreater(sheet[15, 10], 200)      # inside the 90x30 thumbnail
+        self.assertLess(sheet[15, 80], 60)
+        self.assertLess(abs(int(sheet[40, 10]) - 28), 5)   # below it: background
 
 
 class OpenImage(unittest.TestCase):

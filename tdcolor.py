@@ -159,6 +159,23 @@ def blue_noise(n: int = 64, sigma: float = 1.5) -> np.ndarray:
     return out
 
 
+def blurred_de(a, b, sigma=1.5):
+    """Mean/p95 dE between two sRGB images after a linear-light Gaussian blur.
+
+    Per-pixel dE always punishes a dither, which puts "wrong" pixels side by
+    side for the eye to average. Blurring both first (S-CIELAB-lite) scores
+    what is seen at viewing distance: 1.5 px at 0.4 mm/px is about arm's length.
+    """
+    from scipy.ndimage import gaussian_filter
+
+    def prep(x):
+        lin = srgb_to_linear(np.asarray(x, dtype=np.float64))
+        lin = np.stack([gaussian_filter(lin[..., c], sigma) for c in range(3)], -1)
+        return linear_to_lab(lin)
+    d = np.linalg.norm(prep(a) - prep(b), axis=-1)
+    return float(d.mean()), float(np.percentile(d, 95))
+
+
 def palette_spread(palette: np.ndarray) -> float:
     d = np.linalg.norm(palette[:, None, :] - palette[None, :, :], axis=-1)
     np.fill_diagonal(d, np.inf)
