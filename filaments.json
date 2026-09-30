@@ -1,0 +1,199 @@
+{
+  "version": 1,
+  "filaments": [
+    {
+      "id": "polymaker-pla-pro-beige",
+      "brand": "Polymaker",
+      "series": "PLA Pro",
+      "name": "Beige",
+      "color": "#D8C6A6",
+      "td": 0.3718,
+      "finish": "opaque",
+      "provenance": "estimated",
+      "notes": "starter entry; color eyeballed, td is a finish-based guess | td estimated from 148 published Polymaker pigmented TDs by colour regression (typically off by ~1.62x)"
+    },
+    {
+      "id": "polymaker-pla-pro-black",
+      "brand": "Polymaker",
+      "series": "PLA Pro",
+      "name": "Black",
+      "color": "#0C0E0C",
+      "td": 0.0217,
+      "finish": "opaque",
+      "provenance": "estimated",
+      "sku": "PA13002",
+      "notes": "starter entry; color eyeballed, td is a finish-based guess | td estimated from 148 published Polymaker pigmented TDs by colour regression (typically off by ~1.62x) | SKU PA13002 (Polymaker PLA Pro); hex from the Polymaker wiki, retrieved 2026-08-15, which publishes no TD for this SKU; td is a guess for a opaque finish",
+      "tags": [
+        "polymaker"
+      ]
+    },
+    {
+      "id": "polymaker-pla-pro-blue",
+      "brand": "Polymaker",
+      "series": "PLA Pro",
+      "name": "Blue",
+      "color": "#003287",
+      "td": 0.053,
+      "finish": "opaque",
+      "provenance": "estimated",
+      "sku": "PA13004",
+      "notes": "starter entry; color eyeballed, td is a finish-based guess | td estimated from 148 published Polymaker pigmented TDs by colour regression (typically off by ~1.62x) | SKU PA13004 (Polymaker PLA Pro); hex from the Polymaker wiki, retrieved 2026-08-15, which publishes no TD for this SKU; td is a guess for a opaque finish",
+      "tags": [
+        "polymaker"
+      ]
+    },
+    {
+      "id": "polymaker-pla-pro-dark-blue",
+      "brand": "Polymaker",
+      "series": "PLA Pro",
+      "name": "Dark Blue",
+      "color": "#123064",
+      "td": 0.0416,
+      "finish": "opaque",
+      "provenance": "estimated",
+      "notes": "starter entry; color eyeballed, td is a finish-based guess | td estimated from 148 published Polymaker pigmented TDs by colour regression (typically off by ~1.62x)"
+    },
+    {
+      "id": "polymaker-pla-pro-green",
+      "brand": "Polymaker",
+      "series": "PLA Pro",
+      "name": "Green",
+      "color": "#2D9E59",
+      "td": 0.0801,
+      "finish": "opaque",
+      "provenance": "estimated",
+      "sku": "PA13010",
+      "notes": "starter entry; color eyeballed, td is a finish-based guess | td estimated from 148 published Polymaker pigmented TDs by colour regression (typically off by ~1.62x) | SKU PA13010 (Polymaker PLA Pro); hex from the Polymaker wiki, retrieved 2026-08-15, which publishes no TD for this SKU; td is a guess for a opaque finish",
+      "tags": [
+        "polymaker"
+      ]
+    },
+    {
+      "id": "polymaker-pla-pro-grey",
+      "brand": "Polymaker",
+      "series": "PLA Pro",
+      "name": "Grey",
+      "color": "#959FA1",
+      "td": 0.1838,
+      "finish": "opaque",
+      "provenance": "estimated",
+      "sku": "PA13003",
+      "notes": "starter entry; color eyeballed, td is a finish-based guess | td estimated from 148 published Polymaker pigmented TDs by colour regression (typically off by ~1.62x) | SKU PA13003 (Polymaker PLA Pro); hex from the Polymaker wiki, retrieved 2026-08-15, which publishes no TD for this SKU; td is a guess for a opaque finish",
+      "tags": [
+        "polymaker"
+      ]
+    },
+    {
+      "id": "polymaker-pla-pro-magenta",
+      "brand": "Polymaker",
+      "series": "PLA Pro",
+      "name": "Magenta",
+      "color": "#FB3D7C",
+      "td": 0.4794,
+      "finish": "opaque",
+      "provenance": "estimated",
+      "sku": "PA13022",
+      "notes": "starter entry; color eyeballed, td is a finish-based guess | td estimated from 148 published Polymaker pigmented TDs by colour regression (typically off by ~1.62x) | SKU PA13022 (Polymaker PLA Pro); hex from the Polymaker wiki, retrieved 2026-08-15, which publishes no TD for this SKU; td is a guess for a opaque finish",
+      "tags": [
+        "polymaker"
+      ]
+    },
+    {
+      "id": "polymaker-pla-pro-natural",
+      "brand": "Polymaker",
+      "series": "PLA Pro",
+      "name": "Natural",
+      "color": "#E8E2D2",
+      "td": 1.6738,
+      "finish": "natural",
+      "provenance": "estimated",
+      "notes": "starter entry; color eyeballed, td is a finish-based guess | td estimated from 18 published Polymaker translucent TDs by group median (typically off by ~1.38x)"
+    },
+    {
+      "id": "polymaker-pla-pro-orange",
+      "brand": "Polymaker",
+      "series": "PLA Pro",
+      "name": "Orange",
+      "color": "#F97429",
+      "td": 0.4782,
+      "finish": "opaque",
+      "provenance": "estimated",
+      "sku": "PA13007",
+      "notes": "starter entry; color eyeballed, td is a finish-based guess | td estimated from 148 published Polymaker pigmented TDs by colour regression (typically off by ~1.62x) | SKU PA13007 (Polymaker PLA Pro); hex from the Polymaker wiki, retrieved 2026-08-15, which publishes no TD for this SKU; td is a guess for a opaque finish",
+      "tags": [
+        "polymaker"
+      ]
+    },
+    {
+      "id": "polymaker-pla-pro-purple",
+      "brand": "Polymaker",
+      "series": "PLA Pro",
+      "name": "Purple",
+      "color": "#6C5BB1",
+      "td": 0.1224,
+      "finish": "opaque",
+      "provenance": "estimated",
+      "sku": "PA13008",
+      "notes": "starter entry; color eyeballed, td is a finish-based guess | td estimated from 148 published Polymaker pigmented TDs by colour regression (typically off by ~1.62x) | SKU PA13008 (Polymaker PLA Pro); hex from the Polymaker wiki, retrieved 2026-08-15, which publishes no TD for this SKU; td is a guess for a opaque finish",
+      "tags": [
+        "polymaker"
+      ]
+    },
+    {
+      "id": "polymaker-pla-pro-red",
+      "brand": "Polymaker",
+      "series": "PLA Pro",
+      "name": "Red",
+      "color": "#E20010",
+      "td": 0.3866,
+      "finish": "opaque",
+      "provenance": "estimated",
+      "sku": "PA13005",
+      "notes": "starter entry; color eyeballed, td is a finish-based guess | td estimated from 148 published Polymaker pigmented TDs by colour regression (typically off by ~1.62x) | SKU PA13005 (Polymaker PLA Pro); hex from the Polymaker wiki, retrieved 2026-08-15, which publishes no TD for this SKU; td is a guess for a opaque finish",
+      "tags": [
+        "polymaker"
+      ]
+    },
+    {
+      "id": "polymaker-pla-pro-teal",
+      "brand": "Polymaker",
+      "series": "PLA Pro",
+      "name": "Teal",
+      "color": "#00757F",
+      "td": 0.0627,
+      "finish": "opaque",
+      "provenance": "estimated",
+      "notes": "starter entry; color eyeballed, td is a finish-based guess | td estimated from 148 published Polymaker pigmented TDs by colour regression (typically off by ~1.62x)"
+    },
+    {
+      "id": "polymaker-pla-pro-white",
+      "brand": "Polymaker",
+      "series": "PLA Pro",
+      "name": "White",
+      "color": "#E2DEDB",
+      "td": 0.4674,
+      "finish": "opaque",
+      "provenance": "estimated",
+      "sku": "PA13001",
+      "notes": "starter entry; color eyeballed, td is a finish-based guess | td estimated from 148 published Polymaker pigmented TDs by colour regression (typically off by ~1.62x) | SKU PA13001 (Polymaker PLA Pro); hex from the Polymaker wiki, retrieved 2026-08-15, which publishes no TD for this SKU; td is a guess for a opaque finish",
+      "tags": [
+        "polymaker"
+      ]
+    },
+    {
+      "id": "polymaker-pla-pro-yellow",
+      "brand": "Polymaker",
+      "series": "PLA Pro",
+      "name": "Yellow",
+      "color": "#F4C032",
+      "td": 0.4734,
+      "finish": "opaque",
+      "provenance": "estimated",
+      "sku": "PA13006",
+      "notes": "starter entry; color eyeballed, td is a finish-based guess | td estimated from 148 published Polymaker pigmented TDs by colour regression (typically off by ~1.62x) | SKU PA13006 (Polymaker PLA Pro); hex from the Polymaker wiki, retrieved 2026-08-15, which publishes no TD for this SKU; td is a guess for a opaque finish",
+      "tags": [
+        "polymaker"
+      ]
+    }
+  ]
+}

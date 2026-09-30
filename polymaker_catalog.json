@@ -1,0 +1,10351 @@
+{
+ "version": 1,
+ "source": "https://wiki.polymaker.com/polymaker-products/more-about-our-products/hex-codes-and-transmission-distances",
+ "fetched_at": "2026-08-15",
+ "td_scale": "Polymaker/HueForge TD: approximate mm of solid plastic light penetrates before it is effectively blocked. Divide by 4.6 for the 1/e td this database stores.",
+ "count": 1298,
+ "products": [
+  {
+   "sku": "CA02001",
+   "product": "Panchroma Translucent PLA",
+   "name": "Translucent Cyan",
+   "hexes": [
+    "#08ABFB"
+   ],
+   "td": 8.0
+  },
+  {
+   "sku": "CA02002",
+   "product": "Panchroma Translucent PLA",
+   "name": "Translucent Magenta",
+   "hexes": [
+    "#D93B90"
+   ],
+   "td": 7.8
+  },
+  {
+   "sku": "CA02003",
+   "product": "Panchroma Translucent PLA",
+   "name": "Translucent Yellow",
+   "hexes": [
+    "#F9ED3D"
+   ],
+   "td": 14.0
+  },
+  {
+   "sku": "CA02004",
+   "product": "Panchroma Translucent PLA",
+   "name": "Translucent Grey",
+   "hexes": [
+    "#9199A4"
+   ],
+   "td": 11.5
+  },
+  {
+   "sku": "CA02005",
+   "product": "Panchroma Neon PLA",
+   "name": "Neon Pink",
+   "hexes": [
+    "#FF3670"
+   ],
+   "td": 3.8
+  },
+  {
+   "sku": "CA02006",
+   "product": "Panchroma Neon PLA",
+   "name": "Neon Green",
+   "hexes": [
+    "#00F263"
+   ],
+   "td": 4.9
+  },
+  {
+   "sku": "CA02007",
+   "product": "Panchroma Neon PLA",
+   "name": "Neon Yellow",
+   "hexes": [
+    "#E5DB2E"
+   ],
+   "td": 7.6
+  },
+  {
+   "sku": "CA02008",
+   "product": "Panchroma Neon PLA",
+   "name": "Neon Orange",
+   "hexes": [
+    "#FF7800"
+   ],
+   "td": 7.0
+  },
+  {
+   "sku": "CA02009",
+   "product": "Panchroma Neon PLA",
+   "name": "Neon Magenta",
+   "hexes": [
+    "#F21185"
+   ],
+   "td": 3.1
+  },
+  {
+   "sku": "CA02010",
+   "product": "Panchroma Neon PLA",
+   "name": "Neon Red",
+   "hexes": [
+    "#FE2D42"
+   ],
+   "td": 3.5
+  },
+  {
+   "sku": "CA02011",
+   "product": "Panchroma Metallic PLA",
+   "name": "Metallic Gold",
+   "hexes": [
+    "#DA9F1D"
+   ],
+   "td": 2.9
+  },
+  {
+   "sku": "CA02012",
+   "product": "Panchroma Metallic PLA",
+   "name": "Metallic Silver",
+   "hexes": [
+    "#7A838E"
+   ],
+   "td": 0.6
+  },
+  {
+   "sku": "CA02013",
+   "product": "Panchroma Metallic PLA",
+   "name": "Metallic Bronze",
+   "hexes": [
+    "#926043"
+   ],
+   "td": 0.8
+  },
+  {
+   "sku": "CA02014",
+   "product": "Panchroma Celestial PLA",
+   "name": "Celestial Blue",
+   "hexes": [
+    "#6ADCF7"
+   ],
+   "td": 6.3
+  },
+  {
+   "sku": "CA02015",
+   "product": "Panchroma Celestial PLA",
+   "name": "Celestial Green",
+   "hexes": [
+    "#6FE2D2"
+   ],
+   "td": 10.2
+  },
+  {
+   "sku": "CA02016",
+   "product": "Panchroma Celestial PLA",
+   "name": "Celestial Purple",
+   "hexes": [
+    "#9678C8"
+   ],
+   "td": 5.5
+  },
+  {
+   "sku": "CA02017",
+   "product": "Panchroma Starlight PLA",
+   "name": "Starlight Mars",
+   "hexes": [
+    "#962E31"
+   ],
+   "td": 2.1
+  },
+  {
+   "sku": "CA02018",
+   "product": "Panchroma Starlight PLA",
+   "name": "Starlight Mercury",
+   "hexes": [
+    "#33322D"
+   ],
+   "td": 7.6
+  },
+  {
+   "sku": "CA02019",
+   "product": "Panchroma Starlight PLA",
+   "name": "Starlight Meteor",
+   "hexes": [
+    "#2F3117"
+   ],
+   "td": 3.9
+  },
+  {
+   "sku": "CA02020",
+   "product": "Panchroma Starlight PLA",
+   "name": "Starlight Nebula",
+   "hexes": [
+    "#462F32"
+   ],
+   "td": 3.6
+  },
+  {
+   "sku": "CA02021",
+   "product": "Panchroma Starlight PLA",
+   "name": "Starlight Neptune",
+   "hexes": [
+    "#113148"
+   ],
+   "td": 2.7
+  },
+  {
+   "sku": "CA02022",
+   "product": "Panchroma Starlight PLA",
+   "name": "Starlight Twilight",
+   "hexes": [
+    "#1E3445"
+   ],
+   "td": 3.1
+  },
+  {
+   "sku": "CA02023",
+   "product": "Panchroma UV Shift PLA",
+   "name": "UV Shift Natural/Orange",
+   "hexes": [
+    "#F1DBBF"
+   ],
+   "td": 23.6
+  },
+  {
+   "sku": "CA02024",
+   "product": "Panchroma Galaxy PLA",
+   "name": "Galaxy Black",
+   "hexes": [
+    "#161617"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA02025",
+   "product": "Panchroma Galaxy PLA",
+   "name": "Galaxy Dark Blue",
+   "hexes": [
+    "#18192D"
+   ],
+   "td": 0.4
+  },
+  {
+   "sku": "CA02026",
+   "product": "Panchroma Galaxy PLA",
+   "name": "Galaxy Dark Green",
+   "hexes": [
+    "#13484D"
+   ],
+   "td": 0.4
+  },
+  {
+   "sku": "CA02027",
+   "product": "Panchroma Galaxy PLA",
+   "name": "Galaxy Dark Red",
+   "hexes": [
+    "#451E14"
+   ],
+   "td": 0.2
+  },
+  {
+   "sku": "CA02028",
+   "product": "Panchroma Galaxy PLA",
+   "name": "Galaxy Dark Grey",
+   "hexes": [
+    "#4E5658"
+   ],
+   "td": 0.4
+  },
+  {
+   "sku": "CA02029",
+   "product": "Panchroma Glow PLA",
+   "name": "Glow Blue",
+   "hexes": [
+    "#F3EADB"
+   ],
+   "td": 22.5
+  },
+  {
+   "sku": "CA02030",
+   "product": "Panchroma Glow PLA",
+   "name": "Glow Green",
+   "hexes": [
+    "#F2EADB"
+   ],
+   "td": 23.7
+  },
+  {
+   "sku": "CA02031",
+   "product": "Panchroma Luminous PLA",
+   "name": "Luminous Blue",
+   "hexes": [
+    "#5FA8C2"
+   ],
+   "td": 10.5
+  },
+  {
+   "sku": "CA02032",
+   "product": "Panchroma Luminous PLA",
+   "name": "Luminous Green",
+   "hexes": [
+    "#BFEB8C"
+   ],
+   "td": 12.7
+  },
+  {
+   "sku": "CA02033",
+   "product": "Panchroma Luminous PLA",
+   "name": "Luminous Orange",
+   "hexes": [
+    "#FEBE5F"
+   ],
+   "td": 11.7
+  },
+  {
+   "sku": "CA02034",
+   "product": "Panchroma Luminous PLA",
+   "name": "Luminous Pink",
+   "hexes": [
+    "#FE9176"
+   ],
+   "td": 11.8
+  },
+  {
+   "sku": "CA02035",
+   "product": "Panchroma Luminous PLA",
+   "name": "Luminous Yellow",
+   "hexes": [
+    "#EEDC48"
+   ],
+   "td": 12.4
+  },
+  {
+   "sku": "CA02036",
+   "product": "Panchroma Metallic PLA",
+   "name": "Metallic Blue",
+   "hexes": [
+    "#2C3449"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA02037",
+   "product": "Panchroma Translucent PLA",
+   "name": "Translucent Natural",
+   "hexes": [
+    "#E8E6D0"
+   ],
+   "td": 21.0
+  },
+  {
+   "sku": "CA02038",
+   "product": "Panchroma Starlight PLA",
+   "name": "Starlight Aurora",
+   "hexes": [
+    "#314530"
+   ],
+   "td": 4.7
+  },
+  {
+   "sku": "CA02039",
+   "product": "Panchroma Starlight PLA",
+   "name": "Starlight Comet",
+   "hexes": [
+    "#1F312A"
+   ],
+   "td": 2.6
+  },
+  {
+   "sku": "CA02040",
+   "product": "Panchroma Starlight PLA",
+   "name": "Starlight Jupiter",
+   "hexes": [
+    "#774718"
+   ],
+   "td": 4.7
+  },
+  {
+   "sku": "CA02041",
+   "product": "Panchroma Metallic PLA",
+   "name": "Metallic Green",
+   "hexes": [
+    "#434D43"
+   ],
+   "td": 0.4
+  },
+  {
+   "sku": "CA02042",
+   "product": "Panchroma Starlight PLA",
+   "name": "Starlight Midnight",
+   "hexes": [
+    "#475A64"
+   ],
+   "td": 0.7
+  },
+  {
+   "sku": "CA02043",
+   "product": "Panchroma Starlight PLA",
+   "name": "Starlight Pulsar",
+   "hexes": [
+    "#5C7BC1"
+   ],
+   "td": 5.1
+  },
+  {
+   "sku": "CA02044",
+   "product": "Panchroma Celestial PLA",
+   "name": "Celestial White",
+   "hexes": [
+    "#DCDAD0"
+   ],
+   "td": 9.3
+  },
+  {
+   "sku": "CA02045",
+   "product": "Panchroma Celestial PLA",
+   "name": "Celestial Light Yellow",
+   "hexes": [
+    "#D7CE89"
+   ],
+   "td": 7.9
+  },
+  {
+   "sku": "CA02046",
+   "product": "Panchroma Celestial PLA",
+   "name": "Celestial Light Pink",
+   "hexes": [
+    "#C3ADB8"
+   ],
+   "td": 11.2
+  },
+  {
+   "sku": "CA02047",
+   "product": "Panchroma Celestial PLA",
+   "name": "Celestial Yellow",
+   "hexes": [
+    "#F4C76A"
+   ],
+   "td": 7.0
+  },
+  {
+   "sku": "CA02048",
+   "product": "Panchroma PLA Refill",
+   "name": "Starlight Neptune",
+   "hexes": [
+    "#113148"
+   ],
+   "td": 2.7
+  },
+  {
+   "sku": "CA02049",
+   "product": "Panchroma PLA Refill",
+   "name": "Starlight Twilight",
+   "hexes": [
+    "#1E3445"
+   ],
+   "td": 3.1
+  },
+  {
+   "sku": "CA02050",
+   "product": "Panchroma PLA Refill",
+   "name": "Starlight Nebula",
+   "hexes": [
+    "#462F32"
+   ],
+   "td": 3.6
+  },
+  {
+   "sku": "CA02051",
+   "product": "Panchroma PLA Refill",
+   "name": "Starlight Comet",
+   "hexes": [
+    "#1F312A"
+   ],
+   "td": 2.6
+  },
+  {
+   "sku": "CA03001",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk Black",
+   "hexes": [
+    "#363538"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA03002",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk Blue",
+   "hexes": [
+    "#4999C9"
+   ],
+   "td": 1.3
+  },
+  {
+   "sku": "CA03003",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk Brass",
+   "hexes": [
+    "#968162"
+   ],
+   "td": 0.8
+  },
+  {
+   "sku": "CA03004",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk Bronze",
+   "hexes": [
+    "#AF6B4C"
+   ],
+   "td": 0.7
+  },
+  {
+   "sku": "CA03005",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk Chrome",
+   "hexes": [
+    "#85898B"
+   ],
+   "td": 0.3
+  },
+  {
+   "sku": "CA03006",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk Gold",
+   "hexes": [
+    "#C49449"
+   ],
+   "td": 2.2
+  },
+  {
+   "sku": "CA03007",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk Green",
+   "hexes": [
+    "#55B687"
+   ],
+   "td": 1.0
+  },
+  {
+   "sku": "CA03008",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk Light Blue",
+   "hexes": [
+    "#4CC1CB"
+   ],
+   "td": 1.9
+  },
+  {
+   "sku": "CA03009",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk Lime",
+   "hexes": [
+    "#C4CF4C"
+   ],
+   "td": 2.9
+  },
+  {
+   "sku": "CA03010",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk Magenta",
+   "hexes": [
+    "#AA538E"
+   ],
+   "td": 2.1
+  },
+  {
+   "sku": "CA03011",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk Orange",
+   "hexes": [
+    "#EB6232"
+   ],
+   "td": 3.0
+  },
+  {
+   "sku": "CA03012",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk Peridot Green",
+   "hexes": [
+    "#7F865B"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA03013",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk Quartz Pink",
+   "hexes": [
+    "#DBBBBB"
+   ],
+   "td": 3.5
+  },
+  {
+   "sku": "CA03014",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk Purple",
+   "hexes": [
+    "#786BB0"
+   ],
+   "td": 1.2
+  },
+  {
+   "sku": "CA03015",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk Red",
+   "hexes": [
+    "#C1443F"
+   ],
+   "td": 1.3
+  },
+  {
+   "sku": "CA03016",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk Rose",
+   "hexes": [
+    "#CF6076"
+   ],
+   "td": 2.5
+  },
+  {
+   "sku": "CA03017",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk Rose Gold",
+   "hexes": [
+    "#CBB0B1"
+   ],
+   "td": 2.2
+  },
+  {
+   "sku": "CA03018",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk Silver",
+   "hexes": [
+    "#BCC2C8"
+   ],
+   "td": 2.4
+  },
+  {
+   "sku": "CA03019",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk Teal",
+   "hexes": [
+    "#66C2B6"
+   ],
+   "td": 1.8
+  },
+  {
+   "sku": "CA03020",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk White",
+   "hexes": [
+    "#DFE4E4"
+   ],
+   "td": 4.2
+  },
+  {
+   "sku": "CA03021",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk Yellow",
+   "hexes": [
+    "#EEC810"
+   ],
+   "td": 3.6
+  },
+  {
+   "sku": "CA03022",
+   "product": "Panchroma Dual Silk PLA",
+   "name": "Dual Silk Aubergine (Lime-Magenta)",
+   "hexes": [
+    "#C4CF4C",
+    "#AA538E"
+   ]
+  },
+  {
+   "sku": "CA03023",
+   "product": "Panchroma Dual Silk PLA",
+   "name": "Dual Silk Banquet (Gold-Magenta)",
+   "hexes": [
+    "#C49449",
+    "#AA538E"
+   ]
+  },
+  {
+   "sku": "CA03024",
+   "product": "Panchroma Dual Silk PLA",
+   "name": "Dual Silk Beluga (Silver-Blue)",
+   "hexes": [
+    "#BCC2C8",
+    "#4999C9"
+   ]
+  },
+  {
+   "sku": "CA03025",
+   "product": "Panchroma Dual Silk PLA",
+   "name": "Dual Silk Caribbean Sea (Blue-Green)",
+   "hexes": [
+    "#4999C9",
+    "#55B687"
+   ]
+  },
+  {
+   "sku": "CA03026",
+   "product": "Panchroma Dual Silk PLA",
+   "name": "Dual Silk Chameleon (Yellow-Blue)",
+   "hexes": [
+    "#EEC810",
+    "#4999C9"
+   ]
+  },
+  {
+   "sku": "CA03027",
+   "product": "Panchroma Dual Silk PLA",
+   "name": "Dual Silk Crown (Gold-Silver)",
+   "hexes": [
+    "#C49449",
+    "#BCC2C8"
+   ]
+  },
+  {
+   "sku": "CA03028",
+   "product": "Panchroma Dual Silk PLA",
+   "name": "Dual Silk Jadeite (Green-Chrome)",
+   "hexes": [
+    "#55B687",
+    "#85898B"
+   ]
+  },
+  {
+   "sku": "CA03029",
+   "product": "Panchroma Dual Silk PLA",
+   "name": "Dual Silk Sovereign (Gold-Purple)",
+   "hexes": [
+    "#C49449",
+    "#786BB0"
+   ]
+  },
+  {
+   "sku": "CA03030",
+   "product": "Panchroma Dual Silk PLA",
+   "name": "Dual Silk Sunset (Gold-Red)",
+   "hexes": [
+    "#C49449",
+    "#CF6076"
+   ]
+  },
+  {
+   "sku": "CA03031",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk Dark Blue",
+   "hexes": [
+    "#23599A"
+   ],
+   "td": 0.6
+  },
+  {
+   "sku": "CA03032",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk Gunmetal Grey",
+   "hexes": [
+    "#676B6A"
+   ],
+   "td": 0.5
+  },
+  {
+   "sku": "CA03033",
+   "product": "Panchroma Silk PLA",
+   "name": "Silk Periwinkle",
+   "hexes": [
+    "#768EC7"
+   ],
+   "td": 1.3
+  },
+  {
+   "sku": "CA03034",
+   "product": "Panchroma Gradient Silk PLA",
+   "name": "Gradient Silk Rainbow"
+  },
+  {
+   "sku": "CA03035",
+   "product": "Panchroma Gradient Silk PLA",
+   "name": "Gradient Silk Fire"
+  },
+  {
+   "sku": "CA03036",
+   "product": "Panchroma Gradient Silk PLA",
+   "name": "Gradient Silk Water"
+  },
+  {
+   "sku": "CA03037",
+   "product": "Panchroma Gradient Silk PLA",
+   "name": "Gradient Silk Air"
+  },
+  {
+   "sku": "CA03038",
+   "product": "Panchroma Gradient Silk PLA",
+   "name": "Gradient Silk Earth"
+  },
+  {
+   "sku": "CA03039",
+   "product": "Panchroma PLA Refill",
+   "name": "Silk Gold",
+   "hexes": [
+    "#C49449"
+   ],
+   "td": 2.2
+  },
+  {
+   "sku": "CA03040",
+   "product": "Panchroma PLA Refill",
+   "name": "Silk Silver",
+   "hexes": [
+    "#BCC2C8"
+   ],
+   "td": 2.4
+  },
+  {
+   "sku": "CA03041",
+   "product": "Panchroma PLA Refill",
+   "name": "Silk Bronze",
+   "hexes": [
+    "#AF6B4C"
+   ],
+   "td": 0.7
+  },
+  {
+   "sku": "CA04001",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Sky Blue",
+   "hexes": [
+    "#1AC5FC"
+   ],
+   "td": 1.3
+  },
+  {
+   "sku": "CA04002",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Lotus Pink",
+   "hexes": [
+    "#DD76C0"
+   ],
+   "td": 2.0
+  },
+  {
+   "sku": "CA04003",
+   "product": "Panchroma Marble PLA",
+   "name": "Marble Sandstone",
+   "hexes": [
+    "#C1BE97"
+   ],
+   "td": 1.7
+  },
+  {
+   "sku": "CA04004",
+   "product": "Panchroma Marble PLA",
+   "name": "Marble Slate Grey",
+   "hexes": [
+    "#94B9C2"
+   ],
+   "td": 0.7
+  },
+  {
+   "sku": "CA04005",
+   "product": "Panchroma Marble PLA",
+   "name": "Marble White",
+   "hexes": [
+    "#D7D4DA"
+   ],
+   "td": 1.9
+  },
+  {
+   "sku": "CA04006",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Arctic Teal",
+   "hexes": [
+    "#61BCC3"
+   ],
+   "td": 0.6
+  },
+  {
+   "sku": "CA04007",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Army Beige",
+   "hexes": [
+    "#DBBAA5"
+   ],
+   "td": 0.7
+  },
+  {
+   "sku": "CA04008",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Army Blue",
+   "hexes": [
+    "#2E4462"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA04009",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Army Brown",
+   "hexes": [
+    "#795A4D"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA04010",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Army Dark Green",
+   "hexes": [
+    "#5F6244"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA04011",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Army Light Green",
+   "hexes": [
+    "#AB8C02"
+   ],
+   "td": 0.8
+  },
+  {
+   "sku": "CA04012",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Army Purple",
+   "hexes": [
+    "#36364A"
+   ],
+   "td": 0.2
+  },
+  {
+   "sku": "CA04013",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Army Red",
+   "hexes": [
+    "#BF312E"
+   ],
+   "td": 0.3
+  },
+  {
+   "sku": "CA04014",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Ash Grey",
+   "hexes": [
+    "#485155"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA04015",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Charcoal Black",
+   "hexes": [
+    "#2F2E30"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA04016",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Cotton White",
+   "hexes": [
+    "#F4EFEB"
+   ],
+   "td": 4.1
+  },
+  {
+   "sku": "CA04017",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Earth Brown",
+   "hexes": [
+    "#7C594A"
+   ],
+   "td": 0.2
+  },
+  {
+   "sku": "CA04018",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Electric Indigo",
+   "hexes": [
+    "#6858A9"
+   ],
+   "td": 0.3
+  },
+  {
+   "sku": "CA04019",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Forest Green",
+   "hexes": [
+    "#60AD70"
+   ],
+   "td": 0.3
+  },
+  {
+   "sku": "CA04020",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Fossil Grey",
+   "hexes": [
+    "#8A8C94"
+   ],
+   "td": 0.4
+  },
+  {
+   "sku": "CA04021",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Lava Red",
+   "hexes": [
+    "#ED2F2E"
+   ],
+   "td": 1.9
+  },
+  {
+   "sku": "CA04022",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Lavender Purple",
+   "hexes": [
+    "#9572BF"
+   ],
+   "td": 0.6
+  },
+  {
+   "sku": "CA04023",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Lime Green",
+   "hexes": [
+    "#D7D602"
+   ],
+   "td": 2.4
+  },
+  {
+   "sku": "CA04024",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Muted Blue",
+   "hexes": [
+    "#5F778E"
+   ],
+   "td": 0.5
+  },
+  {
+   "sku": "CA04025",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Muted Green",
+   "hexes": [
+    "#777E71"
+   ],
+   "td": 0.5
+  },
+  {
+   "sku": "CA04026",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Muted Purple",
+   "hexes": [
+    "#7C5C78"
+   ],
+   "td": 0.6
+  },
+  {
+   "sku": "CA04027",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Muted Red",
+   "hexes": [
+    "#D84B2E"
+   ],
+   "td": 1.4
+  },
+  {
+   "sku": "CA04028",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Muted White",
+   "hexes": [
+    "#BBADA4"
+   ],
+   "td": 0.7
+  },
+  {
+   "sku": "CA04029",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Pastel Banana",
+   "hexes": [
+    "#F7D475"
+   ],
+   "td": 3.6
+  },
+  {
+   "sku": "CA04030",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Pastel Candy",
+   "hexes": [
+    "#F0D6D9"
+   ],
+   "td": 2.9
+  },
+  {
+   "sku": "CA04031",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Pastel Ice",
+   "hexes": [
+    "#A4D0DF"
+   ],
+   "td": 1.8
+  },
+  {
+   "sku": "CA04032",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Pastel Mint",
+   "hexes": [
+    "#D2DEBB"
+   ],
+   "td": 2.9
+  },
+  {
+   "sku": "CA04033",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Pastel Peach",
+   "hexes": [
+    "#F6BF8B"
+   ],
+   "td": 3.3
+  },
+  {
+   "sku": "CA04034",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Pastel Peanut",
+   "hexes": [
+    "#BF9573"
+   ],
+   "td": 0.7
+  },
+  {
+   "sku": "CA04035",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Pastel Watermelon",
+   "hexes": [
+    "#EE474B"
+   ],
+   "td": 2.4
+  },
+  {
+   "sku": "CA04036",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Pastel Periwinkle",
+   "hexes": [
+    "#ADB4E6"
+   ],
+   "td": 1.5
+  },
+  {
+   "sku": "CA04037",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Sakura Pink",
+   "hexes": [
+    "#EAADBD"
+   ],
+   "td": 2.3
+  },
+  {
+   "sku": "CA04038",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Sapphire Blue",
+   "hexes": [
+    "#0163A6"
+   ],
+   "td": 0.5
+  },
+  {
+   "sku": "CA04039",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Savannah Yellow",
+   "hexes": [
+    "#F3C432"
+   ],
+   "td": 3.5
+  },
+  {
+   "sku": "CA04040",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Sunrise Orange",
+   "hexes": [
+    "#F88B17"
+   ],
+   "td": 2.9
+  },
+  {
+   "sku": "CA04041",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Wood Brown",
+   "hexes": [
+    "#AB7449"
+   ],
+   "td": 0.2
+  },
+  {
+   "sku": "CA04042",
+   "product": "Panchroma Dual Matte PLA",
+   "name": "Camouflage (Dark Green-Brown)",
+   "hexes": [
+    "#5F6244",
+    "#795A4D"
+   ]
+  },
+  {
+   "sku": "CA04043",
+   "product": "Panchroma Dual Matte PLA",
+   "name": "Dual Matte Chameleon (Teal-Yellow)",
+   "hexes": [
+    "#61BCC3",
+    "#F3C432"
+   ]
+  },
+  {
+   "sku": "CA04044",
+   "product": "Panchroma Dual Matte PLA",
+   "name": "Dual Matte Flamingo (Pink-Red)",
+   "hexes": [
+    "#EAADBD",
+    "#ED2F2E"
+   ]
+  },
+  {
+   "sku": "CA04045",
+   "product": "Panchroma Dual Matte PLA",
+   "name": "Dual Matte Foggy Orange (Grey-Orange)",
+   "hexes": [
+    "#8A8C94",
+    "#F88B17"
+   ]
+  },
+  {
+   "sku": "CA04046",
+   "product": "Panchroma Dual Matte PLA",
+   "name": "Dual Matte Foggy Purple (Grey-Purple)",
+   "hexes": [
+    "#8A8C94",
+    "#9572BF"
+   ]
+  },
+  {
+   "sku": "CA04047",
+   "product": "Panchroma Dual Matte PLA",
+   "name": "Dual Matte Glacier Blue (Ice-Blue)",
+   "hexes": [
+    "#A4D0DF",
+    "#0163A6"
+   ]
+  },
+  {
+   "sku": "CA04048",
+   "product": "Panchroma Dual Matte PLA",
+   "name": "Dual Matte Mixed Berries (Red-Dark Blue)",
+   "hexes": [
+    "#BF312E",
+    "#2E4462"
+   ]
+  },
+  {
+   "sku": "CA04049",
+   "product": "Panchroma Dual Matte PLA",
+   "name": "Dual Matte Shadow Black (White-Black)",
+   "hexes": [
+    "#F4EFEB",
+    "#2F2E30"
+   ]
+  },
+  {
+   "sku": "CA04050",
+   "product": "Panchroma Dual Matte PLA",
+   "name": "Dual Matte Shadow Orange (Orange-Black)",
+   "hexes": [
+    "#F88B17",
+    "#2F2E30"
+   ]
+  },
+  {
+   "sku": "CA04051",
+   "product": "Panchroma Dual Matte PLA",
+   "name": "Dual Matte Shadow Red (Black-Red)",
+   "hexes": [
+    "#2F2E30",
+    "#ED2F2E"
+   ]
+  },
+  {
+   "sku": "CA04052",
+   "product": "Panchroma Dual Matte PLA",
+   "name": "Dual Matte Sunrise (Red-Yellow)",
+   "hexes": [
+    "#ED2F2E",
+    "#F3C432"
+   ]
+  },
+  {
+   "sku": "CA04053",
+   "product": "Panchroma Dual Matte PLA",
+   "name": "Dual Gradient Matte Wood"
+  },
+  {
+   "sku": "CA04054",
+   "product": "Panchroma Gradient Matte PLA",
+   "name": "Gradient Matte Fall"
+  },
+  {
+   "sku": "CA04055",
+   "product": "Panchroma Gradient Matte PLA",
+   "name": "Gradient Matte Pastel Rainbow"
+  },
+  {
+   "sku": "CA04056",
+   "product": "Panchroma Gradient Matte PLA",
+   "name": "Gradient Matte Spring"
+  },
+  {
+   "sku": "CA04057",
+   "product": "Panchroma Gradient Matte PLA",
+   "name": "Gradient Matte Summer"
+  },
+  {
+   "sku": "CA04058",
+   "product": "Panchroma Gradient Matte PLA",
+   "name": "Gradient Matte Winter"
+  },
+  {
+   "sku": "CA04059",
+   "product": "Panchroma Gradient Matte PLA",
+   "name": "Gradient Matte Cappuccino"
+  },
+  {
+   "sku": "CA04060",
+   "product": "Panchroma Marble PLA",
+   "name": "Marble Limestone",
+   "hexes": [
+    "#BCBEBE"
+   ],
+   "td": 0.6
+  },
+  {
+   "sku": "CA04061",
+   "product": "Panchroma Marble PLA",
+   "name": "Marble Brick",
+   "hexes": [
+    "#CD7456"
+   ],
+   "td": 0.8
+  },
+  {
+   "sku": "CA04062",
+   "product": "Panchroma Gradient Matte PLA",
+   "name": "Gradient Matte Tropical Squeeze"
+  },
+  {
+   "sku": "CA04063",
+   "product": "Panchroma Gradient Matte PLA",
+   "name": "Gradient Matte Lavender Fizz"
+  },
+  {
+   "sku": "CA04064",
+   "product": "Panchroma Gradient Matte PLA",
+   "name": "Gradient Matte Mint Splash"
+  },
+  {
+   "sku": "CA04065",
+   "product": "Panchroma Gradient Matte PLA",
+   "name": "Gradient Matte Sky"
+  },
+  {
+   "sku": "CA04066",
+   "product": "Panchroma Gradient Matte PLA",
+   "name": "Gradient Matte Sandstorm"
+  },
+  {
+   "sku": "CA04067",
+   "product": "Panchroma Gradient Matte PLA",
+   "name": "Gradient Matte Tornado"
+  },
+  {
+   "sku": "CA04068",
+   "product": "Panchroma PLA Refill",
+   "name": "Matte Charcoal Black",
+   "hexes": [
+    "#2F2E30"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA04069",
+   "product": "Panchroma PLA Refill",
+   "name": "Matte Cotton White",
+   "hexes": [
+    "#F4EFEB"
+   ],
+   "td": 4.1
+  },
+  {
+   "sku": "CA04070",
+   "product": "Panchroma PLA Refill",
+   "name": "Matte Fossil Grey",
+   "hexes": [
+    "#8A8C94"
+   ],
+   "td": 0.4
+  },
+  {
+   "sku": "CA04071",
+   "product": "Panchroma PLA Refill",
+   "name": "Matte Army Dark Green",
+   "hexes": [
+    "#5F6244"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA04072",
+   "product": "Panchroma PLA Refill",
+   "name": "Matte Sapphire Blue",
+   "hexes": [
+    "#0163A6"
+   ],
+   "td": 0.5
+  },
+  {
+   "sku": "CA04073",
+   "product": "Panchroma PLA Refill",
+   "name": "Matte Lava Red",
+   "hexes": [
+    "#ED2F2E"
+   ],
+   "td": 1.9
+  },
+  {
+   "sku": "CA04074",
+   "product": "Panchroma PLA Refill",
+   "name": "Matte Earth Brown",
+   "hexes": [
+    "#7C594A"
+   ],
+   "td": 0.2
+  },
+  {
+   "sku": "CA04075",
+   "product": "Panchroma PLA Refill",
+   "name": "Matte Savannah Yellow",
+   "hexes": [
+    "#F3C432"
+   ],
+   "td": 3.5
+  },
+  {
+   "sku": "CA04076",
+   "product": "Panchroma PLA Refill",
+   "name": "Matte Pastel Peanut",
+   "hexes": [
+    "#BF9573"
+   ],
+   "td": 0.7
+  },
+  {
+   "sku": "CA04077",
+   "product": "Panchroma PLA Refill",
+   "name": "Matte Wood Brown",
+   "hexes": [
+    "#AB7449"
+   ],
+   "td": 0.2
+  },
+  {
+   "sku": "CA04078",
+   "product": "Panchroma PLA Refill",
+   "name": "Matte Forest Green",
+   "hexes": [
+    "#60AD70"
+   ],
+   "td": 0.3
+  },
+  {
+   "sku": "CA04079",
+   "product": "Panchroma PLA Refill",
+   "name": "Matte Arctic Teal",
+   "hexes": [
+    "#61BCC3"
+   ],
+   "td": 0.6
+  },
+  {
+   "sku": "CA04080",
+   "product": "Panchroma PLA Refill",
+   "name": "Matte Sunrise Orange",
+   "hexes": [
+    "#F88B17"
+   ],
+   "td": 2.9
+  },
+  {
+   "sku": "CA04081",
+   "product": "Panchroma PLA Refill",
+   "name": "Matte Sakura Pink",
+   "hexes": [
+    "#EAADBD"
+   ],
+   "td": 2.3
+  },
+  {
+   "sku": "CA04082",
+   "product": "Panchroma PLA Refill",
+   "name": "Matte Army Blue",
+   "hexes": [
+    "#2E4462"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA04083",
+   "product": "Panchroma PLA Refill",
+   "name": "Matte Army Red",
+   "hexes": [
+    "#BF312E"
+   ],
+   "td": 0.3
+  },
+  {
+   "sku": "CA04084",
+   "product": "Panchroma PLA Refill",
+   "name": "Matte Army Beige",
+   "hexes": [
+    "#DBBAA5"
+   ],
+   "td": 0.7
+  },
+  {
+   "sku": "CA04085",
+   "product": "Panchroma PLA Refill",
+   "name": "Matte Lavender Purple",
+   "hexes": [
+    "#9572BF"
+   ],
+   "td": 0.6
+  },
+  {
+   "sku": "CA04086",
+   "product": "Panchroma PLA Refill",
+   "name": "Gradient Matte Pastel Rainbow"
+  },
+  {
+   "sku": "CA04087",
+   "product": "Panchroma PLA Refill",
+   "name": "Marble White",
+   "hexes": [
+    "#D7D4DA"
+   ],
+   "td": 1.9
+  },
+  {
+   "sku": "CA04088",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Sunshine Yellow"
+  },
+  {
+   "sku": "CA04089",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Electric Magenta"
+  },
+  {
+   "sku": "CA04090",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Grass Green"
+  },
+  {
+   "sku": "CA04091",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Seafoam Green"
+  },
+  {
+   "sku": "CA04092",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Raspberry Blue"
+  },
+  {
+   "sku": "CA04093",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Wine Burgundy"
+  },
+  {
+   "sku": "CA04094",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Emerald Green"
+  },
+  {
+   "sku": "CA04095",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Muted Moss"
+  },
+  {
+   "sku": "CA04096",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Muted Teal"
+  },
+  {
+   "sku": "CA04097",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Muted Mauve"
+  },
+  {
+   "sku": "CA04098",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Muted Terracotta"
+  },
+  {
+   "sku": "CA04099",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Pastel Coral"
+  },
+  {
+   "sku": "CA04100",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Pastel Beige"
+  },
+  {
+   "sku": "CA04101",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Charcoal Black*2"
+  },
+  {
+   "sku": "CA04102",
+   "product": "Panchroma Basic PLA",
+   "name": "Cotton White*2"
+  },
+  {
+   "sku": "CA04103",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Charcoal Black*1+Matte Cotton White*1"
+  },
+  {
+   "sku": "CA04104",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Charcoal Black*2"
+  },
+  {
+   "sku": "CA04105",
+   "product": "Panchroma Matte PLA",
+   "name": "Matte Cotton White*2"
+  },
+  {
+   "sku": "CA04106",
+   "product": "Panchroma PLA Refill",
+   "name": "Matte Charcoal Black*1+Matte Cotton White*1"
+  },
+  {
+   "sku": "CA05001",
+   "product": "Panchroma Gradient Satin PLA",
+   "name": "Gradient Satin Rainbow"
+  },
+  {
+   "sku": "CA05002",
+   "product": "Panchroma Satin PLA",
+   "name": "Satin Blue",
+   "hexes": [
+    "#0162A6"
+   ],
+   "td": 0.3
+  },
+  {
+   "sku": "CA05003",
+   "product": "Panchroma Satin PLA",
+   "name": "Satin Green",
+   "hexes": [
+    "#5EAB71"
+   ],
+   "td": 0.5
+  },
+  {
+   "sku": "CA05004",
+   "product": "Panchroma Satin PLA",
+   "name": "Satin Grey",
+   "hexes": [
+    "#797E89"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA05005",
+   "product": "Panchroma Satin PLA",
+   "name": "Satin Orange",
+   "hexes": [
+    "#FE9217"
+   ],
+   "td": 3.3
+  },
+  {
+   "sku": "CA05006",
+   "product": "Panchroma Satin PLA",
+   "name": "Satin Polymaker Teal",
+   "hexes": [
+    "#61BBC1"
+   ],
+   "td": 0.2
+  },
+  {
+   "sku": "CA05007",
+   "product": "Panchroma Satin PLA",
+   "name": "Satin Purple",
+   "hexes": [
+    "#9272C1"
+   ],
+   "td": 0.9
+  },
+  {
+   "sku": "CA05008",
+   "product": "Panchroma Satin PLA",
+   "name": "Satin Red",
+   "hexes": [
+    "#DA1521"
+   ],
+   "td": 2.2
+  },
+  {
+   "sku": "CA05009",
+   "product": "Panchroma Satin PLA",
+   "name": "Satin White",
+   "hexes": [
+    "#F5F0EC"
+   ],
+   "td": 3.8
+  },
+  {
+   "sku": "CA05010",
+   "product": "Panchroma Satin PLA",
+   "name": "Satin Yellow",
+   "hexes": [
+    "#F4C131"
+   ],
+   "td": 3.9
+  },
+  {
+   "sku": "CA05011",
+   "product": "Panchroma Satin PLA",
+   "name": "Satin Black",
+   "hexes": [
+    "#302E30"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA09001",
+   "product": "Panchroma Gradient Translucent PLA",
+   "name": "Gradient Translucent Rainbow"
+  },
+  {
+   "sku": "CA09002",
+   "product": "Panchroma Dual Special PLA",
+   "name": "Dual Yin-Yang",
+   "hexes": [
+    "#020203",
+    "#CFCCD6"
+   ]
+  },
+  {
+   "sku": "CA09003",
+   "product": "Panchroma Gradient Luminous PLA",
+   "name": "Gradient Luminous Rainbow"
+  },
+  {
+   "sku": "CA09004",
+   "product": "Panchroma Gradient Galaxy PLA",
+   "name": "Gradient Galaxy Black-Blue"
+  },
+  {
+   "sku": "CA09005",
+   "product": "Panchroma Gradient Galaxy PLA",
+   "name": "Gradient Galaxy Blue-Green"
+  },
+  {
+   "sku": "CA09006",
+   "product": "Panchroma Gradient Galaxy PLA",
+   "name": "Gradient Galaxy Black-Grey"
+  },
+  {
+   "sku": "CA09007",
+   "product": "Panchroma Gradient Celestial PLA",
+   "name": "Gradient Celestial Rainbow"
+  },
+  {
+   "sku": "CA09008",
+   "product": "Panchroma Gradient Celestial PLA",
+   "name": "Gradient Celestial Blue-Purple"
+  },
+  {
+   "sku": "CA09009",
+   "product": "Panchroma Gradient Celestial PLA",
+   "name": "Gradient Celestial Purple-Pink"
+  },
+  {
+   "sku": "CA09010",
+   "product": "Panchroma Gradient Celestial PLA",
+   "name": "Gradient Celestial Blue-White"
+  },
+  {
+   "sku": "CA09011",
+   "product": "Panchroma Gradient Crystal PLA",
+   "name": "Gradient Crystal Tourmaline"
+  },
+  {
+   "sku": "CA09012",
+   "product": "Panchroma Gradient Crystal PLA",
+   "name": "Gradient Crystal Rose Quartz"
+  },
+  {
+   "sku": "CA09013",
+   "product": "Panchroma Gradient Crystal PLA",
+   "name": "Gradient Crystal Aquamarine"
+  },
+  {
+   "sku": "CA09014",
+   "product": "Panchroma Gradient Crystal PLA",
+   "name": "Gradient Crystal Citrine"
+  },
+  {
+   "sku": "CA09015",
+   "product": "Panchroma Gradient Crystal PLA",
+   "name": "Gradient Crystal Carnelian"
+  },
+  {
+   "sku": "CA09016",
+   "product": "Panchroma Gradient Starlight PLA",
+   "name": "Gradient Starlight Rainbow"
+  },
+  {
+   "sku": "CA09017",
+   "product": "Panchroma Gradient Starlight PLA",
+   "name": "Gradient Starlight Purple"
+  },
+  {
+   "sku": "CA09018",
+   "product": "Panchroma Gradient Starlight PLA",
+   "name": "Gradient Starlight Blue-Green"
+  },
+  {
+   "sku": "CA09019",
+   "product": "Panchroma Gradient Starlight PLA",
+   "name": "Gradient Starlight Purple-Red"
+  },
+  {
+   "sku": "CA09020",
+   "product": "Panchroma Gradient Starlight PLA",
+   "name": "Gradient Starlight Blue-Purple"
+  },
+  {
+   "sku": "CA09021",
+   "product": "Panchroma Gradient Neon PLA",
+   "name": "Gradient Halloween Neon"
+  },
+  {
+   "sku": "CA14001",
+   "product": "Panchroma CoPE",
+   "name": "Black",
+   "hexes": [
+    "#080A0D"
+   ],
+   "td": 0.3
+  },
+  {
+   "sku": "CA14002",
+   "product": "Panchroma CoPE",
+   "name": "White",
+   "hexes": [
+    "#EBF7FF"
+   ],
+   "td": 3.0
+  },
+  {
+   "sku": "CA14003",
+   "product": "Panchroma CoPE",
+   "name": "Grey",
+   "hexes": [
+    "#8C9099"
+   ],
+   "td": 0.2
+  },
+  {
+   "sku": "CA14004",
+   "product": "Panchroma CoPE",
+   "name": "Blue",
+   "hexes": [
+    "#003776"
+   ],
+   "td": 0.4
+  },
+  {
+   "sku": "CA14005",
+   "product": "Panchroma CoPE",
+   "name": "Red",
+   "hexes": [
+    "#E72F1D"
+   ],
+   "td": 2.7
+  },
+  {
+   "sku": "CA14006",
+   "product": "Panchroma CoPE",
+   "name": "Yellow",
+   "hexes": [
+    "#FFE800"
+   ],
+   "td": 3.5
+  },
+  {
+   "sku": "CA14007",
+   "product": "Panchroma CoPE",
+   "name": "Orange",
+   "hexes": [
+    "#F67405"
+   ],
+   "td": 4.6
+  },
+  {
+   "sku": "CA14008",
+   "product": "Panchroma CoPE",
+   "name": "Green",
+   "hexes": [
+    "#06924D"
+   ],
+   "td": 1.3
+  },
+  {
+   "sku": "CA14009",
+   "product": "Panchroma CoPE",
+   "name": "Purple",
+   "hexes": [
+    "#6C47B2"
+   ],
+   "td": 0.9
+  },
+  {
+   "sku": "CA14010",
+   "product": "Panchroma CoPE",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#4CC0C7"
+   ],
+   "td": 1.1
+  },
+  {
+   "sku": "CA14011",
+   "product": "Panchroma CoPE",
+   "name": "Steel Grey",
+   "hexes": [
+    "#616469"
+   ],
+   "td": 0.6
+  },
+  {
+   "sku": "CA14012",
+   "product": "Panchroma CoPE",
+   "name": "Brown",
+   "hexes": [
+    "#55331A"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA14013",
+   "product": "Panchroma CoPE",
+   "name": "Aqua Blue",
+   "hexes": [
+    "#5EBDDB"
+   ],
+   "td": 2.3
+  },
+  {
+   "sku": "CA14015",
+   "product": "Panchroma CoPE",
+   "name": "Beige",
+   "hexes": [
+    "#C2AB72"
+   ],
+   "td": 1.5
+  },
+  {
+   "sku": "CA14016",
+   "product": "Panchroma CoPE",
+   "name": "Cold White",
+   "hexes": [
+    "#D9DFE5"
+   ],
+   "td": 1.5
+  },
+  {
+   "sku": "CA14017",
+   "product": "Panchroma CoPE",
+   "name": "Cream",
+   "hexes": [
+    "#EED1A8"
+   ],
+   "td": 2.8
+  },
+  {
+   "sku": "CA14018",
+   "product": "Panchroma CoPE",
+   "name": "Dark Grey",
+   "hexes": [
+    "#485259"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA14019",
+   "product": "Panchroma CoPE",
+   "name": "Jungle Green",
+   "hexes": [
+    "#4E742D"
+   ],
+   "td": 0.3
+  },
+  {
+   "sku": "CA14020",
+   "product": "Panchroma CoPE",
+   "name": "Lemon Yellow",
+   "hexes": [
+    "#EED230"
+   ],
+   "td": 4.6
+  },
+  {
+   "sku": "CA14021",
+   "product": "Panchroma CoPE",
+   "name": "Lime Green",
+   "hexes": [
+    "#D5D701"
+   ],
+   "td": 3.0
+  },
+  {
+   "sku": "CA14022",
+   "product": "Panchroma CoPE",
+   "name": "Magenta",
+   "hexes": [
+    "#F24574"
+   ],
+   "td": 3.5
+  },
+  {
+   "sku": "CA14023",
+   "product": "Panchroma CoPE",
+   "name": "Olive Drab Green",
+   "hexes": [
+    "#575B54"
+   ],
+   "td": 0.5
+  },
+  {
+   "sku": "CA14024",
+   "product": "Panchroma CoPE",
+   "name": "Olive Green",
+   "hexes": [
+    "#948902"
+   ],
+   "td": 0.2
+  },
+  {
+   "sku": "CA14025",
+   "product": "Panchroma CoPE",
+   "name": "Pink",
+   "hexes": [
+    "#F1A1AF"
+   ],
+   "td": 2.9
+  },
+  {
+   "sku": "CA14026",
+   "product": "Panchroma CoPE",
+   "name": "Stone Blue",
+   "hexes": [
+    "#487BA2"
+   ],
+   "td": 0.5
+  },
+  {
+   "sku": "CA14027",
+   "product": "Panchroma CoPE",
+   "name": "Tan",
+   "hexes": [
+    "#A79E82"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA14028",
+   "product": "Panchroma CoPE",
+   "name": "Wine Red",
+   "hexes": [
+    "#D60212"
+   ],
+   "td": 2.2
+  },
+  {
+   "sku": "CA19001",
+   "product": "Panchroma PLA",
+   "name": "White",
+   "hexes": [
+    "#EBF7FF"
+   ],
+   "td": 3.2
+  },
+  {
+   "sku": "CA19002",
+   "product": "Panchroma PLA",
+   "name": "Grey",
+   "hexes": [
+    "#8C9099"
+   ],
+   "td": 0.4
+  },
+  {
+   "sku": "CA19003",
+   "product": "Panchroma PLA",
+   "name": "Steel Grey",
+   "hexes": [
+    "#616469"
+   ],
+   "td": 0.4
+  },
+  {
+   "sku": "CA19004",
+   "product": "Panchroma PLA",
+   "name": "Red",
+   "hexes": [
+    "#E72F1D"
+   ],
+   "td": 1.9
+  },
+  {
+   "sku": "CA19005",
+   "product": "Panchroma PLA",
+   "name": "Blue",
+   "hexes": [
+    "#003776"
+   ],
+   "td": 0.3
+  },
+  {
+   "sku": "CA19006",
+   "product": "Panchroma PLA",
+   "name": "Black",
+   "hexes": [
+    "#080A0D"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA19007",
+   "product": "Panchroma PLA",
+   "name": "Green",
+   "hexes": [
+    "#06924D"
+   ],
+   "td": 0.4
+  },
+  {
+   "sku": "CA19008",
+   "product": "Panchroma PLA",
+   "name": "Orange",
+   "hexes": [
+    "#F67405"
+   ],
+   "td": 3.3
+  },
+  {
+   "sku": "CA19009",
+   "product": "Panchroma PLA",
+   "name": "Pink",
+   "hexes": [
+    "#F1A1AF"
+   ],
+   "td": 1.8
+  },
+  {
+   "sku": "CA19010",
+   "product": "Panchroma PLA",
+   "name": "Purple",
+   "hexes": [
+    "#6C47B2"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA19011",
+   "product": "Panchroma PLA",
+   "name": "Yellow",
+   "hexes": [
+    "#FFE800"
+   ],
+   "td": 4.3
+  },
+  {
+   "sku": "CA19012",
+   "product": "Panchroma PLA",
+   "name": "Wine Red",
+   "hexes": [
+    "#D60212"
+   ],
+   "td": 1.0
+  },
+  {
+   "sku": "CA19013",
+   "product": "Panchroma PLA",
+   "name": "Jungle Green",
+   "hexes": [
+    "#4E742D"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA19014",
+   "product": "Panchroma PLA",
+   "name": "Olive Green",
+   "hexes": [
+    "#948902"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA19015",
+   "product": "Panchroma PLA",
+   "name": "Beige",
+   "hexes": [
+    "#C2AB72"
+   ],
+   "td": 0.5
+  },
+  {
+   "sku": "CA19016",
+   "product": "Panchroma PLA",
+   "name": "Aqua Blue",
+   "hexes": [
+    "#5EBDDB"
+   ],
+   "td": 1.5
+  },
+  {
+   "sku": "CA19017",
+   "product": "Panchroma PLA",
+   "name": "Stone Blue",
+   "hexes": [
+    "#487BA2"
+   ],
+   "td": 0.3
+  },
+  {
+   "sku": "CA19018",
+   "product": "Panchroma PLA",
+   "name": "Brown",
+   "hexes": [
+    "#55331A"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA19019",
+   "product": "Panchroma PLA",
+   "name": "Lemon Yellow",
+   "hexes": [
+    "#EED230"
+   ],
+   "td": 3.3
+  },
+  {
+   "sku": "CA19020",
+   "product": "Panchroma PLA",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#4CC0C7"
+   ],
+   "td": 0.6
+  },
+  {
+   "sku": "CA19021",
+   "product": "Panchroma PLA",
+   "name": "Cream",
+   "hexes": [
+    "#EED1A8"
+   ],
+   "td": 1.5
+  },
+  {
+   "sku": "CA19022",
+   "product": "Panchroma PLA",
+   "name": "Lime Green",
+   "hexes": [
+    "#D5D701"
+   ],
+   "td": 2.3
+  },
+  {
+   "sku": "CA19023",
+   "product": "Panchroma PLA",
+   "name": "Magenta",
+   "hexes": [
+    "#F24574"
+   ],
+   "td": 1.4
+  },
+  {
+   "sku": "CA19024",
+   "product": "Panchroma PLA",
+   "name": "Azure Blue",
+   "hexes": [
+    "#0066D9"
+   ],
+   "td": 1.5
+  },
+  {
+   "sku": "CA19025",
+   "product": "Panchroma PLA",
+   "name": "Tan",
+   "hexes": [
+    "#A79E82"
+   ],
+   "td": 0.7
+  },
+  {
+   "sku": "CA19026",
+   "product": "Panchroma PLA",
+   "name": "Dark Olive Drab",
+   "hexes": [
+    "#575B54"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA19027",
+   "product": "Panchroma PLA",
+   "name": "Cold White",
+   "hexes": [
+    "#D9DFE5"
+   ],
+   "td": 0.3
+  },
+  {
+   "sku": "CA19028",
+   "product": "Panchroma PLA",
+   "name": "Dark Grey",
+   "hexes": [
+    "#485259"
+   ],
+   "td": 0.2
+  },
+  {
+   "sku": "CA19029",
+   "product": "Panchroma PLA Refill",
+   "name": "Black",
+   "hexes": [
+    "#080A0D"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA19030",
+   "product": "Panchroma PLA Refill",
+   "name": "White",
+   "hexes": [
+    "#EBF7FF"
+   ],
+   "td": 3.2
+  },
+  {
+   "sku": "CA19031",
+   "product": "Panchroma PLA Refill",
+   "name": "Grey",
+   "hexes": [
+    "#8C9099"
+   ],
+   "td": 0.4
+  },
+  {
+   "sku": "CA19032",
+   "product": "Panchroma PLA Refill",
+   "name": "Red",
+   "hexes": [
+    "#E72F1D"
+   ],
+   "td": 1.9
+  },
+  {
+   "sku": "CA19033",
+   "product": "Panchroma PLA Refill",
+   "name": "Blue",
+   "hexes": [
+    "#003776"
+   ],
+   "td": 0.3
+  },
+  {
+   "sku": "CA19034",
+   "product": "Panchroma PLA Refill",
+   "name": "Green",
+   "hexes": [
+    "#06924D"
+   ],
+   "td": 0.4
+  },
+  {
+   "sku": "CA19035",
+   "product": "Panchroma PLA Refill",
+   "name": "Orange",
+   "hexes": [
+    "#F67405"
+   ],
+   "td": 3.3
+  },
+  {
+   "sku": "CA19036",
+   "product": "Panchroma PLA Refill",
+   "name": "Yellow",
+   "hexes": [
+    "#FFE800"
+   ],
+   "td": 4.3
+  },
+  {
+   "sku": "CA19037",
+   "product": "Panchroma PLA Refill",
+   "name": "Steel Grey",
+   "hexes": [
+    "#616469"
+   ],
+   "td": 0.4
+  },
+  {
+   "sku": "CA19038",
+   "product": "Panchroma PLA Refill",
+   "name": "Brown",
+   "hexes": [
+    "#55331A"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "CA19039",
+   "product": "Panchroma PLA Refill",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#4CC0C7"
+   ],
+   "td": 0.6
+  },
+  {
+   "sku": "CA19040",
+   "product": "Panchroma PLA Refill",
+   "name": "Cold White",
+   "hexes": [
+    "#D9DFE5"
+   ],
+   "td": 0.3
+  },
+  {
+   "sku": "CA19041",
+   "product": "Panchroma Basic PLA",
+   "name": "Black*2"
+  },
+  {
+   "sku": "CA19042",
+   "product": "Panchroma Basic PLA",
+   "name": "White*2"
+  },
+  {
+   "sku": "CA19043",
+   "product": "Panchroma Basic PLA",
+   "name": "Black*1+White*1"
+  },
+  {
+   "sku": "CA19044",
+   "product": "Panchroma PLA Refill",
+   "name": "Black*2"
+  },
+  {
+   "sku": "CA19045",
+   "product": "Panchroma PLA Refill",
+   "name": "White*2"
+  },
+  {
+   "sku": "CA19046",
+   "product": "Panchroma PLA Refill",
+   "name": "Black*1+White*1"
+  },
+  {
+   "sku": "FB03001",
+   "product": "Fiberon PETG-ESD",
+   "name": "Black",
+   "hexes": [
+    "#161618"
+   ]
+  },
+  {
+   "sku": "FB03002",
+   "product": "Fiberon PETG-ESD",
+   "name": "Black",
+   "hexes": [
+    "#161618"
+   ]
+  },
+  {
+   "sku": "FB03003",
+   "product": "Fiberon PETG-ESD",
+   "name": "Black"
+  },
+  {
+   "sku": "FB04001",
+   "product": "Fiberon PETG-rCF08",
+   "name": "Black",
+   "hexes": [
+    "#302E2F"
+   ]
+  },
+  {
+   "sku": "FB04002",
+   "product": "Fiberon PETG-rCF08",
+   "name": "Black",
+   "hexes": [
+    "#312F2F"
+   ]
+  },
+  {
+   "sku": "FF02001",
+   "product": "Fiberon ASA-CF08",
+   "name": "Black",
+   "hexes": [
+    "#000000"
+   ]
+  },
+  {
+   "sku": "FF02002",
+   "product": "Fiberon ASA-CF08",
+   "name": "Black",
+   "hexes": [
+    "#000000"
+   ]
+  },
+  {
+   "sku": "FF02003",
+   "product": "Fiberon ASA-CF08",
+   "name": "Navy Blue",
+   "hexes": [
+    "#30548E"
+   ]
+  },
+  {
+   "sku": "FF02004",
+   "product": "Fiberon ASA-CF08",
+   "name": "Light Grey",
+   "hexes": [
+    "#ADC4D6"
+   ]
+  },
+  {
+   "sku": "FF02005",
+   "product": "Fiberon ASA-CF08",
+   "name": "Dark Grey",
+   "hexes": [
+    "#4D5E70"
+   ]
+  },
+  {
+   "sku": "FF02006",
+   "product": "Fiberon ASA-CF08",
+   "name": "Desert Sand",
+   "hexes": [
+    "#CEB69C"
+   ]
+  },
+  {
+   "sku": "FF02007",
+   "product": "Fiberon ASA-CF08",
+   "name": "Dark Red",
+   "hexes": [
+    "#855261"
+   ]
+  },
+  {
+   "sku": "FG02001",
+   "product": "Fiberon PA6-GF25",
+   "name": "Grey",
+   "hexes": [
+    "#75787B"
+   ]
+  },
+  {
+   "sku": "FG02002",
+   "product": "Fiberon PA6-GF25",
+   "name": "Grey",
+   "hexes": [
+    "#75787B"
+   ]
+  },
+  {
+   "sku": "FG03001",
+   "product": "Fiberon PA6-CF20",
+   "name": "Black",
+   "hexes": [
+    "#312F2F"
+   ]
+  },
+  {
+   "sku": "FG03002",
+   "product": "Fiberon PA6-CF20",
+   "name": "Black",
+   "hexes": [
+    "#312F2F"
+   ]
+  },
+  {
+   "sku": "FG04001",
+   "product": "Fiberon PA12-CF10",
+   "name": "Black",
+   "hexes": [
+    "#302F2F"
+   ]
+  },
+  {
+   "sku": "FG04002",
+   "product": "Fiberon PA12-CF10",
+   "name": "Black",
+   "hexes": [
+    "#302E2F"
+   ]
+  },
+  {
+   "sku": "FG07001",
+   "product": "Fiberon PA612-CF15",
+   "name": "Black",
+   "hexes": [
+    "#302E2F"
+   ]
+  },
+  {
+   "sku": "FG07002",
+   "product": "Fiberon PA612-CF15",
+   "name": "Black",
+   "hexes": [
+    "#302E2F"
+   ]
+  },
+  {
+   "sku": "FG08001",
+   "product": "Fiberon PA612-ESD",
+   "name": "Black",
+   "hexes": [
+    "#161618"
+   ]
+  },
+  {
+   "sku": "FG08002",
+   "product": "Fiberon PA612-ESD",
+   "name": "Black",
+   "hexes": [
+    "#161618"
+   ]
+  },
+  {
+   "sku": "FL01001",
+   "product": "Fiberon PET-CF17",
+   "name": "Black",
+   "hexes": [
+    "#302E2F"
+   ]
+  },
+  {
+   "sku": "FL01002",
+   "product": "Fiberon PET-CF17",
+   "name": "Black",
+   "hexes": [
+    "#312F2F"
+   ]
+  },
+  {
+   "sku": "FL01003",
+   "product": "Fiberon PET-CF17",
+   "name": "Black"
+  },
+  {
+   "sku": "FL02001",
+   "product": "Fiberon PET-GF15",
+   "name": "Black",
+   "hexes": [
+    "#000000"
+   ]
+  },
+  {
+   "sku": "FL02002",
+   "product": "Fiberon PET-GF15",
+   "name": "Black",
+   "hexes": [
+    "#000000"
+   ]
+  },
+  {
+   "sku": "FL02003",
+   "product": "Fiberon PET-GF15",
+   "name": "White",
+   "hexes": [
+    "#FFFFFF"
+   ]
+  },
+  {
+   "sku": "FL02004",
+   "product": "Fiberon PET-GF15",
+   "name": "Light Grey",
+   "hexes": [
+    "#A9ABAF"
+   ]
+  },
+  {
+   "sku": "FL02005",
+   "product": "Fiberon PET-GF15",
+   "name": "Dark Grey",
+   "hexes": [
+    "#0F191F"
+   ]
+  },
+  {
+   "sku": "FL02006",
+   "product": "Fiberon PET-GF15",
+   "name": "Blue",
+   "hexes": [
+    "#6E9EFF"
+   ]
+  },
+  {
+   "sku": "FL02007",
+   "product": "Fiberon PET-GF15",
+   "name": "Red",
+   "hexes": [
+    "#CC0033"
+   ]
+  },
+  {
+   "sku": "FM01001",
+   "product": "Fiberon PPS-CF10",
+   "name": "Black",
+   "hexes": [
+    "#302E2F"
+   ]
+  },
+  {
+   "sku": "FM01002",
+   "product": "Fiberon PPS-CF10",
+   "name": "Black",
+   "hexes": [
+    "#302E2F"
+   ]
+  },
+  {
+   "sku": "FM02001",
+   "product": "Fiberon PPS-GF20",
+   "name": "Grey",
+   "hexes": [
+    "#75787B"
+   ]
+  },
+  {
+   "sku": "FM02002",
+   "product": "Fiberon PPS-GF20",
+   "name": "Grey",
+   "hexes": [
+    "#75787B"
+   ]
+  },
+  {
+   "sku": "PA02001",
+   "product": "PolyLite PLA",
+   "name": "Black",
+   "hexes": [
+    "#030305"
+   ]
+  },
+  {
+   "sku": "PA02002",
+   "product": "PolyLite PLA",
+   "name": "White",
+   "hexes": [
+    "#DDD7D3"
+   ]
+  },
+  {
+   "sku": "PA02003",
+   "product": "PolyLite PLA",
+   "name": "Grey",
+   "hexes": [
+    "#8B8E96"
+   ]
+  },
+  {
+   "sku": "PA02004",
+   "product": "PolyLite PLA",
+   "name": "Red",
+   "hexes": [
+    "#D90102"
+   ]
+  },
+  {
+   "sku": "PA02005",
+   "product": "PolyLite PLA",
+   "name": "Blue",
+   "hexes": [
+    "#013178"
+   ]
+  },
+  {
+   "sku": "PA02006",
+   "product": "PolyLite PLA",
+   "name": "Green",
+   "hexes": [
+    "#30A45F"
+   ]
+  },
+  {
+   "sku": "PA02007",
+   "product": "PolyLite PLA",
+   "name": "Yellow",
+   "hexes": [
+    "#F3AA01"
+   ]
+  },
+  {
+   "sku": "PA02008",
+   "product": "PolyLite PLA",
+   "name": "Orange",
+   "hexes": [
+    "#F36201"
+   ]
+  },
+  {
+   "sku": "PA02009",
+   "product": "PolyLite PLA",
+   "name": "Purple",
+   "hexes": [
+    "#6447A5"
+   ]
+  },
+  {
+   "sku": "PA02010",
+   "product": "PolyLite PLA",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#48B9C2"
+   ]
+  },
+  {
+   "sku": "PA02011",
+   "product": "PolyLite PLA",
+   "name": "Natural",
+   "hexes": [
+    "#DFD3C3"
+   ]
+  },
+  {
+   "sku": "PA02012",
+   "product": "PolyLite Glow PLA",
+   "name": "Glow Green",
+   "hexes": [
+    "#29C14C",
+    "#F2EADB"
+   ],
+   "td": 23.7
+  },
+  {
+   "sku": "PA02013",
+   "product": "PolyLite PLA Galaxy",
+   "name": "Galaxy Black",
+   "hexes": [
+    "#161617"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PA02014",
+   "product": "PolyLite PLA Galaxy",
+   "name": "Galaxy Dark Blue",
+   "hexes": [
+    "#18192D"
+   ],
+   "td": 0.4
+  },
+  {
+   "sku": "PA02015",
+   "product": "PolyLite PLA Galaxy",
+   "name": "Galaxy Dark Red",
+   "hexes": [
+    "#451E14"
+   ],
+   "td": 0.2
+  },
+  {
+   "sku": "PA02016",
+   "product": "PolyLite PLA",
+   "name": "Black",
+   "hexes": [
+    "#030305"
+   ]
+  },
+  {
+   "sku": "PA02017",
+   "product": "PolyLite PLA",
+   "name": "White",
+   "hexes": [
+    "#DDD7D3"
+   ]
+  },
+  {
+   "sku": "PA02018",
+   "product": "PolyLite PLA",
+   "name": "Grey",
+   "hexes": [
+    "#8B8E96"
+   ]
+  },
+  {
+   "sku": "PA02019",
+   "product": "PolyLite PLA",
+   "name": "Red",
+   "hexes": [
+    "#D90102"
+   ]
+  },
+  {
+   "sku": "PA02020",
+   "product": "PolyLite PLA",
+   "name": "Blue",
+   "hexes": [
+    "#013178"
+   ]
+  },
+  {
+   "sku": "PA02021",
+   "product": "PolyLite PLA",
+   "name": "Green",
+   "hexes": [
+    "#30A45F"
+   ]
+  },
+  {
+   "sku": "PA02022",
+   "product": "PolyLite PLA",
+   "name": "Yellow",
+   "hexes": [
+    "#F3AA01"
+   ]
+  },
+  {
+   "sku": "PA02023",
+   "product": "PolyLite PLA",
+   "name": "Orange",
+   "hexes": [
+    "#F36201"
+   ]
+  },
+  {
+   "sku": "PA02024",
+   "product": "PolyLite PLA",
+   "name": "Purple",
+   "hexes": [
+    "#6447A5"
+   ]
+  },
+  {
+   "sku": "PA02025",
+   "product": "PolyLite PLA",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#48B9C2"
+   ]
+  },
+  {
+   "sku": "PA02026",
+   "product": "PolyLite PLA",
+   "name": "Natural",
+   "hexes": [
+    "#DFD3C3"
+   ]
+  },
+  {
+   "sku": "PA02035",
+   "product": "PolyLite PLA",
+   "name": "Grey",
+   "hexes": [
+    "#8B8E96"
+   ]
+  },
+  {
+   "sku": "PA02036",
+   "product": "PolyLite PLA",
+   "name": "White",
+   "hexes": [
+    "#DDD7D3"
+   ]
+  },
+  {
+   "sku": "PA02037",
+   "product": "PolyLite PLA",
+   "name": "Black",
+   "hexes": [
+    "#030305"
+   ]
+  },
+  {
+   "sku": "PA02038",
+   "product": "PolyLite PLA",
+   "name": "White",
+   "hexes": [
+    "#DDD7D3"
+   ]
+  },
+  {
+   "sku": "PA02039",
+   "product": "PolyLite PLA",
+   "name": "Black",
+   "hexes": [
+    "#030305"
+   ]
+  },
+  {
+   "sku": "PA02040",
+   "product": "PolyLite PLA",
+   "name": "Grey",
+   "hexes": [
+    "#8B8E96"
+   ]
+  },
+  {
+   "sku": "PA02045",
+   "product": "PolyLite PLA",
+   "name": "Black, White"
+  },
+  {
+   "sku": "PA02046",
+   "product": "PolyLite PLA",
+   "name": "Black, White"
+  },
+  {
+   "sku": "PA02047",
+   "product": "PolyLite PLA",
+   "name": "Black",
+   "hexes": [
+    "#030305"
+   ]
+  },
+  {
+   "sku": "PA02052",
+   "product": "PolyLite PLA",
+   "name": "Brown",
+   "hexes": [
+    "#4B2A17"
+   ]
+  },
+  {
+   "sku": "PA02053",
+   "product": "PolyLite PLA",
+   "name": "Pink",
+   "hexes": [
+    "#F1A1AF"
+   ]
+  },
+  {
+   "sku": "PA02054",
+   "product": "PolyLite PLA",
+   "name": "Magenta",
+   "hexes": [
+    "#F24574"
+   ]
+  },
+  {
+   "sku": "PA02055",
+   "product": "PolyLite PLA",
+   "name": "Beige",
+   "hexes": [
+    "#C2AB72"
+   ]
+  },
+  {
+   "sku": "PA02056",
+   "product": "PolyLite PLA",
+   "name": "Cream",
+   "hexes": [
+    "#EED1A8"
+   ]
+  },
+  {
+   "sku": "PA02057",
+   "product": "PolyLite PLA",
+   "name": "Wine Red",
+   "hexes": [
+    "#D60212"
+   ]
+  },
+  {
+   "sku": "PA02058",
+   "product": "PolyLite PLA",
+   "name": "Olive Green",
+   "hexes": [
+    "#948902"
+   ]
+  },
+  {
+   "sku": "PA02059",
+   "product": "PolyLite PLA",
+   "name": "Jungle Green",
+   "hexes": [
+    "#4E742D"
+   ]
+  },
+  {
+   "sku": "PA02060",
+   "product": "PolyLite PLA",
+   "name": "Lime Green",
+   "hexes": [
+    "#D5D701"
+   ]
+  },
+  {
+   "sku": "PA02061",
+   "product": "PolyLite PLA",
+   "name": "Lemon Yellow",
+   "hexes": [
+    "#EED230"
+   ]
+  },
+  {
+   "sku": "PA02062",
+   "product": "PolyLite PLA",
+   "name": "Stone Blue",
+   "hexes": [
+    "#487BA2"
+   ]
+  },
+  {
+   "sku": "PA02063",
+   "product": "PolyLite PLA",
+   "name": "Aqua Blue",
+   "hexes": [
+    "#5EBDDB"
+   ]
+  },
+  {
+   "sku": "PA02064",
+   "product": "PolyLite PLA",
+   "name": "Azure Blue",
+   "hexes": [
+    "#0061D5"
+   ]
+  },
+  {
+   "sku": "PA02065",
+   "product": "PolyLite PLA",
+   "name": "Steel Grey",
+   "hexes": [
+    "#5D5E63"
+   ]
+  },
+  {
+   "sku": "PA02066",
+   "product": "PolyLite PLA",
+   "name": "Red",
+   "hexes": [
+    "#D90102"
+   ]
+  },
+  {
+   "sku": "PA02067",
+   "product": "PolyLite PLA",
+   "name": "Blue",
+   "hexes": [
+    "#013178"
+   ]
+  },
+  {
+   "sku": "PA02070",
+   "product": "PolyLite PLA - Temperature",
+   "name": "Temperature Color Change Green/Lime",
+   "hexes": [
+    "#D6C548",
+    "#49C072"
+   ]
+  },
+  {
+   "sku": "PA02071",
+   "product": "PolyLite PLA",
+   "name": "Temperature Color Change Purple/Pink/Translucent",
+   "hexes": [
+    "#7C488D",
+    "#D84A77",
+    "#E9D8C2"
+   ]
+  },
+  {
+   "sku": "PA02072",
+   "product": "PolyLite PLA - UV",
+   "name": "UV Shift Natural/Orange",
+   "hexes": [
+    "#F29349",
+    "#F1DBBF"
+   ]
+  },
+  {
+   "sku": "PA02075",
+   "product": "PolyLite PLA",
+   "name": "Dark Blue",
+   "hexes": [
+    "#041B3D"
+   ]
+  },
+  {
+   "sku": "PA02076",
+   "product": "PolyLite PLA",
+   "name": "Dark Green"
+  },
+  {
+   "sku": "PA02077",
+   "product": "PolyLite Glow PLA",
+   "name": "Glow Blue",
+   "hexes": [
+    "#0177C5",
+    "#F3EADB"
+   ],
+   "td": 22.5
+  },
+  {
+   "sku": "PA02078",
+   "product": "PolyLite Glow PLA",
+   "name": "Glow Orange",
+   "hexes": [
+    "#FEBE5F"
+   ]
+  },
+  {
+   "sku": "PA02079",
+   "product": "PolyLite PLA",
+   "name": "Gold*1, Red*1, Green*1"
+  },
+  {
+   "sku": "PA02080",
+   "product": "PolyLite PLA",
+   "name": "Grey",
+   "hexes": [
+    "#8B8E96"
+   ]
+  },
+  {
+   "sku": "PA02081",
+   "product": "PolyLite PLA Starlight",
+   "name": "Starlight Mercury",
+   "hexes": [
+    "#33322D"
+   ],
+   "td": 7.6
+  },
+  {
+   "sku": "PA02082",
+   "product": "PolyLite PLA Starlight",
+   "name": "Starlight Jupiter",
+   "hexes": [
+    "#774718"
+   ],
+   "td": 4.7
+  },
+  {
+   "sku": "PA02083",
+   "product": "PolyLite PLA Starlight",
+   "name": "Starlight Neptune",
+   "hexes": [
+    "#113148"
+   ],
+   "td": 2.7
+  },
+  {
+   "sku": "PA02084",
+   "product": "PolyLite PLA Starlight",
+   "name": "Starlight Nebula",
+   "hexes": [
+    "#462F32"
+   ],
+   "td": 3.6
+  },
+  {
+   "sku": "PA02085",
+   "product": "PolyLite PLA Starlight",
+   "name": "Starlight Comet",
+   "hexes": [
+    "#1F312A"
+   ],
+   "td": 2.6
+  },
+  {
+   "sku": "PA02086",
+   "product": "PolyLite PLA Starlight",
+   "name": "Starlight Meteor",
+   "hexes": [
+    "#2F3117"
+   ],
+   "td": 3.9
+  },
+  {
+   "sku": "PA02087",
+   "product": "PolyLite PLA Starlight",
+   "name": "Starlight Aurora",
+   "hexes": [
+    "#314530"
+   ],
+   "td": 4.7
+  },
+  {
+   "sku": "PA02088",
+   "product": "PolyLite PLA Starlight",
+   "name": "Starlight Twilight",
+   "hexes": [
+    "#1E3445"
+   ],
+   "td": 3.1
+  },
+  {
+   "sku": "PA02089",
+   "product": "PolyLite Luminous PLA",
+   "name": "Luminous Pink",
+   "hexes": [
+    "#FE9176"
+   ],
+   "td": 11.8
+  },
+  {
+   "sku": "PA02090",
+   "product": "PolyLite Luminous PLA",
+   "name": "Luminous Orange",
+   "hexes": [
+    "#FEBE5F"
+   ],
+   "td": 11.7
+  },
+  {
+   "sku": "PA02091",
+   "product": "PolyLite Luminous PLA",
+   "name": "Luminous Green",
+   "hexes": [
+    "#BFEB8C"
+   ],
+   "td": 12.7
+  },
+  {
+   "sku": "PA02092",
+   "product": "PolyLite Luminous PLA",
+   "name": "Luminous Blue",
+   "hexes": [
+    "#5FA8C2"
+   ],
+   "td": 10.5
+  },
+  {
+   "sku": "PA02093",
+   "product": "PolyLite Luminous PLA",
+   "name": "Luminous Yellow",
+   "hexes": [
+    "#EEDC48"
+   ],
+   "td": 12.4
+  },
+  {
+   "sku": "PA02094",
+   "product": "PolyLite PLA",
+   "name": "Olive Brown",
+   "hexes": [
+    "#A79565"
+   ]
+  },
+  {
+   "sku": "PA02095",
+   "product": "PolyLite PLA",
+   "name": "Dark Gray Green",
+   "hexes": [
+    "#4C5F46"
+   ]
+  },
+  {
+   "sku": "PA02096",
+   "product": "PolyLite PLA",
+   "name": "Cold White",
+   "hexes": [
+    "#EAECF5"
+   ]
+  },
+  {
+   "sku": "PA02097",
+   "product": "PolyLite PLA Galaxy",
+   "name": "Galaxy Dark Green",
+   "hexes": [
+    "#00272F"
+   ]
+  },
+  {
+   "sku": "PA02098",
+   "product": "PolyLite PLA",
+   "name": "Dark Grey",
+   "hexes": [
+    "#6E8393"
+   ]
+  },
+  {
+   "sku": "PA02099",
+   "product": "PolyLite PLA",
+   "name": "Galaxy Dark Grey",
+   "hexes": [
+    "#5B6068"
+   ]
+  },
+  {
+   "sku": "PA02100",
+   "product": "PolyLite PLA",
+   "name": "Neon Pink",
+   "hexes": [
+    "#FF3670"
+   ]
+  },
+  {
+   "sku": "PA02101",
+   "product": "PolyLite PLA",
+   "name": "Neon Green",
+   "hexes": [
+    "#00F263"
+   ]
+  },
+  {
+   "sku": "PA02102",
+   "product": "PolyLite PLA",
+   "name": "Neon Yellow",
+   "hexes": [
+    "#E5DB2E"
+   ]
+  },
+  {
+   "sku": "PA02103",
+   "product": "PolyLite PLA",
+   "name": "Neon Orange",
+   "hexes": [
+    "#FF7800"
+   ]
+  },
+  {
+   "sku": "PA02104",
+   "product": "PolyLite PLA",
+   "name": "Neon Magenta",
+   "hexes": [
+    "#F21185"
+   ]
+  },
+  {
+   "sku": "PA02105",
+   "product": "PolyLite PLA",
+   "name": "Neon Red",
+   "hexes": [
+    "#FE2D42"
+   ]
+  },
+  {
+   "sku": "PA02106",
+   "product": "Hedgehog Makes - Galaxy",
+   "name": "Hedgehog Makes - Galaxy Red",
+   "hexes": [
+    "#760007"
+   ]
+  },
+  {
+   "sku": "PA03001",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk Gold",
+   "hexes": [
+    "#BE8217"
+   ]
+  },
+  {
+   "sku": "PA03002",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk Silver",
+   "hexes": [
+    "#979FAF"
+   ]
+  },
+  {
+   "sku": "PA03003",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk Bronze",
+   "hexes": [
+    "#9D532A"
+   ]
+  },
+  {
+   "sku": "PA03004",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk Magenta",
+   "hexes": [
+    "#AE2672"
+   ]
+  },
+  {
+   "sku": "PA03005",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk Blue",
+   "hexes": [
+    "#1A72BD"
+   ]
+  },
+  {
+   "sku": "PA03006",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk Lime",
+   "hexes": [
+    "#A4D111"
+   ]
+  },
+  {
+   "sku": "PA03007",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk Purple",
+   "hexes": [
+    "#584099"
+   ]
+  },
+  {
+   "sku": "PA03008",
+   "product": "PolyLite PLA Silk Bundle",
+   "name": "Silk Gold, Silk Silver, Silk Bronze"
+  },
+  {
+   "sku": "PA03009",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk Chrome",
+   "hexes": [
+    "#6C7580"
+   ]
+  },
+  {
+   "sku": "PA03010",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk White",
+   "hexes": [
+    "#D9D8D7"
+   ]
+  },
+  {
+   "sku": "PA03011",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk Green",
+   "hexes": [
+    "#20A181"
+   ]
+  },
+  {
+   "sku": "PA03012",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk Rose",
+   "hexes": [
+    "#D43A48"
+   ]
+  },
+  {
+   "sku": "PA03014",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk Pink",
+   "hexes": [
+    "#FFA7C4"
+   ]
+  },
+  {
+   "sku": "PA03015",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk Orange",
+   "hexes": [
+    "#EE611C"
+   ]
+  },
+  {
+   "sku": "PA03016",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk Yellow",
+   "hexes": [
+    "#ECC904"
+   ]
+  },
+  {
+   "sku": "PA03017",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk Black",
+   "hexes": [
+    "#363538"
+   ]
+  },
+  {
+   "sku": "PA03018",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk Teal",
+   "hexes": [
+    "#29B3BB"
+   ]
+  },
+  {
+   "sku": "PA03019",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk Red",
+   "hexes": [
+    "#D1361D"
+   ]
+  },
+  {
+   "sku": "PA03020",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk Rose Gold",
+   "hexes": [
+    "#BC9697"
+   ]
+  },
+  {
+   "sku": "PA03021",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk Light Blue",
+   "hexes": [
+    "#34B5C8"
+   ]
+  },
+  {
+   "sku": "PA03022",
+   "product": "PolyLite PLA Dual Silk",
+   "name": "Dual Silk Aubergine Silk Lime-Magenta",
+   "hexes": [
+    "#A4D111",
+    "#AE2672"
+   ]
+  },
+  {
+   "sku": "PA03023",
+   "product": "PolyLite PLA Dual Silk",
+   "name": "Dual Silk Banquet Silk Gold-Magenta",
+   "hexes": [
+    "#BE8217",
+    "#AE2672"
+   ]
+  },
+  {
+   "sku": "PA03024",
+   "product": "PolyLite PLA Dual Silk",
+   "name": "Dual Silk Beluga (Silver-Blue)",
+   "hexes": [
+    "#979FAF",
+    "#1A72BD"
+   ]
+  },
+  {
+   "sku": "PA03025",
+   "product": "PolyLite PLA Dual Silk",
+   "name": "Dual Silk Caribbean Sea (Blue-Green)",
+   "hexes": [
+    "#1A72BD",
+    "#20A181"
+   ]
+  },
+  {
+   "sku": "PA03026",
+   "product": "PolyLite PLA Dual Silk",
+   "name": "Dual Silk Chameleon (Yellow-Blue)",
+   "hexes": [
+    "#ECC904",
+    "#1A72BD"
+   ]
+  },
+  {
+   "sku": "PA03027",
+   "product": "PolyLite PLA Dual Silk",
+   "name": "Dual Silk Crown (Gold-Silver)",
+   "hexes": [
+    "#BE8217",
+    "#979FAF"
+   ]
+  },
+  {
+   "sku": "PA03028",
+   "product": "PolyLite PLA Dual Silk",
+   "name": "Dual Silk Jadeite (Green-Chrome)",
+   "hexes": [
+    "#20A181",
+    "#6C7580"
+   ]
+  },
+  {
+   "sku": "PA03029",
+   "product": "PolyLite PLA Dual Silk",
+   "name": "Dual Silk Sovereign (Gold-Purple)",
+   "hexes": [
+    "#BE8217",
+    "#584099"
+   ]
+  },
+  {
+   "sku": "PA03030",
+   "product": "PolyLite PLA Dual Silk",
+   "name": "Dual Silk Sunset (Gold-Red)",
+   "hexes": [
+    "#BE8217",
+    "#D1361D"
+   ]
+  },
+  {
+   "sku": "PA03031",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk Brass",
+   "hexes": [
+    "#89713C"
+   ]
+  },
+  {
+   "sku": "PA03032",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk Peridot Green",
+   "hexes": [
+    "#687151"
+   ]
+  },
+  {
+   "sku": "PA03034",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk Dark Blue",
+   "hexes": [
+    "#00239C"
+   ]
+  },
+  {
+   "sku": "PA03035",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk Periwinkle",
+   "hexes": [
+    "#8094DD"
+   ]
+  },
+  {
+   "sku": "PA03036",
+   "product": "PolyLite PLA Silk",
+   "name": "Silk Gunmetal Grey",
+   "hexes": [
+    "#505759"
+   ]
+  },
+  {
+   "sku": "PA04001",
+   "product": "PolyTerra PLA",
+   "name": "Matte Charcoal Black*1+Cotton White*1"
+  },
+  {
+   "sku": "PA04002",
+   "product": "PolyTerra PLA",
+   "name": "Matte Muted White",
+   "hexes": [
+    "#BBADA4"
+   ],
+   "td": 0.7
+  },
+  {
+   "sku": "PA04003",
+   "product": "PolyTerra PLA",
+   "name": "Matte Muted Green",
+   "hexes": [
+    "#777E71"
+   ],
+   "td": 0.5
+  },
+  {
+   "sku": "PA04004",
+   "product": "PolyTerra PLA",
+   "name": "Matte Muted Blue",
+   "hexes": [
+    "#5F778E"
+   ],
+   "td": 0.5
+  },
+  {
+   "sku": "PA04005",
+   "product": "PolyTerra PLA",
+   "name": "Matte Muted Purple",
+   "hexes": [
+    "#7C5C78"
+   ],
+   "td": 0.6
+  },
+  {
+   "sku": "PA04006",
+   "product": "PolyTerra PLA",
+   "name": "Matte Muted Red",
+   "hexes": [
+    "#D84B2E"
+   ],
+   "td": 1.4
+  },
+  {
+   "sku": "PA04007",
+   "product": "PolyTerra PLA",
+   "name": "Matte Charcoal Black",
+   "hexes": [
+    "#2F2E30"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PA04008",
+   "product": "PolyTerra PLA",
+   "name": "Matte Cotton White",
+   "hexes": [
+    "#F4EFEB"
+   ],
+   "td": 4.1
+  },
+  {
+   "sku": "PA04009",
+   "product": "PolyTerra PLA",
+   "name": "Matte Fossil Grey",
+   "hexes": [
+    "#8A8C94"
+   ],
+   "td": 0.4
+  },
+  {
+   "sku": "PA04010",
+   "product": "PolyTerra PLA",
+   "name": "Matte Lava Red",
+   "hexes": [
+    "#ED2F2E"
+   ],
+   "td": 1.9
+  },
+  {
+   "sku": "PA04011",
+   "product": "PolyTerra PLA",
+   "name": "Matte Sapphire Blue",
+   "hexes": [
+    "#0163A6"
+   ],
+   "td": 0.5
+  },
+  {
+   "sku": "PA04012",
+   "product": "PolyTerra PLA",
+   "name": "Matte Arctic Teal",
+   "hexes": [
+    "#61BCC3"
+   ],
+   "td": 0.6
+  },
+  {
+   "sku": "PA04016",
+   "product": "PolyTerra PLA",
+   "name": "Matte Glacier Blue (Ice-Blue)",
+   "hexes": [
+    "#A4D0DF",
+    "#0163A6"
+   ]
+  },
+  {
+   "sku": "PA04017",
+   "product": "PolyTerra PLA",
+   "name": "Matte Flamingo (Pink-Red)",
+   "hexes": [
+    "#EAADBD",
+    "#ED2F2E"
+   ]
+  },
+  {
+   "sku": "PA04018",
+   "product": "PolyTerra PLA",
+   "name": "Matte Chameleon (Teal-Yellow)",
+   "hexes": [
+    "#61BCC3",
+    "#F3C432"
+   ]
+  },
+  {
+   "sku": "PA04019",
+   "product": "PolyTerra PLA",
+   "name": "Matte Sunrise (Red-Yellow)",
+   "hexes": [
+    "#ED2F2E",
+    "#F3C432"
+   ]
+  },
+  {
+   "sku": "PA04020",
+   "product": "PolyTerra PLA",
+   "name": "Matte Shadow Black (White-Black)",
+   "hexes": [
+    "#F4EFEB",
+    "#2F2E30"
+   ]
+  },
+  {
+   "sku": "PA04021",
+   "product": "PolyTerra PLA",
+   "name": "Matte Shadow Orange (Orange-Black)",
+   "hexes": [
+    "#F88B17",
+    "#2F2E30"
+   ]
+  },
+  {
+   "sku": "PA04022",
+   "product": "PolyTerra PLA",
+   "name": "Matte Shadow Red (Black-Red)",
+   "hexes": [
+    "#2F2E30",
+    "#ED2F2E"
+   ]
+  },
+  {
+   "sku": "PA04023",
+   "product": "PolyTerra PLA",
+   "name": "Matte Foggy Purple (Grey-Purple)",
+   "hexes": [
+    "#8A8C94",
+    "#9572BF"
+   ]
+  },
+  {
+   "sku": "PA04024",
+   "product": "PolyTerra PLA",
+   "name": "Matte Foggy Orange (Grey-Orange)",
+   "hexes": [
+    "#8A8C94",
+    "#F88B17"
+   ]
+  },
+  {
+   "sku": "PA04025",
+   "product": "PolyTerra PLA",
+   "name": "Matte Camouflage (Dark Green-Brown)",
+   "hexes": [
+    "#5F6244",
+    "#7C594A"
+   ]
+  },
+  {
+   "sku": "PA04026",
+   "product": "PolyTerra PLA",
+   "name": "Matte Mixed Berries (Red-Dark Blue)",
+   "hexes": [
+    "#ED2F2E",
+    "#2E4462"
+   ]
+  },
+  {
+   "sku": "PA04027",
+   "product": "PolyTerra PLA",
+   "name": "Matte Lime Green",
+   "hexes": [
+    "#D7D602"
+   ],
+   "td": 2.4
+  },
+  {
+   "sku": "PA04028",
+   "product": "2023 Easter Bundle Pack",
+   "name": "3x1kg Easter Spool Marble Pla Bundle"
+  },
+  {
+   "sku": "PA04029",
+   "product": "PolyTerra Gradient Matte PLA",
+   "name": "Gradient Matte Pastel Rainbow"
+  },
+  {
+   "sku": "PA04030",
+   "product": "PolyTerra Gradient Matte PLA",
+   "name": "Gradient Matte Cappuccino"
+  },
+  {
+   "sku": "PA04031",
+   "product": "PolyTerra Gradient Matte PLA",
+   "name": "Gradient Matte Gradient Wood"
+  },
+  {
+   "sku": "PA04032",
+   "product": "PolyTerra PLA",
+   "name": "Matte Army Purple",
+   "hexes": [
+    "#36364A"
+   ],
+   "td": 0.2
+  },
+  {
+   "sku": "PA04033",
+   "product": "PolyTerra PLA",
+   "name": "Matte Ash Grey",
+   "hexes": [
+    "#485155"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PA04034",
+   "product": "Matte PLA for Production",
+   "name": "White",
+   "hexes": [
+    "#E6DDDB"
+   ],
+   "td": 4.1
+  },
+  {
+   "sku": "PA04035",
+   "product": "PolyTerra Gradient Matte PLA",
+   "name": "Gradient Matte Spring"
+  },
+  {
+   "sku": "PA04036",
+   "product": "PolyTerra Gradient Matte PLA",
+   "name": "Gradient Matte Summer",
+   "td": 2.9
+  },
+  {
+   "sku": "PA04037",
+   "product": "PolyTerra Gradient Matte PLA",
+   "name": "Gradient Matte Fall"
+  },
+  {
+   "sku": "PA04038",
+   "product": "PolyTerra Gradient Matte PLA",
+   "name": "Gradient Matte Winter"
+  },
+  {
+   "sku": "PA04039",
+   "product": "PolyTerra PLA",
+   "name": "Matte Electric Indigo",
+   "hexes": [
+    "#6858A9"
+   ],
+   "td": 0.3
+  },
+  {
+   "sku": "PA04040",
+   "product": "PolyTerra PLA",
+   "name": "Matte Pastel Periwinkle",
+   "hexes": [
+    "#ADB4E6"
+   ],
+   "td": 1.5
+  },
+  {
+   "sku": "PA04041",
+   "product": "PolyTerra PLA Marble",
+   "name": "Marble Brick",
+   "hexes": [
+    "#CD7456"
+   ],
+   "td": 0.8
+  },
+  {
+   "sku": "PA04042",
+   "product": "PolyTerra PLA Marble",
+   "name": "Marble Sandstone",
+   "hexes": [
+    "#C1BE97"
+   ],
+   "td": 1.7
+  },
+  {
+   "sku": "PA04043",
+   "product": "PolyTerra PLA Marble",
+   "name": "Marble Limestone",
+   "hexes": [
+    "#BCBEBE"
+   ],
+   "td": 0.6
+  },
+  {
+   "sku": "PA04044",
+   "product": "PolyTerra PLA",
+   "name": "Matte Sky Blue",
+   "hexes": [
+    "#1AC5FC"
+   ],
+   "td": 1.3
+  },
+  {
+   "sku": "PA04045",
+   "product": "PolyTerra PLA",
+   "name": "Matte Lotus Pink",
+   "hexes": [
+    "#DD76C0"
+   ],
+   "td": 2.0
+  },
+  {
+   "sku": "PA04046",
+   "product": "Matte PLA for Production",
+   "name": "Black",
+   "hexes": [
+    "#1C1C1C"
+   ]
+  },
+  {
+   "sku": "PA04047",
+   "product": "PolyTerra PLA",
+   "name": "Cotton White"
+  },
+  {
+   "sku": "PA05001",
+   "product": "PolyTerra PLA+",
+   "name": "Satin Yellow",
+   "hexes": [
+    "#F4C131"
+   ],
+   "td": 3.9
+  },
+  {
+   "sku": "PA05002",
+   "product": "PolyTerra PLA+",
+   "name": "Satin Orange",
+   "hexes": [
+    "#FE9217"
+   ],
+   "td": 3.3
+  },
+  {
+   "sku": "PA05003",
+   "product": "PolyTerra PLA+",
+   "name": "Satin Purple",
+   "hexes": [
+    "#9272C1"
+   ],
+   "td": 0.9
+  },
+  {
+   "sku": "PA05004",
+   "product": "PolyTerra PLA+",
+   "name": "Satin Polymaker Teal",
+   "hexes": [
+    "#61BBC1"
+   ],
+   "td": 0.2
+  },
+  {
+   "sku": "PA05005",
+   "product": "PolyTerra PLA+",
+   "name": "Satin Black",
+   "hexes": [
+    "#030305"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PA05006",
+   "product": "PolyLite CosPLA",
+   "name": "Version A - Durability with extra sand-ability",
+   "hexes": [
+    "#A7A4A8"
+   ]
+  },
+  {
+   "sku": "PA05007",
+   "product": "PolyLite CosPLA",
+   "name": "Version A - Durability with extra sand-ability",
+   "hexes": [
+    "#A7A4A8"
+   ]
+  },
+  {
+   "sku": "PA06001",
+   "product": "PolyMax PLA",
+   "name": "Black",
+   "hexes": [
+    "#161619"
+   ]
+  },
+  {
+   "sku": "PA06002",
+   "product": "PolyMax PLA",
+   "name": "White",
+   "hexes": [
+    "#EBECED"
+   ]
+  },
+  {
+   "sku": "PA06003",
+   "product": "PolyMax PLA",
+   "name": "Grey",
+   "hexes": [
+    "#8D8E93"
+   ]
+  },
+  {
+   "sku": "PA06004",
+   "product": "PolyMax PLA",
+   "name": "Red",
+   "hexes": [
+    "#ED2F20"
+   ]
+  },
+  {
+   "sku": "PA06005",
+   "product": "PolyMax PLA",
+   "name": "Blue",
+   "hexes": [
+    "#013178"
+   ]
+  },
+  {
+   "sku": "PA06006",
+   "product": "PolyMax PLA",
+   "name": "Green",
+   "hexes": [
+    "#31A45F"
+   ]
+  },
+  {
+   "sku": "PA06007",
+   "product": "PolyMax PLA",
+   "name": "Yellow",
+   "hexes": [
+    "#F0AB01"
+   ]
+  },
+  {
+   "sku": "PA06008",
+   "product": "PolyMax PLA",
+   "name": "Orange",
+   "hexes": [
+    "#FE8E1B"
+   ]
+  },
+  {
+   "sku": "PA06009",
+   "product": "PolyMax PLA",
+   "name": "Purple",
+   "hexes": [
+    "#6647A3"
+   ]
+  },
+  {
+   "sku": "PA06010",
+   "product": "PolyMax PLA",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#4ABAC2"
+   ]
+  },
+  {
+   "sku": "PA06011",
+   "product": "PolyMax PLA",
+   "name": "Black",
+   "hexes": [
+    "#181718"
+   ]
+  },
+  {
+   "sku": "PA06012",
+   "product": "PolyMax PLA",
+   "name": "White",
+   "hexes": [
+    "#EFECEB"
+   ]
+  },
+  {
+   "sku": "PA06013",
+   "product": "PolyMax PLA",
+   "name": "Grey",
+   "hexes": [
+    "#8D8E93"
+   ]
+  },
+  {
+   "sku": "PA06014",
+   "product": "PolyMax PLA",
+   "name": "Red",
+   "hexes": [
+    "#ED2F20"
+   ]
+  },
+  {
+   "sku": "PA06015",
+   "product": "PolyMax PLA",
+   "name": "Blue",
+   "hexes": [
+    "#013178"
+   ]
+  },
+  {
+   "sku": "PA06016",
+   "product": "PolyMax PLA",
+   "name": "Green",
+   "hexes": [
+    "#31A45F"
+   ]
+  },
+  {
+   "sku": "PA06017",
+   "product": "PolyMax PLA",
+   "name": "Yellow",
+   "hexes": [
+    "#F0AB01"
+   ]
+  },
+  {
+   "sku": "PA06018",
+   "product": "PolyMax PLA",
+   "name": "Orange",
+   "hexes": [
+    "#FE8E1B"
+   ]
+  },
+  {
+   "sku": "PA06019",
+   "product": "PolyMax PLA",
+   "name": "Purple",
+   "hexes": [
+    "#6647A3"
+   ]
+  },
+  {
+   "sku": "PA06020",
+   "product": "PolyMax PLA",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#4ABAC2"
+   ]
+  },
+  {
+   "sku": "PA06021",
+   "product": "PolyMax PLA",
+   "name": "Pink"
+  },
+  {
+   "sku": "PA06023",
+   "product": "PolyMax PLA",
+   "name": "White",
+   "hexes": [
+    "#EFECEB"
+   ]
+  },
+  {
+   "sku": "PA06024",
+   "product": "PolyMax PLA",
+   "name": "Black",
+   "hexes": [
+    "#181718"
+   ]
+  },
+  {
+   "sku": "PA06025",
+   "product": "PolyMax PLA",
+   "name": "Grey",
+   "hexes": [
+    "#8D8E93"
+   ]
+  },
+  {
+   "sku": "PA06026",
+   "product": "PolyMax PLA",
+   "name": "White",
+   "hexes": [
+    "#EFECEB"
+   ]
+  },
+  {
+   "sku": "PA06027",
+   "product": "PolyMax PLA",
+   "name": "Black",
+   "hexes": [
+    "#181718"
+   ]
+  },
+  {
+   "sku": "PA06028",
+   "product": "PolyMax PLA",
+   "name": "Grey",
+   "hexes": [
+    "#8D8E93"
+   ]
+  },
+  {
+   "sku": "PA06029",
+   "product": "PolyMax PLA",
+   "name": "Pink",
+   "hexes": [
+    "#F02F63"
+   ]
+  },
+  {
+   "sku": "PA06030",
+   "product": "PolyMax PLA",
+   "name": "FDE Beige",
+   "hexes": [
+    "#90755D"
+   ]
+  },
+  {
+   "sku": "PA07001",
+   "product": "PolyLite PLA Pro",
+   "name": "Black",
+   "hexes": [
+    "#161619"
+   ]
+  },
+  {
+   "sku": "PA07002",
+   "product": "PolyLite PLA Pro",
+   "name": "White",
+   "hexes": [
+    "#EBECED"
+   ]
+  },
+  {
+   "sku": "PA07003",
+   "product": "PolyLite PLA Pro",
+   "name": "Grey",
+   "hexes": [
+    "#8D8E93"
+   ]
+  },
+  {
+   "sku": "PA07004",
+   "product": "PolyLite PLA Pro",
+   "name": "Red",
+   "hexes": [
+    "#ED2F20"
+   ]
+  },
+  {
+   "sku": "PA07005",
+   "product": "PolyLite PLA Pro",
+   "name": "Blue",
+   "hexes": [
+    "#013276"
+   ]
+  },
+  {
+   "sku": "PA07006",
+   "product": "PolyLite PLA Pro",
+   "name": "Army Green",
+   "hexes": [
+    "#665A30"
+   ]
+  },
+  {
+   "sku": "PA07007",
+   "product": "PolyLite PLA Pro",
+   "name": "Silver",
+   "hexes": [
+    "#8A8D95"
+   ]
+  },
+  {
+   "sku": "PA07008",
+   "product": "PolyLite PLA Pro",
+   "name": "Green",
+   "hexes": [
+    "#31A45F"
+   ]
+  },
+  {
+   "sku": "PA07009",
+   "product": "PolyLite PLA Pro",
+   "name": "Yellow",
+   "hexes": [
+    "#F0AB01"
+   ]
+  },
+  {
+   "sku": "PA07010",
+   "product": "PolyLite PLA Pro",
+   "name": "Orange",
+   "hexes": [
+    "#FE8E1B"
+   ]
+  },
+  {
+   "sku": "PA07011",
+   "product": "PolyLite PLA Pro",
+   "name": "Purple",
+   "hexes": [
+    "#6547A5"
+   ]
+  },
+  {
+   "sku": "PA07012",
+   "product": "PolyLite PLA Pro",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#5FC7CF"
+   ]
+  },
+  {
+   "sku": "PA07013",
+   "product": "PolyLite PLA Pro",
+   "name": "Black",
+   "hexes": [
+    "#030305"
+   ]
+  },
+  {
+   "sku": "PA07014",
+   "product": "PolyLite PLA Pro",
+   "name": "White",
+   "hexes": [
+    "#DDD7D3"
+   ]
+  },
+  {
+   "sku": "PA07015",
+   "product": "PolyLite PLA Pro",
+   "name": "Grey",
+   "hexes": [
+    "#8B8E96"
+   ]
+  },
+  {
+   "sku": "PA07026",
+   "product": "PolyLite PLA Pro",
+   "name": "Pink",
+   "hexes": [
+    "#EE92AA"
+   ]
+  },
+  {
+   "sku": "PA07027",
+   "product": "PolyLite PLA Pro",
+   "name": "Army Beige",
+   "hexes": [
+    "#C28D5E"
+   ]
+  },
+  {
+   "sku": "PA07028",
+   "product": "PolyLite PLA Pro",
+   "name": "Light Blue",
+   "hexes": [
+    "#A8D4E8"
+   ]
+  },
+  {
+   "sku": "PA07029",
+   "product": "PolyLite PLA Pro",
+   "name": "Light Green",
+   "hexes": [
+    "#C0DDA3"
+   ]
+  },
+  {
+   "sku": "PA07030",
+   "product": "PolyLite PLA Pro",
+   "name": "Light Yellow",
+   "hexes": [
+    "#F4DA78"
+   ]
+  },
+  {
+   "sku": "PA07031",
+   "product": "PolyLite PLA Pro",
+   "name": "Dark Purple",
+   "hexes": [
+    "#2C1C30"
+   ]
+  },
+  {
+   "sku": "PA07032",
+   "product": "PolyLite PLA Pro",
+   "name": "Black",
+   "hexes": [
+    "#161619"
+   ]
+  },
+  {
+   "sku": "PA07033",
+   "product": "PolyLite PLA Pro",
+   "name": "Brown",
+   "hexes": [
+    "#634232"
+   ]
+  },
+  {
+   "sku": "PA07034",
+   "product": "PolyLite PLA Pro",
+   "name": "Magenta",
+   "hexes": [
+    "#EF2F64"
+   ]
+  },
+  {
+   "sku": "PA07035",
+   "product": "PolyLite PLA Pro",
+   "name": "Light Red",
+   "hexes": [
+    "#DC605A"
+   ]
+  },
+  {
+   "sku": "PA07036",
+   "product": "PolyLite PLA Pro",
+   "name": "Black",
+   "hexes": [
+    "#161619"
+   ]
+  },
+  {
+   "sku": "PA07037",
+   "product": "PolyLite PLA Pro",
+   "name": "Gold",
+   "hexes": [
+    "#A66301"
+   ]
+  },
+  {
+   "sku": "PA07038",
+   "product": "PolyLite PLA Pro",
+   "name": "Bronze",
+   "hexes": [
+    "#AE6840"
+   ]
+  },
+  {
+   "sku": "PA07039",
+   "product": "PolyLite PLA Pro",
+   "name": "Metallic Blue",
+   "hexes": [
+    "#2D3449"
+   ]
+  },
+  {
+   "sku": "PA07040",
+   "product": "PolyLite PLA Pro",
+   "name": "Metallic Green"
+  },
+  {
+   "sku": "PA07042",
+   "product": "PolyLite PLA Pro",
+   "name": "Blue-Green",
+   "hexes": [
+    "#022B33"
+   ]
+  },
+  {
+   "sku": "PA07043",
+   "product": "PolyLite PLA Pro - 3D Print General",
+   "name": "3D Print General Flat Dark Earth",
+   "hexes": [
+    "#90785E"
+   ]
+  },
+  {
+   "sku": "PA07044",
+   "product": "PolyLite PLA Pro - LM Show",
+   "name": "LM Sparkle Green",
+   "hexes": [
+    "#434D43"
+   ]
+  },
+  {
+   "sku": "PA07045",
+   "product": "PolyLite CosPLA",
+   "name": "Version B - Sand-ability with extra durability",
+   "hexes": [
+    "#BCBABB"
+   ]
+  },
+  {
+   "sku": "PA07046",
+   "product": "PolyLite CosPLA",
+   "name": "Version B - Sand-ability with extra durability",
+   "hexes": [
+    "#BCBABB"
+   ]
+  },
+  {
+   "sku": "PA07047",
+   "product": "PolyLite PLA Pro",
+   "name": "Metallic Red",
+   "hexes": [
+    "#8D352C"
+   ]
+  },
+  {
+   "sku": "PA07048",
+   "product": "PolyLite PLA Pro",
+   "name": "White",
+   "hexes": [
+    "#EBECED"
+   ]
+  },
+  {
+   "sku": "PA07049",
+   "product": "PolyLite PLA Pro",
+   "name": "Grey",
+   "hexes": [
+    "#8D8E93"
+   ]
+  },
+  {
+   "sku": "PA07050",
+   "product": "PolyLite PLA Pro",
+   "name": "White",
+   "hexes": [
+    "#EBECED"
+   ]
+  },
+  {
+   "sku": "PA07051",
+   "product": "PolyLite PLA Pro",
+   "name": "Grey",
+   "hexes": [
+    "#8D8E93"
+   ]
+  },
+  {
+   "sku": "PA07052",
+   "product": "PolyLite PLA Pro",
+   "name": "Metallic Magenta",
+   "hexes": [
+    "#743063"
+   ]
+  },
+  {
+   "sku": "PA07053",
+   "product": "PolyLite PLA Pro",
+   "name": "Cold White",
+   "hexes": [
+    "#D6D5DC"
+   ]
+  },
+  {
+   "sku": "PA07054",
+   "product": "PolyLite PLA Pro",
+   "name": "Black*2"
+  },
+  {
+   "sku": "PA07055",
+   "product": "PolyLite PLA Pro",
+   "name": "Black*1 - White*1"
+  },
+  {
+   "sku": "PA07056",
+   "product": "PolyLite PLA Pro",
+   "name": "Dark Grey",
+   "hexes": [
+    "#545859"
+   ]
+  },
+  {
+   "sku": "PA07057",
+   "product": "PolyLite PLA Pro",
+   "name": "Metallic Chrome",
+   "hexes": [
+    "#505A5D"
+   ]
+  },
+  {
+   "sku": "PA07058",
+   "product": "PolyLite PLA Pro",
+   "name": "Metallic Black",
+   "hexes": [
+    "#0C0E0C"
+   ]
+  },
+  {
+   "sku": "PA08001",
+   "product": "PolyLite LW-PLA",
+   "name": "Black",
+   "hexes": [
+    "#2F2E30"
+   ]
+  },
+  {
+   "sku": "PA08002",
+   "product": "PolyLite LW-PLA",
+   "name": "White",
+   "hexes": [
+    "#EDD7BF"
+   ]
+  },
+  {
+   "sku": "PA08003",
+   "product": "PolyLite LW-PLA",
+   "name": "Grey",
+   "hexes": [
+    "#94918D"
+   ]
+  },
+  {
+   "sku": "PA08004",
+   "product": "PolyLite LW-PLA",
+   "name": "Wood",
+   "hexes": [
+    "#A8754B"
+   ]
+  },
+  {
+   "sku": "PA08005",
+   "product": "Wood PLA",
+   "name": "Wood",
+   "hexes": [
+    "#A8754B"
+   ]
+  },
+  {
+   "sku": "PA08006",
+   "product": "Wood PLA",
+   "name": "Wood",
+   "hexes": [
+    "#A8754B"
+   ]
+  },
+  {
+   "sku": "PA08007",
+   "product": "PolyLite LW-PLA",
+   "name": "Bright Orange",
+   "hexes": [
+    "#F07806"
+   ]
+  },
+  {
+   "sku": "PA08008",
+   "product": "PolyLite LW-PLA",
+   "name": "Bright Green",
+   "hexes": [
+    "#BDD901"
+   ]
+  },
+  {
+   "sku": "PA08009",
+   "product": "PolyLite LW-PLA",
+   "name": "Bright Yellow",
+   "hexes": [
+    "#F6BD01"
+   ]
+  },
+  {
+   "sku": "PA08010",
+   "product": "PolyLite LW-PLA",
+   "name": "Bright Red",
+   "hexes": [
+    "#D6001C"
+   ]
+  },
+  {
+   "sku": "PA09001",
+   "product": "PolyLite Gradient Luminous PLA",
+   "name": "Gradient Luminous Rainbow"
+  },
+  {
+   "sku": "PA10001",
+   "product": "PolyLite PLA-CF",
+   "name": "Black",
+   "hexes": [
+    "#302F31"
+   ]
+  },
+  {
+   "sku": "PA11003",
+   "product": "Draft PLA",
+   "name": "Black*10",
+   "hexes": [
+    "#16161A"
+   ]
+  },
+  {
+   "sku": "PA12001",
+   "product": "PolySonic PLA",
+   "name": "White",
+   "hexes": [
+    "#E2DEDB"
+   ]
+  },
+  {
+   "sku": "PA12002",
+   "product": "PolySonic PLA",
+   "name": "Black",
+   "hexes": [
+    "#0C0E0C"
+   ]
+  },
+  {
+   "sku": "PA12003",
+   "product": "PolySonic PLA",
+   "name": "Grey",
+   "hexes": [
+    "#73767D"
+   ]
+  },
+  {
+   "sku": "PA12004",
+   "product": "PolySonic PLA",
+   "name": "Blue",
+   "hexes": [
+    "#00307E"
+   ]
+  },
+  {
+   "sku": "PA12005",
+   "product": "PolySonic PLA",
+   "name": "Red",
+   "hexes": [
+    "#E62216"
+   ]
+  },
+  {
+   "sku": "PA12006",
+   "product": "PolySonic PLA",
+   "name": "Yellow",
+   "hexes": [
+    "#F4C032"
+   ]
+  },
+  {
+   "sku": "PA12007",
+   "product": "PolySonic PLA",
+   "name": "Orange",
+   "hexes": [
+    "#F97429"
+   ]
+  },
+  {
+   "sku": "PA12008",
+   "product": "PolySonic PLA",
+   "name": "Purple",
+   "hexes": [
+    "#6C5BB1"
+   ]
+  },
+  {
+   "sku": "PA12009",
+   "product": "PolySonic PLA",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#50DAE4"
+   ]
+  },
+  {
+   "sku": "PA12010",
+   "product": "PolySonic PLA",
+   "name": "Green",
+   "hexes": [
+    "#2D9E59"
+   ]
+  },
+  {
+   "sku": "PA13001",
+   "product": "Polymaker PLA Pro",
+   "name": "White",
+   "hexes": [
+    "#E2DEDB"
+   ]
+  },
+  {
+   "sku": "PA13002",
+   "product": "Polymaker PLA Pro",
+   "name": "Black",
+   "hexes": [
+    "#0C0E0C"
+   ]
+  },
+  {
+   "sku": "PA13003",
+   "product": "Polymaker PLA Pro",
+   "name": "Grey",
+   "hexes": [
+    "#959FA1"
+   ]
+  },
+  {
+   "sku": "PA13004",
+   "product": "Polymaker PLA Pro",
+   "name": "Blue",
+   "hexes": [
+    "#003287"
+   ]
+  },
+  {
+   "sku": "PA13005",
+   "product": "Polymaker PLA Pro",
+   "name": "Red",
+   "hexes": [
+    "#E20010"
+   ]
+  },
+  {
+   "sku": "PA13006",
+   "product": "Polymaker PLA Pro",
+   "name": "Yellow",
+   "hexes": [
+    "#F4C032"
+   ]
+  },
+  {
+   "sku": "PA13007",
+   "product": "Polymaker PLA Pro",
+   "name": "Orange",
+   "hexes": [
+    "#F97429"
+   ]
+  },
+  {
+   "sku": "PA13008",
+   "product": "Polymaker PLA Pro",
+   "name": "Purple",
+   "hexes": [
+    "#6C5BB1"
+   ]
+  },
+  {
+   "sku": "PA13009",
+   "product": "Polymaker PLA Pro",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#50DAE4"
+   ]
+  },
+  {
+   "sku": "PA13010",
+   "product": "Polymaker PLA Pro",
+   "name": "Green",
+   "hexes": [
+    "#2D9E59"
+   ]
+  },
+  {
+   "sku": "PA13011",
+   "product": "Polymaker PLA Pro",
+   "name": "Army Beige",
+   "hexes": [
+    "#D0B082"
+   ]
+  },
+  {
+   "sku": "PA13012",
+   "product": "Polymaker PLA Pro",
+   "name": "Army Green",
+   "hexes": [
+    "#757330"
+   ]
+  },
+  {
+   "sku": "PA13013",
+   "product": "Polymaker PLA Pro",
+   "name": "Blue-Green",
+   "hexes": [
+    "#113B41"
+   ]
+  },
+  {
+   "sku": "PA13014",
+   "product": "Polymaker PLA Pro",
+   "name": "Brown",
+   "hexes": [
+    "#7E5B45"
+   ]
+  },
+  {
+   "sku": "PA13015",
+   "product": "Polymaker PLA Pro",
+   "name": "Cold White",
+   "hexes": [
+    "#D9DAE0"
+   ]
+  },
+  {
+   "sku": "PA13016",
+   "product": "Polymaker PLA Pro",
+   "name": "Dark Grey",
+   "hexes": [
+    "#707674"
+   ]
+  },
+  {
+   "sku": "PA13017",
+   "product": "Polymaker PLA Pro",
+   "name": "Dark Purple",
+   "hexes": [
+    "#564C6D"
+   ]
+  },
+  {
+   "sku": "PA13018",
+   "product": "Polymaker PLA Pro",
+   "name": "Light Blue",
+   "hexes": [
+    "#B2DEEF"
+   ]
+  },
+  {
+   "sku": "PA13019",
+   "product": "Polymaker PLA Pro",
+   "name": "Light Green",
+   "hexes": [
+    "#AEDE9C"
+   ]
+  },
+  {
+   "sku": "PA13020",
+   "product": "Polymaker PLA Pro",
+   "name": "Light Red",
+   "hexes": [
+    "#EF6063"
+   ]
+  },
+  {
+   "sku": "PA13021",
+   "product": "Polymaker PLA Pro",
+   "name": "Light Yellow",
+   "hexes": [
+    "#EEE96F"
+   ]
+  },
+  {
+   "sku": "PA13022",
+   "product": "Polymaker PLA Pro",
+   "name": "Magenta",
+   "hexes": [
+    "#FB3D7C"
+   ]
+  },
+  {
+   "sku": "PA13023",
+   "product": "Polymaker PLA Pro",
+   "name": "Pink",
+   "hexes": [
+    "#F2BDD0"
+   ]
+  },
+  {
+   "sku": "PA13024",
+   "product": "Polymaker PLA Pro",
+   "name": "Metallic Bronze"
+  },
+  {
+   "sku": "PA13025",
+   "product": "Polymaker PLA Pro",
+   "name": "Metallic Gold"
+  },
+  {
+   "sku": "PA13026",
+   "product": "Polymaker PLA Pro",
+   "name": "Metallic Silver"
+  },
+  {
+   "sku": "PA13027",
+   "product": "Polymaker PLA Pro",
+   "name": "Metallic Black"
+  },
+  {
+   "sku": "PA13028",
+   "product": "Polymaker PLA Pro",
+   "name": "Metallic Blue"
+  },
+  {
+   "sku": "PA13029",
+   "product": "Polymaker PLA Pro",
+   "name": "Metallic Chrome"
+  },
+  {
+   "sku": "PA13030",
+   "product": "Polymaker PLA Pro",
+   "name": "Metallic Green"
+  },
+  {
+   "sku": "PA13031",
+   "product": "Polymaker PLA Pro",
+   "name": "Metallic Plum"
+  },
+  {
+   "sku": "PA13032",
+   "product": "Polymaker PLA Pro",
+   "name": "Metallic Dark Red"
+  },
+  {
+   "sku": "PA17001",
+   "product": "Polymaker HT-PLA",
+   "name": "Black",
+   "hexes": [
+    "#070707"
+   ]
+  },
+  {
+   "sku": "PA17002",
+   "product": "Polymaker HT-PLA",
+   "name": "White",
+   "hexes": [
+    "#F3F3F1"
+   ]
+  },
+  {
+   "sku": "PA17003",
+   "product": "Polymaker HT-PLA",
+   "name": "Grey",
+   "hexes": [
+    "#6C7477"
+   ]
+  },
+  {
+   "sku": "PA17004",
+   "product": "Polymaker HT-PLA",
+   "name": "Blue",
+   "hexes": [
+    "#0F5EA0"
+   ]
+  },
+  {
+   "sku": "PA17005",
+   "product": "Polymaker HT-PLA",
+   "name": "Red",
+   "hexes": [
+    "#AC0200"
+   ]
+  },
+  {
+   "sku": "PA17006",
+   "product": "Polymaker HT-PLA",
+   "name": "Green",
+   "hexes": [
+    "#05AF47"
+   ]
+  },
+  {
+   "sku": "PA17007",
+   "product": "Polymaker HT-PLA",
+   "name": "Teal",
+   "hexes": [
+    "#5FCCB7"
+   ]
+  },
+  {
+   "sku": "PA17008",
+   "product": "Polymaker HT-PLA",
+   "name": "Yellow",
+   "hexes": [
+    "#F0C940"
+   ]
+  },
+  {
+   "sku": "PA17009",
+   "product": "Polymaker HT-PLA",
+   "name": "Orange",
+   "hexes": [
+    "#DC6E38"
+   ]
+  },
+  {
+   "sku": "PA17010",
+   "product": "Polymaker HT-PLA",
+   "name": "Brown",
+   "hexes": [
+    "#4D2D1C"
+   ]
+  },
+  {
+   "sku": "PA17011",
+   "product": "Polymaker HT-PLA",
+   "name": "Gradient Rainbow"
+  },
+  {
+   "sku": "PA17012",
+   "product": "Polymaker HT-PLA",
+   "name": "Gradient Tropical"
+  },
+  {
+   "sku": "PA17013",
+   "product": "Polymaker HT-PLA",
+   "name": "Gradient Ice"
+  },
+  {
+   "sku": "PA17014",
+   "product": "Polymaker HT-PLA",
+   "name": "Gradient Fire"
+  },
+  {
+   "sku": "PA18001",
+   "product": "Polymaker HT-PLA-GF",
+   "name": "Black",
+   "hexes": [
+    "#18191B"
+   ]
+  },
+  {
+   "sku": "PA18002",
+   "product": "Polymaker HT-PLA-GF",
+   "name": "White",
+   "hexes": [
+    "#EFF0EB"
+   ]
+  },
+  {
+   "sku": "PA18003",
+   "product": "Polymaker HT-PLA-GF",
+   "name": "Grey",
+   "hexes": [
+    "#91999F"
+   ]
+  },
+  {
+   "sku": "PA18004",
+   "product": "Polymaker HT-PLA-GF",
+   "name": "Blue",
+   "hexes": [
+    "#084989"
+   ]
+  },
+  {
+   "sku": "PA18005",
+   "product": "Polymaker HT-PLA-GF",
+   "name": "Army Green",
+   "hexes": [
+    "#61583C"
+   ]
+  },
+  {
+   "sku": "PA18006",
+   "product": "Polymaker HT-PLA-GF",
+   "name": "Power Tool Yellow",
+   "hexes": [
+    "#F6B649"
+   ]
+  },
+  {
+   "sku": "PA18007",
+   "product": "Polymaker HT-PLA-GF",
+   "name": "Power Tool Red",
+   "hexes": [
+    "#CA4140"
+   ]
+  },
+  {
+   "sku": "PA18008",
+   "product": "Polymaker HT-PLA-GF",
+   "name": "Power Tool Green",
+   "hexes": [
+    "#CECF45"
+   ]
+  },
+  {
+   "sku": "PA18009",
+   "product": "Polymaker HT-PLA-GF",
+   "name": "Power Tool Teal",
+   "hexes": [
+    "#215966"
+   ]
+  },
+  {
+   "sku": "PB01001",
+   "product": "PolyLite PETG",
+   "name": "Black",
+   "hexes": [
+    "#161618"
+   ]
+  },
+  {
+   "sku": "PB01002",
+   "product": "PolyLite PETG",
+   "name": "White",
+   "hexes": [
+    "#EEEBEA"
+   ]
+  },
+  {
+   "sku": "PB01003",
+   "product": "PolyLite PETG",
+   "name": "Grey",
+   "hexes": [
+    "#8C8D93"
+   ]
+  },
+  {
+   "sku": "PB01004",
+   "product": "PolyLite PETG",
+   "name": "Red",
+   "hexes": [
+    "#D92B1C"
+   ]
+  },
+  {
+   "sku": "PB01005",
+   "product": "PolyLite PETG",
+   "name": "Green",
+   "hexes": [
+    "#007A44"
+   ]
+  },
+  {
+   "sku": "PB01006",
+   "product": "PolyLite PETG",
+   "name": "Yellow",
+   "hexes": [
+    "#EEA800"
+   ]
+  },
+  {
+   "sku": "PB01007",
+   "product": "PolyLite PETG",
+   "name": "Blue",
+   "hexes": [
+    "#013178"
+   ]
+  },
+  {
+   "sku": "PB01008",
+   "product": "PolyLite PETG",
+   "name": "Purple",
+   "hexes": [
+    "#6347A5"
+   ]
+  },
+  {
+   "sku": "PB01009",
+   "product": "PolyLite PETG",
+   "name": "Orange",
+   "hexes": [
+    "#F37715"
+   ]
+  },
+  {
+   "sku": "PB01010",
+   "product": "PolyLite PETG",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#0091A5"
+   ]
+  },
+  {
+   "sku": "PB01011",
+   "product": "PolyLite PETG",
+   "name": "Clear",
+   "hexes": [
+    "#DBD5D6"
+   ]
+  },
+  {
+   "sku": "PB01012",
+   "product": "PolyLite PETG",
+   "name": "Silver",
+   "hexes": [
+    "#5F5E5F"
+   ]
+  },
+  {
+   "sku": "PB01013",
+   "product": "PolyLite PETG",
+   "name": "Gold",
+   "hexes": [
+    "#A85D00"
+   ]
+  },
+  {
+   "sku": "PB01014",
+   "product": "PolyLite PETG",
+   "name": "Black",
+   "hexes": [
+    "#161618"
+   ]
+  },
+  {
+   "sku": "PB01015",
+   "product": "PolyLite PETG",
+   "name": "White",
+   "hexes": [
+    "#EEEBEA"
+   ]
+  },
+  {
+   "sku": "PB01016",
+   "product": "PolyLite PETG",
+   "name": "Grey",
+   "hexes": [
+    "#8C8D93"
+   ]
+  },
+  {
+   "sku": "PB01017",
+   "product": "PolyLite PETG",
+   "name": "Red",
+   "hexes": [
+    "#BE0017"
+   ]
+  },
+  {
+   "sku": "PB01018",
+   "product": "PolyLite PETG",
+   "name": "Green",
+   "hexes": [
+    "#37AD68"
+   ]
+  },
+  {
+   "sku": "PB01019",
+   "product": "PolyLite PETG",
+   "name": "Yellow",
+   "hexes": [
+    "#EEA800"
+   ]
+  },
+  {
+   "sku": "PB01020",
+   "product": "PolyLite PETG",
+   "name": "Blue",
+   "hexes": [
+    "#004B87"
+   ]
+  },
+  {
+   "sku": "PB01021",
+   "product": "PolyLite PETG",
+   "name": "Purple",
+   "hexes": [
+    "#292036"
+   ]
+  },
+  {
+   "sku": "PB01022",
+   "product": "PolyLite PETG",
+   "name": "Orange",
+   "hexes": [
+    "#F37715"
+   ]
+  },
+  {
+   "sku": "PB01023",
+   "product": "PolyLite PETG",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#0091A5"
+   ]
+  },
+  {
+   "sku": "PB01024",
+   "product": "PolyLite PETG",
+   "name": "Clear",
+   "hexes": [
+    "#DBD5D6"
+   ]
+  },
+  {
+   "sku": "PB01025",
+   "product": "PolyLite PETG",
+   "name": "Silver",
+   "hexes": [
+    "#5F5E5F"
+   ]
+  },
+  {
+   "sku": "PB01031",
+   "product": "PolyLite PETG",
+   "name": "Translucent Red",
+   "hexes": [
+    "#BE0017"
+   ]
+  },
+  {
+   "sku": "PB01032",
+   "product": "PolyLite PETG",
+   "name": "Translucent Blue",
+   "hexes": [
+    "#01062F"
+   ]
+  },
+  {
+   "sku": "PB01033",
+   "product": "PolyLite PETG",
+   "name": "Translucent Green",
+   "hexes": [
+    "#005F2F"
+   ]
+  },
+  {
+   "sku": "PB01034",
+   "product": "PolyLite PETG",
+   "name": "Dark Blue",
+   "hexes": [
+    "#151C2F"
+   ]
+  },
+  {
+   "sku": "PB01035",
+   "product": "PolyLite PETG",
+   "name": "Dark Green",
+   "hexes": [
+    "#2C342D"
+   ]
+  },
+  {
+   "sku": "PB01038",
+   "product": "PolyLite PETG",
+   "name": "Black*2",
+   "hexes": [
+    "#161618"
+   ]
+  },
+  {
+   "sku": "PB01039",
+   "product": "PolyLite PETG",
+   "name": "Magenta",
+   "hexes": [
+    "#C1015B"
+   ]
+  },
+  {
+   "sku": "PB01040",
+   "product": "PolyLite PETG",
+   "name": "Pink",
+   "hexes": [
+    "#EE94A5"
+   ]
+  },
+  {
+   "sku": "PB01041",
+   "product": "PolyLite PETG",
+   "name": "Lime",
+   "hexes": [
+    "#D8DB00"
+   ]
+  },
+  {
+   "sku": "PB01042",
+   "product": "PolyLite PETG",
+   "name": "Electric Blue",
+   "hexes": [
+    "#0076C1"
+   ]
+  },
+  {
+   "sku": "PB01043",
+   "product": "PolyLite PETG",
+   "name": "Black",
+   "hexes": [
+    "#161618"
+   ]
+  },
+  {
+   "sku": "PB01044",
+   "product": "PolyLite PETG",
+   "name": "Clear",
+   "hexes": [
+    "#DBD5D6"
+   ]
+  },
+  {
+   "sku": "PB01049",
+   "product": "PolyLite PETG",
+   "name": "White",
+   "hexes": [
+    "#EEEBEA"
+   ]
+  },
+  {
+   "sku": "PB01050",
+   "product": "PolyLite PETG",
+   "name": "Grey",
+   "hexes": [
+    "#8C8D93"
+   ]
+  },
+  {
+   "sku": "PB01051",
+   "product": "PolyLite PETG",
+   "name": "Clear",
+   "hexes": [
+    "#DBD5D6"
+   ]
+  },
+  {
+   "sku": "PB01052",
+   "product": "PolyLite PETG",
+   "name": "White",
+   "hexes": [
+    "#EEEBEA"
+   ]
+  },
+  {
+   "sku": "PB01053",
+   "product": "PolyLite PETG",
+   "name": "Grey",
+   "hexes": [
+    "#8C8D93"
+   ]
+  },
+  {
+   "sku": "PB01056",
+   "product": "PolyLite PETG",
+   "name": "Dark Grey",
+   "hexes": [
+    "#6C6D71"
+   ]
+  },
+  {
+   "sku": "PB01057",
+   "product": "PolyLite PETG",
+   "name": "Dark Purple",
+   "hexes": [
+    "#2E1A47"
+   ]
+  },
+  {
+   "sku": "PB02001",
+   "product": "PolyMax PETG",
+   "name": "Black",
+   "hexes": [
+    "#181718"
+   ]
+  },
+  {
+   "sku": "PB02002",
+   "product": "PolyMax PETG",
+   "name": "White",
+   "hexes": [
+    "#EFECEB"
+   ]
+  },
+  {
+   "sku": "PB02003",
+   "product": "PolyMax PETG",
+   "name": "Black",
+   "hexes": [
+    "#181718"
+   ]
+  },
+  {
+   "sku": "PB02004",
+   "product": "PolyMax PETG",
+   "name": "White",
+   "hexes": [
+    "#EFECEB"
+   ]
+  },
+  {
+   "sku": "PB03001",
+   "product": "PolyMax PETG-ESD",
+   "name": "Black",
+   "hexes": [
+    "#312F2F"
+   ]
+  },
+  {
+   "sku": "PB05001",
+   "product": "Polymaker PETG",
+   "name": "Black",
+   "hexes": [
+    "#070908"
+   ]
+  },
+  {
+   "sku": "PB05002",
+   "product": "Polymaker PETG",
+   "name": "White",
+   "hexes": [
+    "#F8FAF8"
+   ]
+  },
+  {
+   "sku": "PB05003",
+   "product": "Polymaker PETG",
+   "name": "Grey",
+   "hexes": [
+    "#A7AEB2"
+   ]
+  },
+  {
+   "sku": "PB05004",
+   "product": "Polymaker PETG",
+   "name": "Red",
+   "hexes": [
+    "#C23320"
+   ]
+  },
+  {
+   "sku": "PB05005",
+   "product": "Polymaker PETG",
+   "name": "Orange",
+   "hexes": [
+    "#DC7C40"
+   ]
+  },
+  {
+   "sku": "PB05006",
+   "product": "Polymaker PETG",
+   "name": "Blue",
+   "hexes": [
+    "#1B3B99"
+   ]
+  },
+  {
+   "sku": "PB05007",
+   "product": "Polymaker PETG",
+   "name": "Yellow",
+   "hexes": [
+    "#FBE95C"
+   ]
+  },
+  {
+   "sku": "PB05008",
+   "product": "Polymaker PETG",
+   "name": "Dark Grey",
+   "hexes": [
+    "#363D40"
+   ]
+  },
+  {
+   "sku": "PB05009",
+   "product": "Polymaker PETG",
+   "name": "Teal",
+   "hexes": [
+    "#74CABF"
+   ]
+  },
+  {
+   "sku": "PB05010",
+   "product": "Polymaker PETG",
+   "name": "Silver",
+   "hexes": [
+    "#707478"
+   ]
+  },
+  {
+   "sku": "PB05011",
+   "product": "Polymaker PETG",
+   "name": "Green",
+   "hexes": [
+    "#38B837"
+   ]
+  },
+  {
+   "sku": "PB05012",
+   "product": "Polymaker PETG",
+   "name": "Electric Blue",
+   "hexes": [
+    "#3E8CE4"
+   ]
+  },
+  {
+   "sku": "PB05013",
+   "product": "Polymaker PETG",
+   "name": "Purple",
+   "hexes": [
+    "#6947B8"
+   ]
+  },
+  {
+   "sku": "PB05014",
+   "product": "Polymaker PETG",
+   "name": "Dark Blue",
+   "hexes": [
+    "#081B36"
+   ]
+  },
+  {
+   "sku": "PB05015",
+   "product": "Polymaker PETG",
+   "name": "Lime",
+   "hexes": [
+    "#F8FF6B"
+   ]
+  },
+  {
+   "sku": "PB05016",
+   "product": "Polymaker PETG",
+   "name": "Dark Green",
+   "hexes": [
+    "#223622"
+   ]
+  },
+  {
+   "sku": "PB05017",
+   "product": "Polymaker PETG",
+   "name": "Magenta",
+   "hexes": [
+    "#DC5D8C"
+   ]
+  },
+  {
+   "sku": "PB05018",
+   "product": "Polymaker PETG",
+   "name": "Pink",
+   "hexes": [
+    "#F5BEE9"
+   ]
+  },
+  {
+   "sku": "PB05019",
+   "product": "Polymaker PETG",
+   "name": "Dark Purple",
+   "hexes": [
+    "#352A3B"
+   ]
+  },
+  {
+   "sku": "PB05020",
+   "product": "Polymaker PETG",
+   "name": "Army Brown",
+   "hexes": [
+    "#1F1813"
+   ]
+  },
+  {
+   "sku": "PB05021",
+   "product": "Polymaker PETG",
+   "name": "Galaxy Black"
+  },
+  {
+   "sku": "PB05022",
+   "product": "Polymaker PETG",
+   "name": "Galaxy Dark Grey"
+  },
+  {
+   "sku": "PB05023",
+   "product": "Polymaker PETG",
+   "name": "Galaxy Blue"
+  },
+  {
+   "sku": "PB05024",
+   "product": "Polymaker PETG",
+   "name": "Galaxy Red"
+  },
+  {
+   "sku": "PC01001",
+   "product": "PolyLite PC",
+   "name": "Transparent",
+   "hexes": [
+    "#DAD5D4"
+   ]
+  },
+  {
+   "sku": "PC01002",
+   "product": "PolyLite PC",
+   "name": "Transparent",
+   "hexes": [
+    "#E8D9C3"
+   ]
+  },
+  {
+   "sku": "PC01003",
+   "product": "PolyLite PC",
+   "name": "Transparent",
+   "hexes": [
+    "#DAD5D4"
+   ]
+  },
+  {
+   "sku": "PC01004",
+   "product": "PolyLite PC",
+   "name": "Transparent",
+   "hexes": [
+    "#E8D9C3"
+   ]
+  },
+  {
+   "sku": "PC02001",
+   "product": "PolyMax PC",
+   "name": "Black",
+   "hexes": [
+    "#151518"
+   ]
+  },
+  {
+   "sku": "PC02002",
+   "product": "PolyMax PC",
+   "name": "White",
+   "hexes": [
+    "#DCD7D5"
+   ]
+  },
+  {
+   "sku": "PC02003",
+   "product": "PolyMax PC",
+   "name": "Black",
+   "hexes": [
+    "#181617"
+   ]
+  },
+  {
+   "sku": "PC02004",
+   "product": "PolyMax PC",
+   "name": "White",
+   "hexes": [
+    "#DDD7D3"
+   ]
+  },
+  {
+   "sku": "PC02005",
+   "product": "PolyMax PC",
+   "name": "Grey",
+   "hexes": [
+    "#A5A5AB"
+   ]
+  },
+  {
+   "sku": "PC02006",
+   "product": "PolyMax PC",
+   "name": "White",
+   "hexes": [
+    "#DDD7D3"
+   ]
+  },
+  {
+   "sku": "PC02007",
+   "product": "PolyMax PC",
+   "name": "Black",
+   "hexes": [
+    "#181617"
+   ]
+  },
+  {
+   "sku": "PC02008",
+   "product": "PolyMax PC",
+   "name": "White",
+   "hexes": [
+    "#DDD7D3"
+   ]
+  },
+  {
+   "sku": "PC02009",
+   "product": "PolyMax PC",
+   "name": "Black",
+   "hexes": [
+    "#181617"
+   ]
+  },
+  {
+   "sku": "PC02010",
+   "product": "PolyMax PC",
+   "name": "Red",
+   "hexes": [
+    "#DA2A1E"
+   ]
+  },
+  {
+   "sku": "PC02011",
+   "product": "PolyMax PC",
+   "name": "Blue",
+   "hexes": [
+    "#005DAB"
+   ]
+  },
+  {
+   "sku": "PC03001",
+   "product": "PolyMax PC-FR",
+   "name": "Black",
+   "hexes": [
+    "#151619"
+   ]
+  },
+  {
+   "sku": "PC03002",
+   "product": "PolyMax PC-FR",
+   "name": "White",
+   "hexes": [
+    "#DDD7D3"
+   ]
+  },
+  {
+   "sku": "PC03003",
+   "product": "PolyMax PC-FR",
+   "name": "Black",
+   "hexes": [
+    "#181617"
+   ]
+  },
+  {
+   "sku": "PC03004",
+   "product": "PolyMax PC-FR",
+   "name": "White",
+   "hexes": [
+    "#DDD7D3"
+   ]
+  },
+  {
+   "sku": "PC04001",
+   "product": "Polymaker PC-ABS",
+   "name": "Black",
+   "hexes": [
+    "#181617"
+   ]
+  },
+  {
+   "sku": "PC04002",
+   "product": "Polymaker PC-ABS",
+   "name": "White",
+   "hexes": [
+    "#DDD6D4"
+   ]
+  },
+  {
+   "sku": "PC04003",
+   "product": "Polymaker PC-ABS",
+   "name": "Black",
+   "hexes": [
+    "#181617"
+   ]
+  },
+  {
+   "sku": "PC04004",
+   "product": "Polymaker PC-ABS",
+   "name": "White",
+   "hexes": [
+    "#161619"
+   ]
+  },
+  {
+   "sku": "PC05001",
+   "product": "Polymaker PC-PBT",
+   "name": "Black",
+   "hexes": [
+    "#161619"
+   ]
+  },
+  {
+   "sku": "PC05002",
+   "product": "Polymaker PC-PBT",
+   "name": "Natural",
+   "hexes": [
+    "#EADAC2"
+   ]
+  },
+  {
+   "sku": "PC05003",
+   "product": "Polymaker PC-PBT",
+   "name": "Black",
+   "hexes": [
+    "#161619"
+   ]
+  },
+  {
+   "sku": "PC05004",
+   "product": "Polymaker PC-PBT",
+   "name": "Natural",
+   "hexes": [
+    "#E9DFD3"
+   ]
+  },
+  {
+   "sku": "PC1001001",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Silk Black",
+   "hexes": [
+    "#363538"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PC1001002",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Silk Blue",
+   "hexes": [
+    "#4999C9"
+   ],
+   "td": 1.3
+  },
+  {
+   "sku": "PC1001003",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Silk Brass",
+   "hexes": [
+    "#968162"
+   ],
+   "td": 0.8
+  },
+  {
+   "sku": "PC1001004",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Silk Chrome",
+   "hexes": [
+    "#85898B"
+   ],
+   "td": 0.3
+  },
+  {
+   "sku": "PC1001005",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Silk Dark Blue",
+   "hexes": [
+    "#23599A"
+   ],
+   "td": 0.6
+  },
+  {
+   "sku": "PC1001006",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Silk Green",
+   "hexes": [
+    "#55B687"
+   ],
+   "td": 1.0
+  },
+  {
+   "sku": "PC1001007",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Silk Gunmetal Grey",
+   "hexes": [
+    "#676B6A"
+   ],
+   "td": 0.5
+  },
+  {
+   "sku": "PC1001008",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Silk Light Blue",
+   "hexes": [
+    "#4CC1CB"
+   ],
+   "td": 1.9
+  },
+  {
+   "sku": "PC1001009",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Silk Lime",
+   "hexes": [
+    "#C4CF4C"
+   ],
+   "td": 2.9
+  },
+  {
+   "sku": "PC1001010",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Silk Magenta",
+   "hexes": [
+    "#AA538E"
+   ],
+   "td": 2.1
+  },
+  {
+   "sku": "PC1001011",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Silk Orange",
+   "hexes": [
+    "#EB6232"
+   ],
+   "td": 3.0
+  },
+  {
+   "sku": "PC1001012",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Silk Peridot Green",
+   "hexes": [
+    "#7F865B"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PC1001013",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Silk Periwinkle",
+   "hexes": [
+    "#768EC7"
+   ],
+   "td": 1.3
+  },
+  {
+   "sku": "PC1001014",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Silk Quartz Pink",
+   "hexes": [
+    "#DBBBBB"
+   ],
+   "td": 3.5
+  },
+  {
+   "sku": "PC1001015",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Silk Purple",
+   "hexes": [
+    "#786BB0"
+   ],
+   "td": 1.2
+  },
+  {
+   "sku": "PC1001016",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Silk Red",
+   "hexes": [
+    "#C1443F"
+   ],
+   "td": 1.3
+  },
+  {
+   "sku": "PC1001017",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Silk Rose",
+   "hexes": [
+    "#CF6076"
+   ],
+   "td": 2.5
+  },
+  {
+   "sku": "PC1001018",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Silk Rose Gold",
+   "hexes": [
+    "#CBB0B1"
+   ],
+   "td": 2.2
+  },
+  {
+   "sku": "PC1001019",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Silk Teal",
+   "hexes": [
+    "#66C2B6"
+   ],
+   "td": 1.8
+  },
+  {
+   "sku": "PC1001020",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Silk White",
+   "hexes": [
+    "#DFE4E4"
+   ],
+   "td": 4.2
+  },
+  {
+   "sku": "PC1001021",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Silk Yellow",
+   "hexes": [
+    "#EEC810"
+   ],
+   "td": 3.6
+  },
+  {
+   "sku": "PC1001022",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Pink",
+   "hexes": [
+    "#F1A1AF"
+   ],
+   "td": 1.8
+  },
+  {
+   "sku": "PC1001023",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Purple",
+   "hexes": [
+    "#6C47B2"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PC1001024",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Wine Red",
+   "hexes": [
+    "#D60212"
+   ],
+   "td": 1.0
+  },
+  {
+   "sku": "PC1001025",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Jungle Green",
+   "hexes": [
+    "#4E742D"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PC1001026",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Olive Green",
+   "hexes": [
+    "#948902"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PC1001027",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Beige",
+   "hexes": [
+    "#C2AB72"
+   ],
+   "td": 0.5
+  },
+  {
+   "sku": "PC1001028",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Aqua Blue",
+   "hexes": [
+    "#5EBDDB"
+   ],
+   "td": 1.5
+  },
+  {
+   "sku": "PC1001029",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Stone Blue",
+   "hexes": [
+    "#487BA2"
+   ],
+   "td": 0.3
+  },
+  {
+   "sku": "PC1001030",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Lemon Yellow",
+   "hexes": [
+    "#EED230"
+   ],
+   "td": 3.3
+  },
+  {
+   "sku": "PC1001031",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Cream",
+   "hexes": [
+    "#EED1A8"
+   ],
+   "td": 1.5
+  },
+  {
+   "sku": "PC1001032",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Lime Green",
+   "hexes": [
+    "#D5D701"
+   ],
+   "td": 2.3
+  },
+  {
+   "sku": "PC1001033",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Magenta",
+   "hexes": [
+    "#F24574"
+   ],
+   "td": 1.4
+  },
+  {
+   "sku": "PC1001034",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Azure Blue",
+   "hexes": [
+    "#0066D9"
+   ],
+   "td": 1.5
+  },
+  {
+   "sku": "PC1001035",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Tan",
+   "hexes": [
+    "#A79E82"
+   ],
+   "td": 0.7
+  },
+  {
+   "sku": "PC1001036",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Dark Olive Drab",
+   "hexes": [
+    "#575B54"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PC1001037",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Dark Grey",
+   "hexes": [
+    "#485259"
+   ],
+   "td": 0.2
+  },
+  {
+   "sku": "PC1002001",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Sky Blue",
+   "hexes": [
+    "#1AC5FC"
+   ],
+   "td": 1.3
+  },
+  {
+   "sku": "PC1002002",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Lotus Pink",
+   "hexes": [
+    "#DD76C0"
+   ],
+   "td": 2.0
+  },
+  {
+   "sku": "PC1002003",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Army Brown",
+   "hexes": [
+    "#795A4D"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PC1002004",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Army Light Green",
+   "hexes": [
+    "#AB8C02"
+   ],
+   "td": 0.8
+  },
+  {
+   "sku": "PC1002005",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Army Purple",
+   "hexes": [
+    "#36364A"
+   ],
+   "td": 0.2
+  },
+  {
+   "sku": "PC1002006",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Ash Grey",
+   "hexes": [
+    "#485155"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PC1002007",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Electric Indigo",
+   "hexes": [
+    "#6858A9"
+   ],
+   "td": 0.3
+  },
+  {
+   "sku": "PC1002008",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Lime Green",
+   "hexes": [
+    "#D7D602"
+   ],
+   "td": 2.4
+  },
+  {
+   "sku": "PC1002009",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Muted Blue",
+   "hexes": [
+    "#5F778E"
+   ],
+   "td": 0.5
+  },
+  {
+   "sku": "PC1002010",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Muted Green",
+   "td": 0.5
+  },
+  {
+   "sku": "PC1002011",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Muted Purple",
+   "hexes": [
+    "#7C5C78"
+   ],
+   "td": 0.6
+  },
+  {
+   "sku": "PC1002012",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Muted Red",
+   "hexes": [
+    "#D84B2E"
+   ],
+   "td": 1.4
+  },
+  {
+   "sku": "PC1002013",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Muted White",
+   "hexes": [
+    "#BBADA4"
+   ],
+   "td": 0.7
+  },
+  {
+   "sku": "PC1002014",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Pastel Banana",
+   "hexes": [
+    "#F7D475"
+   ],
+   "td": 3.6
+  },
+  {
+   "sku": "PC1002015",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Pastel Candy",
+   "hexes": [
+    "#F0D6D9"
+   ],
+   "td": 2.9
+  },
+  {
+   "sku": "PC1002016",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Pastel Ice",
+   "hexes": [
+    "#A4D0DF"
+   ],
+   "td": 1.8
+  },
+  {
+   "sku": "PC1002017",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Pastel Mint",
+   "hexes": [
+    "#D2DEBB"
+   ],
+   "td": 2.9
+  },
+  {
+   "sku": "PC1002018",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Pastel Peach",
+   "hexes": [
+    "#F6BF8B"
+   ],
+   "td": 3.3
+  },
+  {
+   "sku": "PC1002019",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Pastel Watermelon",
+   "hexes": [
+    "#EE474B"
+   ],
+   "td": 2.4
+  },
+  {
+   "sku": "PC1002020",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Pastel Periwinkle",
+   "hexes": [
+    "#ADB4E6"
+   ],
+   "td": 1.5
+  },
+  {
+   "sku": "PC1002021",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Sunshine Yellow",
+   "hexes": [
+    "#F9DA07"
+   ],
+   "td": 2.3
+  },
+  {
+   "sku": "PC1002022",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Electric Magenta",
+   "hexes": [
+    "#D33A6D"
+   ],
+   "td": 2.5
+  },
+  {
+   "sku": "PC1002023",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Grass Green",
+   "hexes": [
+    "#32BC46"
+   ],
+   "td": 0.6
+  },
+  {
+   "sku": "PC1002024",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Seafoam Green",
+   "hexes": [
+    "#7DD4BE"
+   ],
+   "td": 1.1
+  },
+  {
+   "sku": "PC1002025",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Raspberry Blue",
+   "hexes": [
+    "#5472D0"
+   ],
+   "td": 0.5
+  },
+  {
+   "sku": "PC1002026",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Wine Burgundy",
+   "hexes": [
+    "#753E4C"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PC1002027",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Emerald Green",
+   "hexes": [
+    "#22624F"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PC1002028",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Muted Moss",
+   "hexes": [
+    "#92864F"
+   ],
+   "td": 0.3
+  },
+  {
+   "sku": "PC1002029",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Muted Teal",
+   "hexes": [
+    "#5D989E"
+   ],
+   "td": 0.4
+  },
+  {
+   "sku": "PC1002030",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Muted Mauve",
+   "hexes": [
+    "#A36D82"
+   ],
+   "td": 0.9
+  },
+  {
+   "sku": "PC1002031",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Muted Terracotta",
+   "hexes": [
+    "#C06443"
+   ],
+   "td": 0.8
+  },
+  {
+   "sku": "PC1002032",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Pastel Coral",
+   "hexes": [
+    "#F09A7E"
+   ],
+   "td": 2.3
+  },
+  {
+   "sku": "PC1002033",
+   "product": "Panchroma\u2122 PLA",
+   "name": "Matte Pastel Beige",
+   "hexes": [
+    "#E4D0B0"
+   ],
+   "td": 1.6
+  },
+  {
+   "sku": "PD01001",
+   "product": "PolyFlex TPU95",
+   "name": "Black",
+   "hexes": [
+    "#16161A"
+   ]
+  },
+  {
+   "sku": "PD01002",
+   "product": "PolyFlex TPU95",
+   "name": "White",
+   "hexes": [
+    "#F0EBE8"
+   ]
+  },
+  {
+   "sku": "PD01003",
+   "product": "PolyFlex TPU95",
+   "name": "Red",
+   "hexes": [
+    "#F3442B"
+   ]
+  },
+  {
+   "sku": "PD01004",
+   "product": "PolyFlex TPU95",
+   "name": "Yellow",
+   "hexes": [
+    "#EDA900"
+   ]
+  },
+  {
+   "sku": "PD01005",
+   "product": "PolyFlex TPU95",
+   "name": "Blue",
+   "hexes": [
+    "#338CC7"
+   ]
+  },
+  {
+   "sku": "PD01006",
+   "product": "PolyFlex TPU95",
+   "name": "Orange",
+   "hexes": [
+    "#F57517"
+   ]
+  },
+  {
+   "sku": "PD01007",
+   "product": "PolyFlex TPU95",
+   "name": "Black",
+   "hexes": [
+    "#16161A"
+   ]
+  },
+  {
+   "sku": "PD01008",
+   "product": "PolyFlex TPU95",
+   "name": "White",
+   "hexes": [
+    "#F0EBE8"
+   ]
+  },
+  {
+   "sku": "PD01009",
+   "product": "PolyFlex TPU95",
+   "name": "Red",
+   "hexes": [
+    "#F3442B"
+   ]
+  },
+  {
+   "sku": "PD01010",
+   "product": "PolyFlex TPU95",
+   "name": "Yellow",
+   "hexes": [
+    "#EDA900"
+   ]
+  },
+  {
+   "sku": "PD01011",
+   "product": "PolyFlex TPU95",
+   "name": "Blue",
+   "hexes": [
+    "#338CC7"
+   ]
+  },
+  {
+   "sku": "PD01012",
+   "product": "PolyFlex TPU95",
+   "name": "Orange",
+   "hexes": [
+    "#F57517"
+   ]
+  },
+  {
+   "sku": "PD01015",
+   "product": "PolyFlex TPU95",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#5FB5AC"
+   ]
+  },
+  {
+   "sku": "PD01016",
+   "product": "PolyFlex TPU95",
+   "name": "Grey",
+   "hexes": [
+    "#80837C"
+   ]
+  },
+  {
+   "sku": "PD02001",
+   "product": "PolyFlex TPU90",
+   "name": "Black",
+   "hexes": [
+    "#16161A"
+   ]
+  },
+  {
+   "sku": "PD02002",
+   "product": "PolyFlex TPU90",
+   "name": "White",
+   "hexes": [
+    "#F0EBE8"
+   ]
+  },
+  {
+   "sku": "PD02003",
+   "product": "PolyFlex TPU90",
+   "name": "Grey",
+   "hexes": [
+    "#80837C"
+   ]
+  },
+  {
+   "sku": "PD02004",
+   "product": "PolyFlex TPU90",
+   "name": "Clear",
+   "hexes": [
+    "#DBD5D6"
+   ]
+  },
+  {
+   "sku": "PD02005",
+   "product": "PolyFlex TPU90",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#01ACBA"
+   ]
+  },
+  {
+   "sku": "PD02006",
+   "product": "PolyFlex TPU90",
+   "name": "Black",
+   "hexes": [
+    "#16161A"
+   ]
+  },
+  {
+   "sku": "PD02007",
+   "product": "PolyFlex TPU90",
+   "name": "White",
+   "hexes": [
+    "#F0EBE8"
+   ]
+  },
+  {
+   "sku": "PD02008",
+   "product": "PolyFlex TPU90",
+   "name": "Grey",
+   "hexes": [
+    "#80837C"
+   ]
+  },
+  {
+   "sku": "PD02009",
+   "product": "PolyFlex TPU90",
+   "name": "Clear",
+   "hexes": [
+    "#DBD5D6"
+   ]
+  },
+  {
+   "sku": "PD02010",
+   "product": "PolyFlex TPU90",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#01ACBA"
+   ]
+  },
+  {
+   "sku": "PD03001",
+   "product": "PolyFlex TPU95-HF",
+   "name": "Black",
+   "hexes": [
+    "#16161A"
+   ]
+  },
+  {
+   "sku": "PD03002",
+   "product": "PolyFlex TPU95-HF",
+   "name": "White",
+   "hexes": [
+    "#F0EBE8"
+   ]
+  },
+  {
+   "sku": "PD03003",
+   "product": "PolyFlex TPU95-HF",
+   "name": "Clear",
+   "hexes": [
+    "#DBD5D6"
+   ]
+  },
+  {
+   "sku": "PD03004",
+   "product": "PolyFlex TPU95-HF",
+   "name": "Black",
+   "hexes": [
+    "#16161A"
+   ]
+  },
+  {
+   "sku": "PD03005",
+   "product": "PolyFlex TPU95-HF",
+   "name": "White",
+   "hexes": [
+    "#F0EBE8"
+   ]
+  },
+  {
+   "sku": "PD03006",
+   "product": "PolyFlex TPU95-HF",
+   "name": "Clear",
+   "hexes": [
+    "#DBD5D6"
+   ]
+  },
+  {
+   "sku": "PD04001",
+   "product": "PolySupport",
+   "name": "Pearl White",
+   "hexes": [
+    "#F6F1EC"
+   ]
+  },
+  {
+   "sku": "PD04002",
+   "product": "PolySupport",
+   "name": "Pearl White",
+   "hexes": [
+    "#F6F1EC"
+   ]
+  },
+  {
+   "sku": "PE01001",
+   "product": "PolyLite ABS",
+   "name": "Black",
+   "hexes": [
+    "#16161A"
+   ]
+  },
+  {
+   "sku": "PE01002",
+   "product": "PolyLite ABS",
+   "name": "White",
+   "hexes": [
+    "#F0EBE8"
+   ]
+  },
+  {
+   "sku": "PE01003",
+   "product": "PolyLite ABS",
+   "name": "Grey",
+   "hexes": [
+    "#8C8D93"
+   ]
+  },
+  {
+   "sku": "PE01004",
+   "product": "PolyLite ABS",
+   "name": "Red",
+   "hexes": [
+    "#F3442B"
+   ]
+  },
+  {
+   "sku": "PE01005",
+   "product": "PolyLite ABS",
+   "name": "Green",
+   "hexes": [
+    "#479161"
+   ]
+  },
+  {
+   "sku": "PE01006",
+   "product": "PolyLite ABS",
+   "name": "Yellow",
+   "hexes": [
+    "#EDA900"
+   ]
+  },
+  {
+   "sku": "PE01007",
+   "product": "PolyLite ABS",
+   "name": "Blue",
+   "hexes": [
+    "#003276"
+   ]
+  },
+  {
+   "sku": "PE01008",
+   "product": "PolyLite ABS",
+   "name": "Purple",
+   "hexes": [
+    "#6545A5"
+   ]
+  },
+  {
+   "sku": "PE01009",
+   "product": "PolyLite ABS",
+   "name": "Orange",
+   "hexes": [
+    "#F57517"
+   ]
+  },
+  {
+   "sku": "PE01010",
+   "product": "PolyLite ABS",
+   "name": "Teal",
+   "hexes": [
+    "#01ACBA"
+   ]
+  },
+  {
+   "sku": "PE01011",
+   "product": "PolyLite ABS",
+   "name": "Black",
+   "hexes": [
+    "#16161A"
+   ]
+  },
+  {
+   "sku": "PE01012",
+   "product": "PolyLite ABS",
+   "name": "White",
+   "hexes": [
+    "#F0EBE8"
+   ]
+  },
+  {
+   "sku": "PE01013",
+   "product": "PolyLite ABS",
+   "name": "Grey",
+   "hexes": [
+    "#8C8D93"
+   ]
+  },
+  {
+   "sku": "PE01014",
+   "product": "PolyLite ABS",
+   "name": "Red",
+   "hexes": [
+    "#F3442B"
+   ]
+  },
+  {
+   "sku": "PE01015",
+   "product": "PolyLite ABS",
+   "name": "Green",
+   "hexes": [
+    "#479161"
+   ]
+  },
+  {
+   "sku": "PE01016",
+   "product": "PolyLite ABS",
+   "name": "Yellow",
+   "hexes": [
+    "#EDA900"
+   ]
+  },
+  {
+   "sku": "PE01017",
+   "product": "PolyLite ABS",
+   "name": "Blue",
+   "hexes": [
+    "#003276"
+   ]
+  },
+  {
+   "sku": "PE01018",
+   "product": "PolyLite ABS",
+   "name": "Purple",
+   "hexes": [
+    "#6545A5"
+   ]
+  },
+  {
+   "sku": "PE01019",
+   "product": "PolyLite ABS",
+   "name": "Orange",
+   "hexes": [
+    "#F57517"
+   ]
+  },
+  {
+   "sku": "PE01020",
+   "product": "PolyLite ABS",
+   "name": "Teal",
+   "hexes": [
+    "#01ACBA"
+   ]
+  },
+  {
+   "sku": "PE01024",
+   "product": "PolyLite ABS",
+   "name": "Grey",
+   "hexes": [
+    "#8C8D93"
+   ]
+  },
+  {
+   "sku": "PE01028",
+   "product": "PolyLite ABS",
+   "name": "Dark Grey",
+   "hexes": [
+    "#474648"
+   ]
+  },
+  {
+   "sku": "PE01029",
+   "product": "PolyLite ABS",
+   "name": "Pink",
+   "hexes": [
+    "#FFA7C4"
+   ]
+  },
+  {
+   "sku": "PE01030",
+   "product": "PolyLite ABS",
+   "name": "Lime",
+   "hexes": [
+    "#C4D100"
+   ]
+  },
+  {
+   "sku": "PE01031",
+   "product": "PolyLite ABS",
+   "name": "Light Blue",
+   "hexes": [
+    "#8EDBEB"
+   ]
+  },
+  {
+   "sku": "PE01032",
+   "product": "PolyLite ABS",
+   "name": "Gold",
+   "hexes": [
+    "#BD6200"
+   ]
+  },
+  {
+   "sku": "PE01033",
+   "product": "PolyLite ABS",
+   "name": "Black",
+   "hexes": [
+    "#16161A"
+   ]
+  },
+  {
+   "sku": "PE01035",
+   "product": "PolyLite ABS",
+   "name": "Galaxy Orange",
+   "hexes": [
+    "#F57517"
+   ]
+  },
+  {
+   "sku": "PE01036",
+   "product": "PolyLite ABS",
+   "name": "Galaxy Purple",
+   "hexes": [
+    "#6545A5"
+   ]
+  },
+  {
+   "sku": "PE01037",
+   "product": "PolyLite ABS",
+   "name": "Galaxy Dark Grey",
+   "hexes": [
+    "#474648"
+   ]
+  },
+  {
+   "sku": "PE01038",
+   "product": "PolyLite ABS",
+   "name": "Galaxy Teal",
+   "hexes": [
+    "#2DCCD3"
+   ]
+  },
+  {
+   "sku": "PE01039",
+   "product": "PolyLite ABS",
+   "name": "Grey",
+   "hexes": [
+    "#8C8D93"
+   ]
+  },
+  {
+   "sku": "PE01040",
+   "product": "PolyLite ABS",
+   "name": "Black",
+   "hexes": [
+    "#16161A"
+   ]
+  },
+  {
+   "sku": "PE01043",
+   "product": "PolyLite ABS",
+   "name": "White",
+   "hexes": [
+    "#F0EBE8"
+   ]
+  },
+  {
+   "sku": "PE01045",
+   "product": "PolyLite ABS",
+   "name": "White",
+   "hexes": [
+    "#F0EBE8"
+   ]
+  },
+  {
+   "sku": "PE01047",
+   "product": "PolyLite ABS",
+   "name": "Black*2",
+   "hexes": [
+    "#16161A"
+   ]
+  },
+  {
+   "sku": "PE01048",
+   "product": "PolyLite ABS",
+   "name": "Neon Magenta",
+   "hexes": [
+    "#F6162E"
+   ]
+  },
+  {
+   "sku": "PE01049",
+   "product": "PolyLite ABS",
+   "name": "Neon Orange",
+   "hexes": [
+    "#FE602B"
+   ]
+  },
+  {
+   "sku": "PE01050",
+   "product": "PolyLite ABS",
+   "name": "Neon Yellow",
+   "hexes": [
+    "#FFC001"
+   ]
+  },
+  {
+   "sku": "PE01051",
+   "product": "PolyLite ABS",
+   "name": "Neon Green",
+   "hexes": [
+    "#77F0A2"
+   ]
+  },
+  {
+   "sku": "PE01052",
+   "product": "PolyLite ABS",
+   "name": "Metallic Blue",
+   "hexes": [
+    "#0D2441"
+   ]
+  },
+  {
+   "sku": "PE01053",
+   "product": "PolyLite ABS",
+   "name": "Metallic Green",
+   "hexes": [
+    "#3D441E"
+   ]
+  },
+  {
+   "sku": "PE01054",
+   "product": "PolyLite ABS",
+   "name": "Dark Purple",
+   "hexes": [
+    "#46394E"
+   ]
+  },
+  {
+   "sku": "PE01055",
+   "product": "PolyLite ABS",
+   "name": "Galaxy Black",
+   "hexes": [
+    "#212721"
+   ]
+  },
+  {
+   "sku": "PE01056",
+   "product": "PolyLite ABS",
+   "name": "Natural",
+   "hexes": [
+    "#F7F5ED"
+   ]
+  },
+  {
+   "sku": "PE02001",
+   "product": "Polymaker ABS Pro",
+   "name": "Black"
+  },
+  {
+   "sku": "PE02002",
+   "product": "Polymaker ABS Pro",
+   "name": "White"
+  },
+  {
+   "sku": "PE02003",
+   "product": "Polymaker ABS Pro",
+   "name": "Grey"
+  },
+  {
+   "sku": "PE02004",
+   "product": "Polymaker ABS Pro",
+   "name": "Blue"
+  },
+  {
+   "sku": "PE02005",
+   "product": "Polymaker ABS Pro",
+   "name": "Red"
+  },
+  {
+   "sku": "PE02006",
+   "product": "Polymaker ABS Pro",
+   "name": "Orange"
+  },
+  {
+   "sku": "PE02007",
+   "product": "Polymaker ABS Pro",
+   "name": "Yellow"
+  },
+  {
+   "sku": "PE02008",
+   "product": "Polymaker ABS Pro",
+   "name": "Polymaker Teal"
+  },
+  {
+   "sku": "PE02009",
+   "product": "Polymaker ABS Pro",
+   "name": "Dark Grey"
+  },
+  {
+   "sku": "PE02010",
+   "product": "Polymaker ABS Pro",
+   "name": "Green"
+  },
+  {
+   "sku": "PF01001",
+   "product": "Polymaker ASA",
+   "name": "Black",
+   "hexes": [
+    "#17161A"
+   ]
+  },
+  {
+   "sku": "PF01002",
+   "product": "Polymaker ASA",
+   "name": "White",
+   "hexes": [
+    "#DBD7D6"
+   ]
+  },
+  {
+   "sku": "PF01003",
+   "product": "Polymaker ASA",
+   "name": "Grey",
+   "hexes": [
+    "#8D8E92"
+   ]
+  },
+  {
+   "sku": "PF01004",
+   "product": "Polymaker ASA",
+   "name": "Red",
+   "hexes": [
+    "#D82B1C"
+   ]
+  },
+  {
+   "sku": "PF01005",
+   "product": "Polymaker ASA",
+   "name": "Blue",
+   "hexes": [
+    "#003576"
+   ]
+  },
+  {
+   "sku": "PF01006",
+   "product": "Polymaker ASA",
+   "name": "Natural",
+   "hexes": [
+    "#DFD3C3"
+   ]
+  },
+  {
+   "sku": "PF01007",
+   "product": "Polymaker ASA",
+   "name": "Orange",
+   "hexes": [
+    "#F37716"
+   ]
+  },
+  {
+   "sku": "PF01008",
+   "product": "Polymaker ASA",
+   "name": "Purple",
+   "hexes": [
+    "#5F4793"
+   ]
+  },
+  {
+   "sku": "PF01009",
+   "product": "Polymaker ASA",
+   "name": "Army Green",
+   "hexes": [
+    "#5C5E31"
+   ]
+  },
+  {
+   "sku": "PF01010",
+   "product": "PolyLite ASA",
+   "name": "Black",
+   "hexes": [
+    "#17161A"
+   ]
+  },
+  {
+   "sku": "PF01011",
+   "product": "PolyLite ASA",
+   "name": "White",
+   "hexes": [
+    "#DBD7D6"
+   ]
+  },
+  {
+   "sku": "PF01012",
+   "product": "PolyLite ASA",
+   "name": "Grey",
+   "hexes": [
+    "#8D8E92"
+   ]
+  },
+  {
+   "sku": "PF01013",
+   "product": "PolyLite ASA",
+   "name": "Red",
+   "hexes": [
+    "#D82B1C"
+   ]
+  },
+  {
+   "sku": "PF01014",
+   "product": "PolyLite ASA",
+   "name": "Blue",
+   "hexes": [
+    "#003576"
+   ]
+  },
+  {
+   "sku": "PF01015",
+   "product": "PolyLite ASA",
+   "name": "Natural",
+   "hexes": [
+    "#DFD3C3"
+   ]
+  },
+  {
+   "sku": "PF01016",
+   "product": "PolyLite ASA",
+   "name": "Orange",
+   "hexes": [
+    "#F37716"
+   ]
+  },
+  {
+   "sku": "PF01017",
+   "product": "PolyLite ASA",
+   "name": "Purple",
+   "hexes": [
+    "#5F4793"
+   ]
+  },
+  {
+   "sku": "PF01018",
+   "product": "PolyLite ASA",
+   "name": "Army Green",
+   "hexes": [
+    "#4E5E28"
+   ]
+  },
+  {
+   "sku": "PF01019",
+   "product": "Polymaker ASA",
+   "name": "Black *3 + White *3"
+  },
+  {
+   "sku": "PF01020",
+   "product": "Polymaker ASA",
+   "name": "Black",
+   "hexes": [
+    "#17161A"
+   ]
+  },
+  {
+   "sku": "PF01021",
+   "product": "Polymaker ASA",
+   "name": "White",
+   "hexes": [
+    "#DBD7D6"
+   ]
+  },
+  {
+   "sku": "PF01022",
+   "product": "Polymaker ASA",
+   "name": "Natural",
+   "hexes": [
+    "#DFD3C3"
+   ]
+  },
+  {
+   "sku": "PF01023",
+   "product": "Polymaker ASA",
+   "name": "Grey",
+   "hexes": [
+    "#8D8E92"
+   ]
+  },
+  {
+   "sku": "PF01024",
+   "product": "PolyLite ASA",
+   "name": "Black",
+   "hexes": [
+    "#17161A"
+   ]
+  },
+  {
+   "sku": "PF01025",
+   "product": "PolyLite ASA",
+   "name": "White",
+   "hexes": [
+    "#DBD7D6"
+   ]
+  },
+  {
+   "sku": "PF01026",
+   "product": "PolyLite ASA",
+   "name": "Natural",
+   "hexes": [
+    "#DFD3C3"
+   ]
+  },
+  {
+   "sku": "PF01027",
+   "product": "Polymaker ASA",
+   "name": "Black*1+White*1"
+  },
+  {
+   "sku": "PF01028",
+   "product": "Polymaker ASA",
+   "name": "Black*2",
+   "hexes": [
+    "#17161A"
+   ]
+  },
+  {
+   "sku": "PF01029",
+   "product": "Polymaker ASA",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#0094A4"
+   ]
+  },
+  {
+   "sku": "PF01030",
+   "product": "Polymaker ASA",
+   "name": "Green",
+   "hexes": [
+    "#2E784D"
+   ]
+  },
+  {
+   "sku": "PF01031",
+   "product": "Polymaker ASA",
+   "name": "Yellow",
+   "hexes": [
+    "#EEC000"
+   ]
+  },
+  {
+   "sku": "PF01032",
+   "product": "Polymaker ASA",
+   "name": "Army Brown",
+   "hexes": [
+    "#624234"
+   ]
+  },
+  {
+   "sku": "PF01033",
+   "product": "Polymaker ASA",
+   "name": "Blue",
+   "hexes": [
+    "#003576"
+   ]
+  },
+  {
+   "sku": "PF01034",
+   "product": "Polymaker ASA",
+   "name": "Galaxy Blue",
+   "hexes": [
+    "#012C61"
+   ]
+  },
+  {
+   "sku": "PF01035",
+   "product": "Polymaker ASA",
+   "name": "Galaxy Red",
+   "hexes": [
+    "#BF1A11"
+   ]
+  },
+  {
+   "sku": "PF01036",
+   "product": "Polymaker ASA",
+   "name": "Galaxy Green",
+   "hexes": [
+    "#2E764C"
+   ]
+  },
+  {
+   "sku": "PF01037",
+   "product": "Polymaker ASA",
+   "name": "Dark Grey",
+   "hexes": [
+    "#48474A"
+   ]
+  },
+  {
+   "sku": "PF01038",
+   "product": "Polymaker ASA",
+   "name": "White",
+   "hexes": [
+    "#DBD7D6"
+   ]
+  },
+  {
+   "sku": "PF01039",
+   "product": "Polymaker ASA",
+   "name": "Grey",
+   "hexes": [
+    "#8D8E92"
+   ]
+  },
+  {
+   "sku": "PF01040",
+   "product": "Polymaker ASA",
+   "name": "Pop Blue",
+   "hexes": [
+    "#008DC3"
+   ]
+  },
+  {
+   "sku": "PF01041",
+   "product": "Polymaker ASA",
+   "name": "Pop Pink",
+   "hexes": [
+    "#D83076"
+   ]
+  },
+  {
+   "sku": "PF01042",
+   "product": "Polymaker ASA",
+   "name": "Pop Green",
+   "hexes": [
+    "#77D730"
+   ]
+  },
+  {
+   "sku": "PF01044",
+   "product": "Polymaker ASA",
+   "name": "Jet Black",
+   "hexes": [
+    "#161618"
+   ]
+  },
+  {
+   "sku": "PF01045",
+   "product": "Polymaker ASA",
+   "name": "Olive Brown",
+   "hexes": [
+    "#A79565"
+   ]
+  },
+  {
+   "sku": "PF01046",
+   "product": "Polymaker ASA",
+   "name": "Dark Gray Green",
+   "hexes": [
+    "#4C5F46"
+   ]
+  },
+  {
+   "sku": "PF01047",
+   "product": "Polymaker ASA",
+   "name": "Dark Purple",
+   "hexes": [
+    "#46394E"
+   ]
+  },
+  {
+   "sku": "PF01048",
+   "product": "Polymaker ASA",
+   "name": "Galaxy Black",
+   "hexes": [
+    "#212721"
+   ]
+  },
+  {
+   "sku": "PF01049",
+   "product": "Polymaker ASA",
+   "name": "Jet Black",
+   "hexes": [
+    "#161618"
+   ]
+  },
+  {
+   "sku": "PG02001",
+   "product": "PolyMide PA6-GF",
+   "name": "Grey",
+   "hexes": [
+    "#615D5C"
+   ]
+  },
+  {
+   "sku": "PG02002",
+   "product": "PolyMide PA6-GF",
+   "name": "Grey",
+   "hexes": [
+    "#615D5C"
+   ]
+  },
+  {
+   "sku": "PG02003",
+   "product": "PolyMide PA6-GF",
+   "name": "Grey",
+   "hexes": [
+    "#615D5C"
+   ]
+  },
+  {
+   "sku": "PG02004",
+   "product": "PolyMide PA6-GF",
+   "name": "Grey",
+   "hexes": [
+    "#615D5C"
+   ]
+  },
+  {
+   "sku": "PG03001",
+   "product": "PolyMide PA6-CF",
+   "name": "Black",
+   "hexes": [
+    "#312F2F"
+   ]
+  },
+  {
+   "sku": "PG03002",
+   "product": "PolyMide PA6-CF",
+   "name": "Black",
+   "hexes": [
+    "#312F2F"
+   ]
+  },
+  {
+   "sku": "PG03003",
+   "product": "PolyMide PA6-CF",
+   "name": "Black",
+   "hexes": [
+    "#312F2F"
+   ]
+  },
+  {
+   "sku": "PG03004",
+   "product": "PolyMide PA6-CF",
+   "name": "Black",
+   "hexes": [
+    "#312F2F"
+   ]
+  },
+  {
+   "sku": "PG04001",
+   "product": "PolyMide PA12-CF",
+   "name": "Black",
+   "hexes": [
+    "#312F2F"
+   ]
+  },
+  {
+   "sku": "PG04002",
+   "product": "PolyMide PA12-CF",
+   "name": "Black",
+   "hexes": [
+    "#312F2F"
+   ]
+  },
+  {
+   "sku": "PG05001",
+   "product": "PolyMide CoPA",
+   "name": "Black",
+   "hexes": [
+    "#161618"
+   ]
+  },
+  {
+   "sku": "PG05002",
+   "product": "PolyMide CoPA",
+   "name": "Black",
+   "hexes": [
+    "#312F2F"
+   ]
+  },
+  {
+   "sku": "PG05003",
+   "product": "PolyMide CoPA",
+   "name": "Natural",
+   "hexes": [
+    "#E8D795"
+   ]
+  },
+  {
+   "sku": "PG05004",
+   "product": "PolyMide CoPA",
+   "name": "Natural",
+   "hexes": [
+    "#E8D795"
+   ]
+  },
+  {
+   "sku": "PG07001",
+   "product": "PolyMide PA612-CF",
+   "name": "Black",
+   "hexes": [
+    "#312F2F"
+   ]
+  },
+  {
+   "sku": "PG07002",
+   "product": "PolyMide PA612-CF",
+   "name": "Black",
+   "hexes": [
+    "#312F2F"
+   ]
+  },
+  {
+   "sku": "PH01001",
+   "product": "PolyDissolve S1",
+   "name": "Natural",
+   "hexes": [
+    "#E9DFD3"
+   ]
+  },
+  {
+   "sku": "PH01002",
+   "product": "PolyDissolve S1",
+   "name": "Natural",
+   "hexes": [
+    "#E9DFD3"
+   ]
+  },
+  {
+   "sku": "PJ01001",
+   "product": "PolySmooth",
+   "name": "Black",
+   "hexes": [
+    "#161619"
+   ]
+  },
+  {
+   "sku": "PJ01002",
+   "product": "PolySmooth",
+   "name": "White",
+   "hexes": [
+    "#F4EEE8"
+   ]
+  },
+  {
+   "sku": "PJ01003",
+   "product": "PolySmooth",
+   "name": "Slate Grey",
+   "hexes": [
+    "#7DA1AA"
+   ]
+  },
+  {
+   "sku": "PJ01004",
+   "product": "PolySmooth",
+   "name": "Coral Red",
+   "hexes": [
+    "#F04B2A"
+   ]
+  },
+  {
+   "sku": "PJ01005",
+   "product": "PolySmooth",
+   "name": "Electric Blue",
+   "hexes": [
+    "#007ABC"
+   ]
+  },
+  {
+   "sku": "PJ01006",
+   "product": "PolySmooth",
+   "name": "Green",
+   "hexes": [
+    "#4CA743"
+   ]
+  },
+  {
+   "sku": "PJ01007",
+   "product": "PolySmooth",
+   "name": "Yellow",
+   "hexes": [
+    "#F5BD00"
+   ]
+  },
+  {
+   "sku": "PJ01008",
+   "product": "PolySmooth",
+   "name": "Orange",
+   "hexes": [
+    "#F5741B"
+   ]
+  },
+  {
+   "sku": "PJ01009",
+   "product": "PolySmooth",
+   "name": "Pink",
+   "hexes": [
+    "#F3A196"
+   ]
+  },
+  {
+   "sku": "PJ01010",
+   "product": "PolySmooth",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#77D3DD"
+   ]
+  },
+  {
+   "sku": "PJ01011",
+   "product": "PolySmooth",
+   "name": "Transparent",
+   "hexes": [
+    "#E8D9C3"
+   ]
+  },
+  {
+   "sku": "PJ01012",
+   "product": "PolySmooth",
+   "name": "Beige",
+   "hexes": [
+    "#EBD591"
+   ]
+  },
+  {
+   "sku": "PJ01013",
+   "product": "PolySmooth",
+   "name": "Black",
+   "hexes": [
+    "#161619"
+   ]
+  },
+  {
+   "sku": "PJ01014",
+   "product": "PolySmooth",
+   "name": "White",
+   "hexes": [
+    "#F4EEE8"
+   ]
+  },
+  {
+   "sku": "PJ01015",
+   "product": "PolySmooth",
+   "name": "Slate Grey",
+   "hexes": [
+    "#7DA1AA"
+   ]
+  },
+  {
+   "sku": "PJ01016",
+   "product": "PolySmooth",
+   "name": "Coral Red",
+   "hexes": [
+    "#F04B2A"
+   ]
+  },
+  {
+   "sku": "PJ01017",
+   "product": "PolySmooth",
+   "name": "Electric Blue",
+   "hexes": [
+    "#007ABC"
+   ]
+  },
+  {
+   "sku": "PJ01018",
+   "product": "PolySmooth",
+   "name": "Green",
+   "hexes": [
+    "#4CA743"
+   ]
+  },
+  {
+   "sku": "PJ01019",
+   "product": "PolySmooth",
+   "name": "Yellow",
+   "hexes": [
+    "#F5BD00"
+   ]
+  },
+  {
+   "sku": "PJ01020",
+   "product": "PolySmooth",
+   "name": "Orange",
+   "hexes": [
+    "#F5741B"
+   ]
+  },
+  {
+   "sku": "PJ01021",
+   "product": "PolySmooth",
+   "name": "Pink",
+   "hexes": [
+    "#F3A196"
+   ]
+  },
+  {
+   "sku": "PJ01022",
+   "product": "PolySmooth",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#77D3DD"
+   ]
+  },
+  {
+   "sku": "PJ01023",
+   "product": "PolySmooth",
+   "name": "Transparent",
+   "hexes": [
+    "#E8D9C3"
+   ]
+  },
+  {
+   "sku": "PJ01024",
+   "product": "PolySmooth",
+   "name": "Beige",
+   "hexes": [
+    "#EBD591"
+   ]
+  },
+  {
+   "sku": "PJ03001",
+   "product": "PolyCast",
+   "name": "Natural",
+   "hexes": [
+    "#E9DFD3"
+   ]
+  },
+  {
+   "sku": "PJ03002",
+   "product": "PolyCast",
+   "name": "Natural",
+   "hexes": [
+    "#E9DFD3"
+   ]
+  },
+  {
+   "sku": "PJ03003",
+   "product": "PolyCast",
+   "name": "Natural",
+   "hexes": [
+    "#E9DFD3"
+   ]
+  },
+  {
+   "sku": "PJ03004",
+   "product": "PolyCast",
+   "name": "Natural",
+   "hexes": [
+    "#E9DFD3"
+   ]
+  },
+  {
+   "sku": "PM1020001",
+   "product": "Polymaker ABS Max",
+   "name": "Green"
+  },
+  {
+   "sku": "PM1020002",
+   "product": "Polymaker ABS Max",
+   "name": "Red"
+  },
+  {
+   "sku": "PM1020003",
+   "product": "Polymaker ABS Max",
+   "name": "Blue"
+  },
+  {
+   "sku": "PM1020004",
+   "product": "Polymaker ABS Max",
+   "name": "Grey"
+  },
+  {
+   "sku": "PM1020005",
+   "product": "Polymaker ABS Max",
+   "name": "White"
+  },
+  {
+   "sku": "PM1020006",
+   "product": "Polymaker ABS Max",
+   "name": "Black"
+  },
+  {
+   "sku": "PM1020007",
+   "product": "Polymaker ABS Pro",
+   "name": "Galaxy Black"
+  },
+  {
+   "sku": "PM1020008",
+   "product": "Polymaker ABS Pro",
+   "name": "Galaxy Dark Grey"
+  },
+  {
+   "sku": "PM1020009",
+   "product": "Polymaker ABS Pro",
+   "name": "Voron Red"
+  },
+  {
+   "sku": "PM1020010",
+   "product": "Polymaker ABS Pro",
+   "name": "Gradient Fire"
+  },
+  {
+   "sku": "PM1020011",
+   "product": "Polymaker ABS Pro",
+   "name": "Gradient Ice"
+  },
+  {
+   "sku": "PM1025001",
+   "product": "Polymaker PC Pro",
+   "name": "Natural"
+  },
+  {
+   "sku": "PM1025002",
+   "product": "Polymaker PC Pro",
+   "name": "White"
+  },
+  {
+   "sku": "PM1025003",
+   "product": "Polymaker PC Pro",
+   "name": "Black"
+  },
+  {
+   "sku": "PM1025004",
+   "product": "Polymaker PC",
+   "name": "Black"
+  },
+  {
+   "sku": "PM1025005",
+   "product": "Polymaker PC",
+   "name": "White"
+  },
+  {
+   "sku": "PM1025006",
+   "product": "Polymaker PC",
+   "name": "Translucent"
+  },
+  {
+   "sku": "PM70065",
+   "product": "PolyLite ABS",
+   "name": "Green",
+   "hexes": [
+    "#479161"
+   ]
+  },
+  {
+   "sku": "PM70066",
+   "product": "PolyLite ABS",
+   "name": "Green",
+   "hexes": [
+    "#479161"
+   ]
+  },
+  {
+   "sku": "PM70067",
+   "product": "PolyLite PETG",
+   "name": "Green",
+   "hexes": [
+    "#007A44"
+   ]
+  },
+  {
+   "sku": "PM70068",
+   "product": "PolyLite PETG",
+   "name": "Green",
+   "hexes": [
+    "#007A44"
+   ]
+  },
+  {
+   "sku": "PM70070",
+   "product": "PolyLite ABS",
+   "name": "Orange",
+   "hexes": [
+    "#F57517"
+   ]
+  },
+  {
+   "sku": "PM70093",
+   "product": "PolyMax PLA",
+   "name": "White",
+   "hexes": [
+    "#EFECEB"
+   ]
+  },
+  {
+   "sku": "PM70095",
+   "product": "PolyMax PLA",
+   "name": "White",
+   "hexes": [
+    "#EFECEB"
+   ]
+  },
+  {
+   "sku": "PM70096",
+   "product": "PolyMax PLA",
+   "name": "Black",
+   "hexes": [
+    "#181718"
+   ]
+  },
+  {
+   "sku": "PM70097",
+   "product": "PolyMax PLA",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#4ABAC2"
+   ]
+  },
+  {
+   "sku": "PM70098",
+   "product": "PolyMax PLA",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#4ABAC2"
+   ]
+  },
+  {
+   "sku": "PM70099",
+   "product": "PolyMax PLA",
+   "name": "Grey",
+   "hexes": [
+    "#8D8E93"
+   ]
+  },
+  {
+   "sku": "PM70100",
+   "product": "PolyMax PLA",
+   "name": "Grey",
+   "hexes": [
+    "#8D8E93"
+   ]
+  },
+  {
+   "sku": "PM70101",
+   "product": "PolyLite PETG",
+   "name": "Orange",
+   "hexes": [
+    "#F37715"
+   ]
+  },
+  {
+   "sku": "PM70106",
+   "product": "PolyFlex TPU95",
+   "name": "White",
+   "hexes": [
+    "#F0EBE8"
+   ]
+  },
+  {
+   "sku": "PM70107",
+   "product": "PolyFlex TPU95",
+   "name": "Black",
+   "hexes": [
+    "#16161A"
+   ]
+  },
+  {
+   "sku": "PM70108",
+   "product": "PolyFlex TPU95",
+   "name": "Orange",
+   "hexes": [
+    "#F57517"
+   ]
+  },
+  {
+   "sku": "PM70109",
+   "product": "PolyFlex TPU95",
+   "name": "Yellow",
+   "hexes": [
+    "#EDA900"
+   ]
+  },
+  {
+   "sku": "PM70110",
+   "product": "PolyFlex TPU95",
+   "name": "White",
+   "hexes": [
+    "#F0EBE8"
+   ]
+  },
+  {
+   "sku": "PM70111",
+   "product": "PolyFlex TPU95",
+   "name": "Black",
+   "hexes": [
+    "#16161A"
+   ]
+  },
+  {
+   "sku": "PM70112",
+   "product": "PolyFlex TPU95",
+   "name": "Orange",
+   "hexes": [
+    "#F57517"
+   ]
+  },
+  {
+   "sku": "PM70113",
+   "product": "PolyFlex TPU95",
+   "name": "Yellow",
+   "hexes": [
+    "#EDA900"
+   ]
+  },
+  {
+   "sku": "PM70122",
+   "product": "PolyLite PETG",
+   "name": "Orange"
+  },
+  {
+   "sku": "PM70123",
+   "product": "PolyLite ABS",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#0094A4"
+   ]
+  },
+  {
+   "sku": "PM70124",
+   "product": "PolyLite ABS",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#0094A4"
+   ]
+  },
+  {
+   "sku": "PM70125",
+   "product": "PolyLite PETG",
+   "name": "Polymaker Teal"
+  },
+  {
+   "sku": "PM70130",
+   "product": "PolyLite PETG",
+   "name": "Polymaker Teal"
+  },
+  {
+   "sku": "PM70131",
+   "product": "PolyLite ABS",
+   "name": "Purple",
+   "hexes": [
+    "#6545A5"
+   ]
+  },
+  {
+   "sku": "PM70132",
+   "product": "Wood PLA",
+   "name": "Wood",
+   "hexes": [
+    "#A8754B"
+   ]
+  },
+  {
+   "sku": "PM70154",
+   "product": "PolyMax PLA",
+   "name": "Orange",
+   "hexes": [
+    "#FE8E1B"
+   ]
+  },
+  {
+   "sku": "PM70155",
+   "product": "PolyMax PLA",
+   "name": "Yellow",
+   "hexes": [
+    "#F0AB01"
+   ]
+  },
+  {
+   "sku": "PM70156",
+   "product": "PolyMax PLA",
+   "name": "Blue",
+   "hexes": [
+    "#013178"
+   ]
+  },
+  {
+   "sku": "PM70158",
+   "product": "PolyMax PLA",
+   "name": "Orange",
+   "hexes": [
+    "#FE8E1B"
+   ]
+  },
+  {
+   "sku": "PM70161",
+   "product": "PolyMax PLA",
+   "name": "White",
+   "hexes": [
+    "#EFECEB"
+   ]
+  },
+  {
+   "sku": "PM70163",
+   "product": "PolyMax PLA",
+   "name": "Black",
+   "hexes": [
+    "#181718"
+   ]
+  },
+  {
+   "sku": "PM70168",
+   "product": "PolyLite PC",
+   "name": "Transparent",
+   "hexes": [
+    "#DAD5D4"
+   ]
+  },
+  {
+   "sku": "PM70169",
+   "product": "PolyLite PC",
+   "name": "Transparent",
+   "hexes": [
+    "#DAD5D2"
+   ]
+  },
+  {
+   "sku": "PM70173",
+   "product": "PolyLite PETG",
+   "name": "Purple",
+   "hexes": [
+    "#6347A5"
+   ]
+  },
+  {
+   "sku": "PM70174",
+   "product": "PolyLite PETG",
+   "name": "Purple",
+   "hexes": [
+    "#6347A5"
+   ]
+  },
+  {
+   "sku": "PM70176",
+   "product": "PolyLite ABS",
+   "name": "Yellow",
+   "hexes": [
+    "#EDA900"
+   ]
+  },
+  {
+   "sku": "PM70177",
+   "product": "PolyLite PETG",
+   "name": "Yellow",
+   "hexes": [
+    "#EEA800"
+   ]
+  },
+  {
+   "sku": "PM70178",
+   "product": "PolyLite PETG",
+   "name": "Yellow",
+   "hexes": [
+    "#F3AA01"
+   ]
+  },
+  {
+   "sku": "PM70180",
+   "product": "PolyBox",
+   "name": "NA"
+  },
+  {
+   "sku": "PM70181",
+   "product": "PolyDissolve S1",
+   "name": "Natural",
+   "hexes": [
+    "#E9DFD3"
+   ]
+  },
+  {
+   "sku": "PM70184",
+   "product": "PolyMax PETG",
+   "name": "Black",
+   "hexes": [
+    "#181718"
+   ]
+  },
+  {
+   "sku": "PM70185",
+   "product": "PolyMax PETG",
+   "name": "Black",
+   "hexes": [
+    "#181718"
+   ]
+  },
+  {
+   "sku": "PM70186",
+   "product": "PolyMax PETG",
+   "name": "White",
+   "hexes": [
+    "#EFECEB"
+   ]
+  },
+  {
+   "sku": "PM70187",
+   "product": "PolyMax PETG",
+   "name": "White",
+   "hexes": [
+    "#EFECEB"
+   ]
+  },
+  {
+   "sku": "PM70188",
+   "product": "PolySupport",
+   "name": "Pearl White",
+   "hexes": [
+    "#F6F1EC"
+   ]
+  },
+  {
+   "sku": "PM70189",
+   "product": "PolySupport",
+   "name": "Pearl White",
+   "hexes": [
+    "#F6F1EC"
+   ]
+  },
+  {
+   "sku": "PM70190",
+   "product": "PolyLite PC",
+   "name": "Transparent",
+   "hexes": [
+    "#DAD5D4"
+   ]
+  },
+  {
+   "sku": "PM70191",
+   "product": "PolyLite PC",
+   "name": "Transparent",
+   "hexes": [
+    "#DAD5D1"
+   ]
+  },
+  {
+   "sku": "PM70192",
+   "product": "PolySmooth",
+   "name": "Orange",
+   "hexes": [
+    "#F5741B"
+   ]
+  },
+  {
+   "sku": "PM70195",
+   "product": "PolyLite ASA",
+   "name": "Black",
+   "hexes": [
+    "#17161A"
+   ]
+  },
+  {
+   "sku": "PM70196",
+   "product": "PolySmooth",
+   "name": "Orange",
+   "hexes": [
+    "#F5741B"
+   ]
+  },
+  {
+   "sku": "PM70197",
+   "product": "PolyLite ASA",
+   "name": "White",
+   "hexes": [
+    "#DBD7D6"
+   ]
+  },
+  {
+   "sku": "PM70198",
+   "product": "PolyLite ASA",
+   "name": "Black",
+   "hexes": [
+    "#17161A"
+   ]
+  },
+  {
+   "sku": "PM70199",
+   "product": "PolyLite ASA",
+   "name": "White",
+   "hexes": [
+    "#DBD7D6"
+   ]
+  },
+  {
+   "sku": "PM70200",
+   "product": "PolyLite PLA",
+   "name": "Natural",
+   "hexes": [
+    "#DFD3C2"
+   ]
+  },
+  {
+   "sku": "PM70201",
+   "product": "PolyLite PLA",
+   "name": "Natural",
+   "hexes": [
+    "#DFD3C3"
+   ]
+  },
+  {
+   "sku": "PM70230",
+   "product": "Sample Box 1",
+   "name": "Random"
+  },
+  {
+   "sku": "PM70232",
+   "product": "Sample Box 2",
+   "name": "Random"
+  },
+  {
+   "sku": "PM70233",
+   "product": "Sample Box 2",
+   "name": "Random"
+  },
+  {
+   "sku": "PM70234",
+   "product": "PolyLite PLA",
+   "name": "Grey",
+   "hexes": [
+    "#8B8E96"
+   ]
+  },
+  {
+   "sku": "PM70240",
+   "product": "Sample Box 3",
+   "name": "Random"
+  },
+  {
+   "sku": "PM70241",
+   "product": "Sample Box 3",
+   "name": "Random"
+  },
+  {
+   "sku": "PM70242",
+   "product": "PolyMide PA6-GF",
+   "name": "Grey",
+   "hexes": [
+    "#615D5C"
+   ]
+  },
+  {
+   "sku": "PM70243",
+   "product": "PolyMide PA6-GF",
+   "name": "Grey",
+   "hexes": [
+    "#615D5C"
+   ]
+  },
+  {
+   "sku": "PM70244",
+   "product": "PolyMide PA6-CF",
+   "name": "Black",
+   "hexes": [
+    "#312F2F"
+   ]
+  },
+  {
+   "sku": "PM70245",
+   "product": "PolyMide PA6-CF",
+   "name": "Black",
+   "hexes": [
+    "#312F2F"
+   ]
+  },
+  {
+   "sku": "PM70248",
+   "product": "PolyDissolve S2",
+   "name": "Natural",
+   "hexes": [
+    "#E9DFD3"
+   ]
+  },
+  {
+   "sku": "PM70249",
+   "product": "PolyDissolve S2",
+   "name": "Natural",
+   "hexes": [
+    "#E9DFD3"
+   ]
+  },
+  {
+   "sku": "PM70250",
+   "product": "PolyMax PC-FR",
+   "name": "White",
+   "hexes": [
+    "#DDD7D3"
+   ]
+  },
+  {
+   "sku": "PM70251",
+   "product": "PolyMax PC-FR",
+   "name": "White",
+   "hexes": [
+    "#DDD7D4"
+   ]
+  },
+  {
+   "sku": "PM70252",
+   "product": "PolyMax PC-FR",
+   "name": "Black",
+   "hexes": [
+    "#181617"
+   ]
+  },
+  {
+   "sku": "PM70253",
+   "product": "PolyMax PC-FR",
+   "name": "Black",
+   "hexes": [
+    "#181617"
+   ]
+  },
+  {
+   "sku": "PM70254",
+   "product": "PolyMaker PC-ABS",
+   "name": "White",
+   "hexes": [
+    "#DDD7D3"
+   ]
+  },
+  {
+   "sku": "PM70255",
+   "product": "PolyMaker PC-ABS",
+   "name": "White",
+   "hexes": [
+    "#161619"
+   ]
+  },
+  {
+   "sku": "PM70256",
+   "product": "PolyMaker PC-ABS",
+   "name": "Black",
+   "hexes": [
+    "#181617"
+   ]
+  },
+  {
+   "sku": "PM70257",
+   "product": "PolyMaker PC-ABS",
+   "name": "Black",
+   "hexes": [
+    "#181617"
+   ]
+  },
+  {
+   "sku": "PM70258",
+   "product": "Polymaker PC-PBT",
+   "name": "Natural",
+   "hexes": [
+    "#EADAC2"
+   ]
+  },
+  {
+   "sku": "PM70259",
+   "product": "Polymaker PC-PBT",
+   "name": "Natural",
+   "hexes": [
+    "#E9DFD3"
+   ]
+  },
+  {
+   "sku": "PM70260",
+   "product": "Polymaker PC-PBT",
+   "name": "Black",
+   "hexes": [
+    "#181617"
+   ]
+  },
+  {
+   "sku": "PM70261",
+   "product": "Polymaker PC-PBT",
+   "name": "Black",
+   "hexes": [
+    "#151518"
+   ]
+  },
+  {
+   "sku": "PM70273",
+   "product": "PolyFlex TPU95",
+   "name": "Red",
+   "hexes": [
+    "#F3442B"
+   ]
+  },
+  {
+   "sku": "PM70274",
+   "product": "PolyFlex TPU95",
+   "name": "Red",
+   "hexes": [
+    "#F3442B"
+   ]
+  },
+  {
+   "sku": "PM70275",
+   "product": "PolyFlex TPU95",
+   "name": "Blue",
+   "hexes": [
+    "#003276"
+   ]
+  },
+  {
+   "sku": "PM70276",
+   "product": "PolyFlex TPU95",
+   "name": "Blue",
+   "hexes": [
+    "#003276"
+   ]
+  },
+  {
+   "sku": "PM70279",
+   "product": "PolyLite ASA",
+   "name": "Black",
+   "hexes": [
+    "#17161A"
+   ]
+  },
+  {
+   "sku": "PM70280",
+   "product": "PolyLite ASA",
+   "name": "White",
+   "hexes": [
+    "#DBD7D6"
+   ]
+  },
+  {
+   "sku": "PM70281",
+   "product": "PolyMax PLA",
+   "name": "Grey",
+   "hexes": [
+    "#8D8E93"
+   ]
+  },
+  {
+   "sku": "PM70290",
+   "product": "PolyLite ASA",
+   "name": "Natural",
+   "hexes": [
+    "#DFD3C3"
+   ]
+  },
+  {
+   "sku": "PM70291",
+   "product": "PolyFlex TPU90",
+   "name": "Black",
+   "hexes": [
+    "#16161A"
+   ]
+  },
+  {
+   "sku": "PM70292",
+   "product": "PolyFlex TPU90",
+   "name": "Black",
+   "hexes": [
+    "#16161A"
+   ]
+  },
+  {
+   "sku": "PM70293",
+   "product": "PolyFlex TPU90",
+   "name": "White",
+   "hexes": [
+    "#F0EBE8"
+   ]
+  },
+  {
+   "sku": "PM70294",
+   "product": "PolyFlex TPU90",
+   "name": "White",
+   "hexes": [
+    "#F0EBE8"
+   ]
+  },
+  {
+   "sku": "PM70295",
+   "product": "PolyFlex TPU95-HF",
+   "name": "Black",
+   "hexes": [
+    "#16161A"
+   ]
+  },
+  {
+   "sku": "PM70296",
+   "product": "PolyFlex TPU95-HF",
+   "name": "Black",
+   "hexes": [
+    "#16161A"
+   ]
+  },
+  {
+   "sku": "PM70297",
+   "product": "PolyFlex TPU95-HF",
+   "name": "White",
+   "hexes": [
+    "#F0EBE8"
+   ]
+  },
+  {
+   "sku": "PM70298",
+   "product": "PolyFlex TPU95-HF",
+   "name": "White",
+   "hexes": [
+    "#F0EBE8"
+   ]
+  },
+  {
+   "sku": "PM70490",
+   "product": "PolyMax PC",
+   "name": "White",
+   "hexes": [
+    "#DDD7D3"
+   ]
+  },
+  {
+   "sku": "PM70491",
+   "product": "PolyMax PC",
+   "name": "White",
+   "hexes": [
+    "#DDD7D4"
+   ]
+  },
+  {
+   "sku": "PM70494",
+   "product": "PolyMax PC",
+   "name": "Black",
+   "hexes": [
+    "#181617"
+   ]
+  },
+  {
+   "sku": "PM70495",
+   "product": "PolyMax PC",
+   "name": "Black",
+   "hexes": [
+    "#181618"
+   ]
+  },
+  {
+   "sku": "PM70498",
+   "product": "PolyMax PC",
+   "name": "White",
+   "hexes": [
+    "#DDD7D3"
+   ]
+  },
+  {
+   "sku": "PM70499",
+   "product": "PolyMax PC",
+   "name": "White",
+   "hexes": [
+    "#DDD7D4"
+   ]
+  },
+  {
+   "sku": "PM70501",
+   "product": "PolyMax PC",
+   "name": "Black"
+  },
+  {
+   "sku": "PM70502",
+   "product": "PolySmooth",
+   "name": "White",
+   "hexes": [
+    "#F4EEE8"
+   ]
+  },
+  {
+   "sku": "PM70504",
+   "product": "PolySmooth",
+   "name": "Pink",
+   "hexes": [
+    "#F3A196"
+   ]
+  },
+  {
+   "sku": "PM70505",
+   "product": "PolySmooth",
+   "name": "Pink",
+   "hexes": [
+    "#F3A196"
+   ]
+  },
+  {
+   "sku": "PM70507",
+   "product": "PolySmooth",
+   "name": "Coral Red",
+   "hexes": [
+    "#F04B2A"
+   ]
+  },
+  {
+   "sku": "PM70508",
+   "product": "PolySmooth",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#77D3DD"
+   ]
+  },
+  {
+   "sku": "PM70509",
+   "product": "PolySmooth",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#77D3DD"
+   ]
+  },
+  {
+   "sku": "PM70510",
+   "product": "PolySmooth",
+   "name": "Yellow",
+   "hexes": [
+    "#F5BD00"
+   ]
+  },
+  {
+   "sku": "PM70512",
+   "product": "PolySmooth",
+   "name": "Green",
+   "hexes": [
+    "#4CA743"
+   ]
+  },
+  {
+   "sku": "PM70513",
+   "product": "PolySmooth",
+   "name": "Green",
+   "hexes": [
+    "#4CA743"
+   ]
+  },
+  {
+   "sku": "PM70514",
+   "product": "PolySmooth",
+   "name": "Electric Blue",
+   "hexes": [
+    "#007ABC"
+   ]
+  },
+  {
+   "sku": "PM70515",
+   "product": "PolySmooth",
+   "name": "Electric Blue",
+   "hexes": [
+    "#007ABC"
+   ]
+  },
+  {
+   "sku": "PM70518",
+   "product": "PolySmooth",
+   "name": "Beige",
+   "hexes": [
+    "#EBD591"
+   ]
+  },
+  {
+   "sku": "PM70519",
+   "product": "PolySmooth",
+   "name": "Beige",
+   "hexes": [
+    "#EBD591"
+   ]
+  },
+  {
+   "sku": "PM70520",
+   "product": "PolySmooth",
+   "name": "Slate Grey",
+   "hexes": [
+    "#7DA1AA"
+   ]
+  },
+  {
+   "sku": "PM70521",
+   "product": "PolySmooth",
+   "name": "Slate Grey",
+   "hexes": [
+    "#94B9C2"
+   ]
+  },
+  {
+   "sku": "PM70522",
+   "product": "PolySmooth",
+   "name": "Black",
+   "hexes": [
+    "#161619"
+   ]
+  },
+  {
+   "sku": "PM70523",
+   "product": "PolySmooth",
+   "name": "Black",
+   "hexes": [
+    "#161619"
+   ]
+  },
+  {
+   "sku": "PM70527",
+   "product": "PolyLite PLA",
+   "name": "White",
+   "hexes": [
+    "#DDD7D3"
+   ]
+  },
+  {
+   "sku": "PM70531",
+   "product": "PolyLite PLA",
+   "name": "Blue",
+   "hexes": [
+    "#013178"
+   ]
+  },
+  {
+   "sku": "PM70533",
+   "product": "PolyLite PLA",
+   "name": "Red",
+   "hexes": [
+    "#D90102"
+   ]
+  },
+  {
+   "sku": "PM70535",
+   "product": "PolyLite PLA",
+   "name": "Orange",
+   "hexes": [
+    "#F36201"
+   ]
+  },
+  {
+   "sku": "PM70537",
+   "product": "PolyLite PLA",
+   "name": "Yellow",
+   "hexes": [
+    "#F3AA01"
+   ]
+  },
+  {
+   "sku": "PM70539",
+   "product": "PolyLite PLA",
+   "name": "Grey",
+   "hexes": [
+    "#8B8E96"
+   ]
+  },
+  {
+   "sku": "PM70541",
+   "product": "PolyLite PLA",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#48B9C2"
+   ]
+  },
+  {
+   "sku": "PM70543",
+   "product": "PolyLite PLA",
+   "name": "Purple",
+   "hexes": [
+    "#6447A5"
+   ]
+  },
+  {
+   "sku": "PM70545",
+   "product": "PolyLite PLA",
+   "name": "Green",
+   "hexes": [
+    "#30A45F"
+   ]
+  },
+  {
+   "sku": "PM70555",
+   "product": "PolySmooth",
+   "name": "Transparent",
+   "hexes": [
+    "#E8D9C3"
+   ]
+  },
+  {
+   "sku": "PM70593",
+   "product": "PolyLite PLA",
+   "name": "White",
+   "hexes": [
+    "#DDD7D3"
+   ]
+  },
+  {
+   "sku": "PM70595",
+   "product": "PolyLite PLA",
+   "name": "Black",
+   "hexes": [
+    "#030305"
+   ]
+  },
+  {
+   "sku": "PM70596",
+   "product": "PolyLite PLA",
+   "name": "Black",
+   "hexes": [
+    "#181718"
+   ]
+  },
+  {
+   "sku": "PM70628",
+   "product": "PolyLite ABS",
+   "name": "Black",
+   "hexes": [
+    "#16161A"
+   ]
+  },
+  {
+   "sku": "PM70629",
+   "product": "PolyLite ABS",
+   "name": "White",
+   "hexes": [
+    "#F0EBE8"
+   ]
+  },
+  {
+   "sku": "PM70630",
+   "product": "PolyLite ABS",
+   "name": "White",
+   "hexes": [
+    "#F0EBE8"
+   ]
+  },
+  {
+   "sku": "PM70631",
+   "product": "PolyLite PETG",
+   "name": "Black",
+   "hexes": [
+    "#161618"
+   ]
+  },
+  {
+   "sku": "PM70632",
+   "product": "PolyLite PETG",
+   "name": "Black",
+   "hexes": [
+    "#161618"
+   ]
+  },
+  {
+   "sku": "PM70633",
+   "product": "PolyLite PETG",
+   "name": "White",
+   "hexes": [
+    "#EEEBEA"
+   ]
+  },
+  {
+   "sku": "PM70634",
+   "product": "PolyLite PETG",
+   "name": "White",
+   "hexes": [
+    "#EEEBEA"
+   ]
+  },
+  {
+   "sku": "PM70636",
+   "product": "PolyLite PETG",
+   "name": "Transparent",
+   "hexes": [
+    "#DAD5D2"
+   ]
+  },
+  {
+   "sku": "PM70637",
+   "product": "PolyLite ABS",
+   "name": "Red",
+   "hexes": [
+    "#F3442B"
+   ]
+  },
+  {
+   "sku": "PM70638",
+   "product": "PolyLite ABS",
+   "name": "Red",
+   "hexes": [
+    "#F3442B"
+   ]
+  },
+  {
+   "sku": "PM70639",
+   "product": "PolyLite ABS",
+   "name": "Blue",
+   "hexes": [
+    "#003276"
+   ]
+  },
+  {
+   "sku": "PM70640",
+   "product": "PolyLite ABS",
+   "name": "Blue",
+   "hexes": [
+    "#003276"
+   ]
+  },
+  {
+   "sku": "PM70641",
+   "product": "PolyLite ABS",
+   "name": "Grey",
+   "hexes": [
+    "#8C8D93"
+   ]
+  },
+  {
+   "sku": "PM70642",
+   "product": "PolyLite ABS",
+   "name": "Grey",
+   "hexes": [
+    "#8C8D93"
+   ]
+  },
+  {
+   "sku": "PM70643",
+   "product": "PolyLite PETG",
+   "name": "Red",
+   "hexes": [
+    "#D92B1C"
+   ]
+  },
+  {
+   "sku": "PM70644",
+   "product": "PolyLite PETG",
+   "name": "Red",
+   "hexes": [
+    "#D92B1C"
+   ]
+  },
+  {
+   "sku": "PM70645",
+   "product": "PolyLite PETG",
+   "name": "Blue",
+   "hexes": [
+    "#013178"
+   ]
+  },
+  {
+   "sku": "PM70646",
+   "product": "PolyLite PETG",
+   "name": "Blue",
+   "hexes": [
+    "#013179"
+   ]
+  },
+  {
+   "sku": "PM70647",
+   "product": "PolyLite PETG",
+   "name": "Grey",
+   "hexes": [
+    "#8C8D93"
+   ]
+  },
+  {
+   "sku": "PM70648",
+   "product": "PolyLite PETG",
+   "name": "Grey",
+   "hexes": [
+    "#8C8D94"
+   ]
+  },
+  {
+   "sku": "PM70800",
+   "product": "PolyMide CoPA",
+   "name": "Natural",
+   "hexes": [
+    "#E8D795"
+   ]
+  },
+  {
+   "sku": "PM70801",
+   "product": "Nebulizer",
+   "name": "NA"
+  },
+  {
+   "sku": "PM70808",
+   "product": "PolyMide CoPA",
+   "name": "Black",
+   "hexes": [
+    "#312F2F"
+   ]
+  },
+  {
+   "sku": "PM70809",
+   "product": "PolyMide CoPA",
+   "name": "Black",
+   "hexes": [
+    "#312F2F"
+   ]
+  },
+  {
+   "sku": "PM70811",
+   "product": "PolyMide CoPA",
+   "name": "Natural",
+   "hexes": [
+    "#E8D795"
+   ]
+  },
+  {
+   "sku": "PM70812",
+   "product": "PolyCast",
+   "name": "Natural",
+   "hexes": [
+    "#E9DFD3"
+   ]
+  },
+  {
+   "sku": "PM70813",
+   "product": "PolyCast",
+   "name": "Natural",
+   "hexes": [
+    "#E9DFD3"
+   ]
+  },
+  {
+   "sku": "PM70814",
+   "product": "PolyCast",
+   "name": "Natural",
+   "hexes": [
+    "#E9DFD3"
+   ]
+  },
+  {
+   "sku": "PM70815",
+   "product": "PolyCast",
+   "name": "Natural",
+   "hexes": [
+    "#E9DFD3"
+   ]
+  },
+  {
+   "sku": "PM70820",
+   "product": "PolyTerra PLA",
+   "name": "Matte Charcoal Black",
+   "hexes": [
+    "#2F2E30"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PM70821",
+   "product": "PolyTerra PLA",
+   "name": "Matte Charcoal Black",
+   "hexes": [
+    "#2F2E30"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PM70822",
+   "product": "PolyTerra PLA",
+   "name": "Matte Cotton White",
+   "hexes": [
+    "#F4EFEB"
+   ],
+   "td": 4.1
+  },
+  {
+   "sku": "PM70823",
+   "product": "PolyTerra PLA",
+   "name": "Matte Cotton White",
+   "hexes": [
+    "#F4EFEB"
+   ],
+   "td": 4.1
+  },
+  {
+   "sku": "PM70824",
+   "product": "PolyTerra PLA",
+   "name": "Matte Fossil Grey",
+   "hexes": [
+    "#8A8C94"
+   ],
+   "td": 0.4
+  },
+  {
+   "sku": "PM70825",
+   "product": "PolyTerra PLA",
+   "name": "Matte Fossil Grey",
+   "hexes": [
+    "#8A8C94"
+   ],
+   "td": 0.4
+  },
+  {
+   "sku": "PM70826",
+   "product": "PolyTerra PLA",
+   "name": "Matte Lava Red",
+   "hexes": [
+    "#ED2F2E"
+   ],
+   "td": 1.9
+  },
+  {
+   "sku": "PM70827",
+   "product": "PolyTerra PLA",
+   "name": "Matte Lava Red",
+   "hexes": [
+    "#ED2F2E"
+   ],
+   "td": 1.9
+  },
+  {
+   "sku": "PM70828",
+   "product": "PolyTerra PLA",
+   "name": "Matte Sapphire Blue",
+   "hexes": [
+    "#0163A6"
+   ],
+   "td": 0.5
+  },
+  {
+   "sku": "PM70829",
+   "product": "PolyTerra PLA",
+   "name": "Matte Sapphire Blue",
+   "hexes": [
+    "#0163A6"
+   ],
+   "td": 0.5
+  },
+  {
+   "sku": "PM70830",
+   "product": "PolyFlex TPU90",
+   "name": "Grey",
+   "hexes": [
+    "#80837C"
+   ]
+  },
+  {
+   "sku": "PM70831",
+   "product": "PolyFlex TPU90",
+   "name": "Grey",
+   "hexes": [
+    "#80837C"
+   ]
+  },
+  {
+   "sku": "PM70832",
+   "product": "PolyFlex TPU90",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#5FB5AC"
+   ]
+  },
+  {
+   "sku": "PM70833",
+   "product": "PolyFlex TPU90",
+   "name": "Polymaker Teal",
+   "hexes": [
+    "#5FB5AC"
+   ]
+  },
+  {
+   "sku": "PM70834",
+   "product": "PolyLite ASA",
+   "name": "Natural",
+   "hexes": [
+    "#DFD3C3"
+   ]
+  },
+  {
+   "sku": "PM70835",
+   "product": "PolyLite ASA",
+   "name": "Black",
+   "hexes": [
+    "#17161A"
+   ]
+  },
+  {
+   "sku": "PM70836",
+   "product": "PolyLite ASA",
+   "name": "White",
+   "hexes": [
+    "#DBD7D6"
+   ]
+  },
+  {
+   "sku": "PM70837",
+   "product": "PolyLite ASA",
+   "name": "Natural",
+   "hexes": [
+    "#DFD3C3"
+   ]
+  },
+  {
+   "sku": "PM70838",
+   "product": "PolyMide PA6-CF",
+   "name": "Black",
+   "hexes": [
+    "#312F2F"
+   ]
+  },
+  {
+   "sku": "PM70839",
+   "product": "PolyMide PA6-CF",
+   "name": "Black",
+   "hexes": [
+    "#312F2F"
+   ]
+  },
+  {
+   "sku": "PM70840",
+   "product": "PolyMide PA6-GF",
+   "name": "Grey",
+   "hexes": [
+    "#615D5C"
+   ]
+  },
+  {
+   "sku": "PM70842",
+   "product": "PolyMax\u2122 PLA",
+   "name": "Black"
+  },
+  {
+   "sku": "PM70843",
+   "product": "PolyMax\u2122 PLA",
+   "name": "Grey"
+  },
+  {
+   "sku": "PM70844",
+   "product": "PolyTerra PLA",
+   "name": "Matte Arctic Teal",
+   "hexes": [
+    "#61BCC3"
+   ],
+   "td": 0.6
+  },
+  {
+   "sku": "PM70845",
+   "product": "PolyTerra PLA",
+   "name": "Matte Arctic Teal",
+   "hexes": [
+    "#61BCC3"
+   ],
+   "td": 0.6
+  },
+  {
+   "sku": "PM70846",
+   "product": "PolyTerra PLA",
+   "name": "Matte Forest Green",
+   "hexes": [
+    "#60AD70"
+   ],
+   "td": 0.3
+  },
+  {
+   "sku": "PM70847",
+   "product": "PolyTerra PLA",
+   "name": "Matte Forest Green",
+   "hexes": [
+    "#60AD70"
+   ],
+   "td": 0.3
+  },
+  {
+   "sku": "PM70848",
+   "product": "PolyTerra PLA",
+   "name": "Matte Sunrise Orange",
+   "hexes": [
+    "#F88B17"
+   ],
+   "td": 2.9
+  },
+  {
+   "sku": "PM70849",
+   "product": "PolyTerra PLA",
+   "name": "Matte Sunrise Orange",
+   "hexes": [
+    "#F88B17"
+   ],
+   "td": 2.9
+  },
+  {
+   "sku": "PM70850",
+   "product": "PolyTerra PLA",
+   "name": "Matte Savannah Yellow",
+   "hexes": [
+    "#F3C432"
+   ],
+   "td": 3.5
+  },
+  {
+   "sku": "PM70851",
+   "product": "PolyTerra PLA",
+   "name": "Matte Savannah Yellow",
+   "hexes": [
+    "#F3C432"
+   ],
+   "td": 3.5
+  },
+  {
+   "sku": "PM70852",
+   "product": "PolyTerra PLA",
+   "name": "Matte Lavender Purple",
+   "hexes": [
+    "#9572BF"
+   ],
+   "td": 0.6
+  },
+  {
+   "sku": "PM70853",
+   "product": "PolyTerra PLA",
+   "name": "Matte Lavender Purple",
+   "hexes": [
+    "#9572BF"
+   ],
+   "td": 0.6
+  },
+  {
+   "sku": "PM70854",
+   "product": "PolyMide PA12-CF",
+   "name": "Black",
+   "hexes": [
+    "#312F2F"
+   ]
+  },
+  {
+   "sku": "PM70855",
+   "product": "PolyMide PA12-CF",
+   "name": "Black",
+   "hexes": [
+    "#312F2F"
+   ]
+  },
+  {
+   "sku": "PM70857",
+   "product": "PolyLite ASA",
+   "name": "Grey"
+  },
+  {
+   "sku": "PM70858",
+   "product": "PolyLite ASA",
+   "name": "Blue",
+   "hexes": [
+    "#003576"
+   ]
+  },
+  {
+   "sku": "PM70859",
+   "product": "PolyLite ASA",
+   "name": "Blue",
+   "hexes": [
+    "#003576"
+   ]
+  },
+  {
+   "sku": "PM70860",
+   "product": "PolyLite ASA",
+   "name": "Red",
+   "hexes": [
+    "#D82B1C"
+   ]
+  },
+  {
+   "sku": "PM70861",
+   "product": "PolyLite ASA",
+   "name": "Red"
+  },
+  {
+   "sku": "PM70863",
+   "product": "PolyTerra PLA",
+   "name": "Matte Pastel Peach",
+   "hexes": [
+    "#F6BF8B"
+   ],
+   "td": 3.3
+  },
+  {
+   "sku": "PM70864",
+   "product": "PolyTerra PLA",
+   "name": "Matte Pastel Peach",
+   "hexes": [
+    "#F6BF8B"
+   ],
+   "td": 3.3
+  },
+  {
+   "sku": "PM70865",
+   "product": "PolyTerra PLA",
+   "name": "Matte Pastel Banana",
+   "hexes": [
+    "#F7D475"
+   ],
+   "td": 3.6
+  },
+  {
+   "sku": "PM70866",
+   "product": "PolyTerra PLA",
+   "name": "Matte Pastel Banana",
+   "hexes": [
+    "#F7D475"
+   ],
+   "td": 3.6
+  },
+  {
+   "sku": "PM70867",
+   "product": "PolyTerra PLA",
+   "name": "Matte Pastel Candy",
+   "hexes": [
+    "#F0D6D9"
+   ],
+   "td": 2.9
+  },
+  {
+   "sku": "PM70868",
+   "product": "PolyTerra PLA",
+   "name": "Matte Pastel Candy",
+   "hexes": [
+    "#F0D6D9"
+   ],
+   "td": 2.9
+  },
+  {
+   "sku": "PM70869",
+   "product": "PolyTerra PLA",
+   "name": "Matte Pastel Mint",
+   "hexes": [
+    "#D2DEBB"
+   ],
+   "td": 2.9
+  },
+  {
+   "sku": "PM70870",
+   "product": "PolyTerra PLA",
+   "name": "Matte Pastel Mint",
+   "hexes": [
+    "#D2DEBB"
+   ],
+   "td": 2.9
+  },
+  {
+   "sku": "PM70873",
+   "product": "PolyLite LW-PLA",
+   "name": "Matte White"
+  },
+  {
+   "sku": "PM70877",
+   "product": "PolyLite PLA",
+   "name": "Sparkle Dark Green"
+  },
+  {
+   "sku": "PM70878",
+   "product": "PolyLite PLA",
+   "name": "Sparkle Dark Blue"
+  },
+  {
+   "sku": "PM70880",
+   "product": "PolyLite PLA",
+   "name": "Silk Blue",
+   "hexes": [
+    "#1A72BD"
+   ]
+  },
+  {
+   "sku": "PM70881",
+   "product": "PolyLite PLA",
+   "name": "Silk Lime",
+   "hexes": [
+    "#A4D111"
+   ]
+  },
+  {
+   "sku": "PM70882",
+   "product": "PolyLite PLA",
+   "name": "Glow in the dark green"
+  },
+  {
+   "sku": "PM70883",
+   "product": "PolyLite LW-PLA",
+   "name": "Wood",
+   "hexes": [
+    "#A8754B"
+   ]
+  },
+  {
+   "sku": "PM70884",
+   "product": "PolyLite LW-PLA",
+   "name": "Matte Black"
+  },
+  {
+   "sku": "PM70885",
+   "product": "PolyLite LW-PLA",
+   "name": "Matte Grey"
+  },
+  {
+   "sku": "PM70886",
+   "product": "PolyLite PETG",
+   "name": "Silver",
+   "hexes": [
+    "#5F5E5F"
+   ]
+  },
+  {
+   "sku": "PM70889",
+   "product": "PolyTerra PLA",
+   "name": "Matte Charcoal Black",
+   "hexes": [
+    "#2F2E30"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PM70890",
+   "product": "PolyTerra PLA",
+   "name": "Matte Fossil Grey",
+   "hexes": [
+    "#8A8C94"
+   ]
+  },
+  {
+   "sku": "PM70891",
+   "product": "PolyTerra PLA",
+   "name": "Matte Charcoal Black",
+   "hexes": [
+    "#2F2E30"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PM70892",
+   "product": "PolyTerra PLA",
+   "name": "Matte Charcoal Black",
+   "hexes": [
+    "#2F2E30"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PM70896",
+   "product": "PolyLite PLA",
+   "name": "Black",
+   "hexes": [
+    "#030305"
+   ]
+  },
+  {
+   "sku": "PM70901",
+   "product": "PolyFlex TPU90",
+   "name": "Clear",
+   "hexes": [
+    "#DBD5D6"
+   ]
+  },
+  {
+   "sku": "PM70902",
+   "product": "PolyFlex TPU90",
+   "name": "Clear",
+   "hexes": [
+    "#DBD5D6"
+   ]
+  },
+  {
+   "sku": "PM70903",
+   "product": "PolyFlex TPU95-HF",
+   "name": "Clear",
+   "hexes": [
+    "#DBD5D6"
+   ]
+  },
+  {
+   "sku": "PM70904",
+   "product": "PolyFlex TPU95-HF",
+   "name": "Clear",
+   "hexes": [
+    "#DBD5D6"
+   ]
+  },
+  {
+   "sku": "PM70907",
+   "product": "PolyTerra PLA",
+   "name": "Matte Earth Brown",
+   "hexes": [
+    "#7C594A"
+   ],
+   "td": 0.2
+  },
+  {
+   "sku": "PM70908",
+   "product": "PolyTerra PLA",
+   "name": "Matte Sakura Pink",
+   "hexes": [
+    "#EAADBD"
+   ],
+   "td": 2.3
+  },
+  {
+   "sku": "PM70909",
+   "product": "PolyTerra PLA",
+   "name": "Matte Pastel Peanut",
+   "hexes": [
+    "#BF9573"
+   ],
+   "td": 0.7
+  },
+  {
+   "sku": "PM70910",
+   "product": "PolyTerra PLA",
+   "name": "Matte Pastel Ice",
+   "hexes": [
+    "#A4D0DF"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PM70927",
+   "product": "PolyLite ASA",
+   "name": "Grey",
+   "hexes": [
+    "#8D8E92"
+   ]
+  },
+  {
+   "sku": "PM70941",
+   "product": "PolyTerra PLA Marble",
+   "name": "Marble White",
+   "hexes": [
+    "#D7D4DA"
+   ],
+   "td": 1.9
+  },
+  {
+   "sku": "PM70942",
+   "product": "PolyTerra PLA Marble",
+   "name": "Marble Slate Grey",
+   "hexes": [
+    "#94B9C2"
+   ],
+   "td": 0.7
+  },
+  {
+   "sku": "PM70943",
+   "product": "PolyTerra PLA",
+   "name": "Matte Pastel Watermelon",
+   "hexes": [
+    "#EE474B"
+   ],
+   "td": 2.4
+  },
+  {
+   "sku": "PM70945",
+   "product": "PolyTerra PLA+",
+   "name": "Satin Black",
+   "hexes": [
+    "#030305"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PM70946",
+   "product": "PolyTerra PLA+",
+   "name": "Satin White",
+   "hexes": [
+    "#F5F0EC"
+   ],
+   "td": 3.8
+  },
+  {
+   "sku": "PM70947",
+   "product": "PolyTerra PLA+",
+   "name": "Satin Grey",
+   "hexes": [
+    "#797E89"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PM70949",
+   "product": "PolyTerra PLA+",
+   "name": "Satin Blue",
+   "hexes": [
+    "#0064B9"
+   ],
+   "td": 0.3
+  },
+  {
+   "sku": "PM70950",
+   "product": "PolyTerra PLA+",
+   "name": "Satin Green",
+   "hexes": [
+    "#5EAB71"
+   ],
+   "td": 0.5
+  },
+  {
+   "sku": "PM70955",
+   "product": "PolyTerra PLA",
+   "name": "Matte Army Red",
+   "hexes": [
+    "#BF312E"
+   ],
+   "td": 0.3
+  },
+  {
+   "sku": "PM70956",
+   "product": "PolyTerra PLA",
+   "name": "Matte Army Blue",
+   "hexes": [
+    "#2E4462"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PM70957",
+   "product": "PolyTerra PLA",
+   "name": "Matte Army Dark Green",
+   "hexes": [
+    "#5F6244"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PM70958",
+   "product": "PolyTerra PLA",
+   "name": "Matte Army Light Green",
+   "hexes": [
+    "#AB8C02"
+   ],
+   "td": 0.8
+  },
+  {
+   "sku": "PM70959",
+   "product": "PolyTerra PLA",
+   "name": "Matte Army Brown",
+   "hexes": [
+    "#795A4D"
+   ],
+   "td": 0.1
+  },
+  {
+   "sku": "PM70976",
+   "product": "PolyTerra PLA",
+   "name": "Matte Wood Brown",
+   "hexes": [
+    "#AB7449"
+   ],
+   "td": 0.2
+  },
+  {
+   "sku": "PM70977",
+   "product": "PolyTerra PLA+",
+   "name": "Satin Red",
+   "hexes": [
+    "#DA1521"
+   ],
+   "td": 2.2
+  },
+  {
+   "sku": "PM70980",
+   "product": "PolyTerra PLA",
+   "name": "Matte Army Beige",
+   "hexes": [
+    "#DBBAA5"
+   ],
+   "td": 0.7
+  },
+  {
+   "sku": "PM70983",
+   "product": "PolyLite PLA",
+   "name": "Red",
+   "hexes": [
+    "#D90102"
+   ]
+  },
+  {
+   "sku": "PM70984",
+   "product": "PolyLite PLA",
+   "name": "Blue",
+   "hexes": [
+    "#013178"
+   ]
+  },
+  {
+   "sku": "PM70985",
+   "product": "PolyLite PLA",
+   "name": "White",
+   "hexes": [
+    "#DDD7D3"
+   ]
+  },
+  {
+   "sku": "PM70986",
+   "product": "PolyLite PETG",
+   "name": "Black",
+   "hexes": [
+    "#161618"
+   ]
+  },
+  {
+   "sku": "PM70987",
+   "product": "PolyLite PETG",
+   "name": "Clear",
+   "hexes": [
+    "#DBD5D6"
+   ]
+  },
+  {
+   "sku": "PM70988",
+   "product": "PolyLite PETG",
+   "name": "Black",
+   "hexes": [
+    "#161618"
+   ]
+  },
+  {
+   "sku": "PM70989",
+   "product": "PolyLite ABS",
+   "name": "Black",
+   "hexes": [
+    "#16161A"
+   ]
+  },
+  {
+   "sku": "PM70990",
+   "product": "PolyLite ASA",
+   "name": "Blue",
+   "hexes": [
+    "#003576"
+   ]
+  },
+  {
+   "sku": "PM70991",
+   "product": "Polymaker ASA",
+   "name": "Black",
+   "hexes": [
+    "#17161A"
+   ]
+  },
+  {
+   "sku": "PM76938",
+   "product": "PolySmooth",
+   "name": "Snow White",
+   "hexes": [
+    "#F5F0EC"
+   ]
+  },
+  {
+   "sku": "PW01001",
+   "product": "PolySupport for PA12",
+   "name": "Grass Green",
+   "hexes": [
+    "#ACE063"
+   ]
+  },
+  {
+   "sku": "PX01008",
+   "product": "PolyDryer\u2122 Box XL No Plug"
+  },
+  {
+   "sku": "PX01009",
+   "product": "PolyDryer\u2122 Box XL 2 Pack"
+  }
+ ]
+}

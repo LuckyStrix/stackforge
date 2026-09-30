@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+build/
+dist/
+.DS_Store
+*.log
+.pytest_cache/
+*.3mf
+!tests/fixtures/*.3mf
