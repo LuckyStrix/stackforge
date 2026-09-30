@@ -68,14 +68,19 @@ def write(path, objs):
     print(f"{path}: {len(objs)} objects, {sum(len(t) for _, t in objs)} triangles")
 
 
-# chainmail: 40x40 tiles of 3mm on a 4mm pitch, 1.2mm thick
-parts = []
-pitch, tile, th = 4.0, 3.0, 1.2
-for iy in range(40):
-    for ix in range(40):
-        x, y = ix * pitch, iy * pitch
-        parts.append(box(x, y, 0, x + tile, y + tile, th))
-write("fabric.3mf", [merge(parts)])
+def main():
+    # chainmail: 40x40 tiles of 3mm on a 4mm pitch, 1.2mm thick
+    parts = []
+    pitch, tile, th = 4.0, 3.0, 1.2
+    for iy in range(40):
+        for ix in range(40):
+            x, y = ix * pitch, iy * pitch
+            parts.append(box(x, y, 0, x + tile, y + tile, th))
+    write("fabric.3mf", [merge(parts)])
 
-# badge: a 60mm dome on a 70mm plinth (tests non-flat top + occlusion)
-write("badge.3mf", [merge([box(0, 0, 0, 70, 70, 3), dome(35, 35, 30, 12)])])
+    # badge: a 60mm dome on a 70mm plinth (tests non-flat top + occlusion)
+    write("badge.3mf", [merge([box(0, 0, 0, 70, 70, 3), dome(35, 35, 30, 12)])])
+
+
+if __name__ == "__main__":
+    main()

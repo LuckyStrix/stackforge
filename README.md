@@ -50,13 +50,16 @@ so nothing here tries to minimize them.
 | `polymaker.py` | look a Polymaker SKU up in their published hex/TD table |
 | `calibrate.py` | step-wedge generator and td/color fitter |
 | `topdeco.py` | project an image onto the top-visible surface of any 3MF |
+| `surfacecolor.py` | colour any 3MF from a pattern or a wrapped image, anywhere on its surface |
+| `munki.py` | measure wedges, plaques and chip transmission with a ColorMunki / ArgyllCMS |
+| `halftone_compare.py` | score stackforge's dither modes by blurred dE |
 | `stackforge.py` | flat full-color plaques from per-pixel filament stacks |
 | `stackforge_gui.py` | desktop front end for stackforge |
 | `td3mf.py`, `tdcolor.py` | shared 3MF I/O and color math |
 | `guikit.py` | shared tkinter theme and widgets for the two GUIs |
 
-`docs/plans/surfacecolor.md` designs the next tool: colouring arbitrary 3D models
-from patterns, wrapped images, or a painting window. Not built yet.
+`surfacecolor.py` is built to the first three steps of `docs/plans/surfacecolor.md`
+(patterns, wrapped images, shell masking); the interactive painting window is not.
 
 Requires `numpy`, `Pillow`, `scipy`; the two GUIs also need `tkinter`
 (`python3-tk` on Debian/Ubuntu). `polymaker.py` is stdlib only.
@@ -528,6 +531,21 @@ by looking at renders instead of reading a table.
   the library when it closes, keeping whatever was already ticked. Both windows
   share `guikit.py` for their theme and widgets, so they look like one program.
 
+### Dithering
+
+`--dither blue` (blue-noise screen), `ordered` (Bayer) and `floyd` all try to buy accuracy by
+mixing two stacks per pixel side by side. `halftone_compare.py` scores them on dE after a
+Gaussian blur that stands in for the eye, since per-pixel dE punishes any dither unfairly.
+
+![target and each dither mode, 2 layers](docs/halftone_2layers.png)
+
+Measured on a smooth test scene with five filaments: with **1-2 layers** blue and ordered cut
+blurred dE from 27.7 to about 25.7; at 4 layers the gain shrinks to under 1; with deep stacks
+(12 layers) it is zero, because the stack gamut is already dense. Blue and ordered score
+alike on dE; blue trades Bayer's crosshatch for grain, which is the reason to prefer it.
+`floyd` was worse than no dither in every case here. So: dither only with shallow stacks.
+Not tested on a printed plaque.
+
 ### Notes from testing
 
 - **The gamut saturates.** With 4–5 filaments at 0.08 mm it stops growing
@@ -651,6 +669,54 @@ same thing — short stacks pad downward with base filament by design.
 - Output 3MFs are regenerated clean: transforms are baked to world space and
   slicer settings in the input are **not** carried over. Re-apply your profile.
 - Always check `--preview` before slicing. It costs nothing.
+
+## surfacecolor.py
+
+Colours an existing 3D model anywhere on its surface without UVs: it voxelises
+the model on the slicer's layer grid, evaluates a pattern at every voxel within
+`--depth` mm of the surface, and emits boxes as per-extruder modifier volumes.
+The slicer does the intersection, so the mesh is never touched.
+
+```sh
+python3 surfacecolor.py badge.3mf -o out.3mf --filaments white,black \
+    --pattern checker3d --scale 6 --preview preview.png
+python3 surfacecolor.py globe.3mf -o mars.3mf --filaments white,red,orange,black \
+    --pattern image-spherical --image mars_equirect.jpg
+python3 surfacecolor.py vase.3mf -o out.3mf --filaments white,black \
+    --pattern expr --expr "sin(z/3 + theta*4) > 0"
+```
+
+Patterns: `checker3d`, `checker-sphere`, `stripes`, `gradient`, `expr`,
+`image-spherical`, `image-cylindrical`, `image-planar`. Pass `--template` so the
+layer grid comes from your profile (same reason as stackforge: boxes on the wrong
+grid drop out on alternate layers).
+
+- **Colour is surface colour**: each voxel gets its nearest single filament, with no
+  stack solve. `--depth 0` colours all the way through.
+- **Depth is real distance** into the material (a distance transform), not depth below
+  the top, so vertical walls colour correctly.
+- **Overlapping shells are fine** (winding number, not parity), as in the dome-on-plate
+  fixture. Consistently oriented normals are assumed.
+- **`--expr` is an `eval`** with builtins removed. Run only expressions you trust.
+- **Unverified**: that Flash Studio honours the extruder on many small modifier volumes on a
+  curved model when slicing (the same open question as everything else here), and
+  performance on 100 mm models with busy patterns. The default `--resolution 0.8` keeps
+  box counts down.
+- No painting window and no dithering yet.
+
+## munki.py
+
+Measures printed wedges and plaques with a ColorMunki (or any ArgyllCMS spectro) and feeds
+`calibrate.py`. Reflectance wedges and plaque checks use `spotread`'s normal reflective mode;
+transmission uses a calibrated laptop screen as the backlight and standalone chips from
+`calibrate.py chips`. **Not yet run on real hardware.** Setup, the power-cycle workaround for a
+stale dial, and first-run checklist: `docs/measuring.md`.
+
+```sh
+python3 munki.py measure-wedge --steps 12 -o wedge.json
+python3 calibrate.py chips --filament teal -o chips.3mf
+python3 munki.py transmission --thickness 0.25,0.33,0.41,0.49
+```
 
 ## make_fixture.py
 

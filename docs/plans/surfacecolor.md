@@ -4,7 +4,9 @@ Where `stackforge` makes a flat plaque and `topdeco` paints what faces upward,
 this covers the remaining case: **an existing 3D model, coloured anywhere on
 its surface**, from an image, a procedural pattern, or a brush.
 
-Status: design only. Nothing here is built.
+Status: build-order steps 1-3 are implemented in `surfacecolor.py` (patterns, wrapped images, shell
+mask via distance transform). Step 4, the painting window, is not built. Later findings: the inside test
+uses a winding number rather than parity, because real 3MFs contain overlapping open shells.
 
 ---
 

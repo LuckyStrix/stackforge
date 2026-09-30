@@ -18,3 +18,10 @@ I/O goes through `td3mf.py`. GUIs (`*_gui.py`) only wrap the CLIs and share `gui
 - Unverified: slicer honouring extruder overrides on *modifier* volumes when slicing.
 - `filaments.json` tds are mostly estimates; never present them as measured.
 - `polymaker.py` fetches from the network; the catalogue is cached in `polymaker_catalog.json`.
+- **surfacecolor voxelisation uses a winding number from above, not parity.** Overlapping open
+  shells (the badge fixture) flip parity and leave a hollow; `tests/test_surfacecolor.py` covers it.
+- **surfacecolor `--expr` is `eval`.** Builtins stripped, dunders refused; still only for trusted input.
+- **Dither only helps shallow stacks.** `mix_pairs` in `stackforge.py` averages two gamut states; nudging
+  the target before the query changed nothing (that was the old implementation).
+- **munki.py is unverified on hardware.** Its spotread session is copied from calibration-suite (do not
+  import it, the repos are independent). All-zero XYZ is refused: a stale ColorMunki dial prints zeros.
