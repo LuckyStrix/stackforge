@@ -13,11 +13,22 @@ run against the instrument yet.** Treat every section below as a checklist for t
 
 ## Reflectance (wedges and plaques)
 `munki.py measure-wedge --steps 12 -o wedge.json` runs `spotread -s -i D50 -Q 1931_2` (reflective is
-the default). Steps must be wider than the spot aperture; `calibrate.py wedge` defaults to 10 mm,
-check your meter's aperture. It prints the `calibrate.py fit --measured ...` line to run next; do this
-over white *and* black bases so td and colour separate (see the calibrate section of the README).
-The Munki Photo is UV-included only (no M2), and whiteners in PLA fluoresce, so readings can differ
-from a daylight photo.
+the default). It prints the `calibrate.py fit --measured ...` line to run next; do this over white
+*and* black bases so td and colour separate.
+
+**Patch size.** The ColorMunki samples a roughly circular area about 8 mm across (measured 7.8 x 7.95 mm
+in an Argyll mailing-list test; readings were identical from 20 mm patches down to 7 mm, nearly so at
+6 mm, and clearly bad at 5 mm). Argyll's driver also discards samples near patch edges. So an 8 mm
+circle needs a patch a bit bigger than 8 mm just for the instrument; I'd allow **at least 3 mm of
+margin each side, so steps of 14 mm**, because light scatters sideways inside translucent PLA and a
+neighbouring step bleeds into the reading (this last part is my reasoning, not from a source).
+`calibrate.py wedge` now defaults to 14 mm steps (it was 10 mm, which leaves only 1 mm of margin
+and is at the mercy of hand placement). 12 steps at 14 mm is 168 mm long.
+
+**Light.** The ColorMunki is **UV-cut only** (white-LED illuminant; Argyll's docs say it cannot use
+fluorescent-whitener compensation), so PLA whiteners are not excited. A white filament can read
+slightly duller or yellower than under daylight. That is a consistent bias, not noise, and it is
+absorbed into the fitted colour; note it against the filament and do not compare across meters.
 
 ## Transmission with a laptop screen as the backlight
 Print `calibrate.py chips --filament <id> -o chips.3mf`, then caliper each chip.

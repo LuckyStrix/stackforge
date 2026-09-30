@@ -339,7 +339,8 @@ def main(argv=None):
     p.add_argument("--steps", type=int, default=12)
     p.add_argument("--layer-height", type=float, default=0.08)
     p.add_argument("--base-layers", type=int, default=8)
-    p.add_argument("--step-width", type=float, default=10.0)
+    p.add_argument("--step-width", type=float, default=14.0,
+                   help="mm; a ColorMunki samples an ~8 mm circle, so leave >= 3 mm each side")
     p.add_argument("--step-depth", type=float, default=14.0)
     p.add_argument("--gap", type=float, default=0.0)
     p.add_argument("--flavor", choices=["orca", "prusa"], default="orca")

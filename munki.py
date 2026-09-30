@@ -348,8 +348,9 @@ def _stamp():
 def _meta(mode, session_args):
     # No serial number: this goes into a public repo.
     return {"tool": "munki.py", "mode": mode, "spotread_args": session_args, "at": _stamp(),
-            "note": "Munki Photo is UV-included only (no M2); fluorescent whiteners in "
-                    "PLA can shift readings between light sources."}
+            "note": "ColorMunki is UV-cut only (white-LED illuminant, no M0/M1): fluorescent "
+                    "whiteners in PLA are not excited, so a white can read duller/yellower here "
+                    "than under a UV-rich light."}
 
 
 def cmd_measure_wedge(args):
