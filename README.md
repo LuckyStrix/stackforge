@@ -55,7 +55,7 @@ so nothing here tries to minimize them.
 | `td3mf.py`, `tdcolor.py` | shared 3MF I/O and color math |
 | `guikit.py` | shared tkinter theme and widgets for the two GUIs |
 
-`PLAN-surfacecolor.md` designs the next tool: colouring arbitrary 3D models
+`docs/plans/surfacecolor.md` designs the next tool: colouring arbitrary 3D models
 from patterns, wrapped images, or a painting window. Not built yet.
 
 Requires `numpy`, `Pillow`, `scipy`; the two GUIs also need `tkinter`
@@ -661,7 +661,7 @@ plinth) for testing without real files.
 
 - `python3 -m unittest discover -s tests` runs the smoke tests (gamut, stack solve, 3MF write).
 - `CLAUDE.md` has the load-bearing invariants (layer grid, version gate) before you change code.
-- Ideas and plans: `PLAN-surfacecolor.md`, `docs/ideas.md`.
+- Ideas and plans: `docs/plans/surfacecolor.md`, `docs/ideas.md`.
 
 ## License
 

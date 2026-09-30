@@ -362,7 +362,7 @@ class App(tk.Tk):
         c.field("Image fit", ttk.Combobox(c, textvariable=self.v_fit, state="readonly",
                                           values=["cover", "contain", "stretch"], width=10))
         c.field("Dither", ttk.Combobox(c, textvariable=self.v_dither, state="readonly",
-                                       values=["none", "ordered", "floyd"], width=10),
+                                       values=["none", "ordered", "blue", "floyd"], width=10),
                 "Rarely helps here: stacking already fills the gamut densely, so "
                 "dithering adds geometry without reducing error. Try it with 2–3 "
                 "filaments.")

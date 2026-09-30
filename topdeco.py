@@ -163,7 +163,7 @@ def main(argv=None):
                     help="mm below the top surface the colour reaches")
     ap.add_argument("--above", type=float, default=1.0,
                     help="mm the modifier sticks up into air (tolerance, harmless)")
-    ap.add_argument("--dither", choices=["none", "floyd", "ordered"], default="none")
+    ap.add_argument("--dither", choices=["none", "floyd", "ordered", "blue"], default="none")
     ap.add_argument("--fit", choices=["contain", "cover", "stretch"], default="contain")
     ap.add_argument("--rotate", type=int, default=0, choices=[0, 90, 180, 270])
     ap.add_argument("--flip", action="store_true", help="mirror the image in X")

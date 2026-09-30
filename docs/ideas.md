@@ -1,11 +1,11 @@
 # Colour science and the four-head printer: ideas
 
 Roadmap of possible next projects, roughly by effort (weekend / weeks / semester).
-Items 14-25 of a longer list; see the README and `PLAN-surfacecolor.md` for what exists.
+Items 14-25 of a longer list; see the README and `docs/plans/surfacecolor.md` for what exists.
 
 | # | idea | effort |
 |---|---|---|
-| 14 | Build `surfacecolor` (designed in `PLAN-surfacecolor.md`) | weeks |
+| 14 | Build `surfacecolor` (designed in `docs/plans/surfacecolor.md`) | weeks |
 | 15 | Backlit stackforge: full-colour lithophanes | weeks |
 | 16 | Kubelka-Munk upgrade (K and S per filament) | weeks |
 | 17 | Spectral stackforge + metamerism explorer | semester |

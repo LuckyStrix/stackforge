@@ -79,6 +79,86 @@ def bayer(n: int) -> np.ndarray:
     return m / m.size
 
 
+_BLUE_CACHE: dict = {}
+
+
+def blue_noise(n: int = 64, sigma: float = 1.5) -> np.ndarray:
+    """(n, n) blue-noise threshold tile in [0, 1), by void-and-cluster (Ulichney).
+
+    Same job as `bayer`, but Bayer's regular lattice makes visible crosshatch
+    and lets low-frequency error through; blue noise pushes error to high
+    spatial frequency, where the eye (and a 0.4 mm nozzle at arm's length) is
+    least sensitive. Toroidal, so the tile repeats without seams. Deterministic
+    (fixed seed) so a given image always dithers the same way.
+    """
+    key = (n, sigma)
+    if key in _BLUE_CACHE:
+        return _BLUE_CACHE[key]
+
+    N = n * n
+    d = np.minimum(np.arange(n), n - np.arange(n))
+    kern = np.exp(-(d[:, None] ** 2 + d[None, :] ** 2) / (2 * sigma**2))
+
+    def bump(y, x):
+        return np.roll(kern, (y, x), axis=(0, 1))
+
+    rng = np.random.default_rng(0)
+    on = np.zeros(N, bool)
+    on[rng.choice(N, max(2, N // 10), replace=False)] = True
+    energy = np.zeros((n, n))
+    for i in np.flatnonzero(on):
+        energy += bump(*divmod(i, n))
+
+    # Relax: move the tightest cluster's pixel into the largest void until that
+    # is the same pixel, giving an evenly spread seed pattern.
+    for _ in range(N):
+        e = energy.ravel()
+        tight = np.flatnonzero(on)[np.argmax(e[on])]
+        energy -= bump(*divmod(tight, n))
+        on[tight] = False
+        void = np.flatnonzero(~on)[np.argmin(energy.ravel()[~on])]
+        if void == tight:
+            energy += bump(*divmod(tight, n))
+            on[tight] = True
+            break
+        energy += bump(*divmod(void, n))
+        on[void] = True
+
+    rank = np.zeros(N)
+    m = int(on.sum())
+
+    # Phase 1: peel the seed pattern, tightest cluster first, ranks m-1 .. 0.
+    on1, e1 = on.copy(), energy.copy()
+    for r in range(m - 1, -1, -1):
+        tight = np.flatnonzero(on1)[np.argmax(e1.ravel()[on1])]
+        rank[tight] = r
+        on1[tight] = False
+        e1 -= bump(*divmod(tight, n))
+
+    # Phase 2: fill the largest voids up to half density, ranks m .. N/2-1.
+    on2, e2 = on.copy(), energy.copy()
+    for r in range(m, N // 2):
+        void = np.flatnonzero(~on2)[np.argmin(e2.ravel()[~on2])]
+        rank[void] = r
+        on2[void] = True
+        e2 += bump(*divmod(void, n))
+
+    # Phase 3: past half, the remaining zeros are the minority, so place each
+    # where the *zeros* cluster tightest (the largest void of ones).
+    e3 = np.zeros((n, n))
+    for i in np.flatnonzero(~on2):
+        e3 += bump(*divmod(i, n))
+    for r in range(N // 2, N):
+        tight = np.flatnonzero(~on2)[np.argmax(e3.ravel()[~on2])]
+        rank[tight] = r
+        on2[tight] = True
+        e3 -= bump(*divmod(tight, n))
+
+    out = (rank / N).reshape(n, n)
+    _BLUE_CACHE[key] = out
+    return out
+
+
 def palette_spread(palette: np.ndarray) -> float:
     d = np.linalg.norm(palette[:, None, :] - palette[None, :, :], axis=-1)
     np.fill_diagonal(d, np.inf)
@@ -138,6 +218,11 @@ def quantize(img, palette, mask, mode):
     elif mode == "ordered":
         spread = palette_spread(palette) * 0.5
         tile = np.tile(bayer(8), (h // 8 + 1, w // 8 + 1))[:h, :w] - 0.5
+        out = nearest_lab(np.clip(img + tile[:, :, None] * spread, 0, 255), pal_lab)
+    elif mode == "blue":
+        spread = palette_spread(palette) * 0.5
+        t = blue_noise(64)
+        tile = np.tile(t, (h // 64 + 1, w // 64 + 1))[:h, :w] - 0.5
         out = nearest_lab(np.clip(img + tile[:, :, None] * spread, 0, 255), pal_lab)
     elif mode == "floyd":
         out = floyd_steinberg(img, palette, pal_lab)

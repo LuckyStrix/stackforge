@@ -178,16 +178,62 @@ class Gamut:
 # --------------------------------------------------------------------------
 
 
+MIX_ALPHAS = (0.125, 0.25, 0.375, 0.5)
+
+
+def mix_pairs(gamut, img):
+    """Per pixel, the two gamut states whose linear-light average best matches it.
+
+    Returns (a, b, alpha): the pixel should show `b` a fraction `alpha` of the
+    time and `a` the rest. Thresholding `alpha` against a screen gives ordered /
+    blue-noise halftoning that the eye averages back to the target.
+
+    Why pairs and not just a nudged nearest-colour query: the stack gamut is
+    dense but *not convex*, so a target in a dent of its boundary has no stack
+    of its own yet sits on a segment between two that do. A threshold added to
+    the target before the query (what this used to do) moves it by less than
+    the gamut's spacing and changes nothing. Here `a` is the nearest state and
+    `b` is found by aiming past the target, on the far side of it from `a`, at
+    each mix fraction in MIX_ALPHAS, keeping whichever pair lands closest.
+    """
+    tgt = tdcolor.srgb_to_linear(np.asarray(img, dtype=np.float64)).reshape(-1, 3)
+    tgt_lab = tdcolor.linear_to_lab(tgt)
+    _, a = gamut.tree.query(tgt_lab, workers=-1)
+    ca = gamut.colors[a]
+
+    best_b = a.copy()
+    best_alpha = np.zeros(len(a))
+    best_err = np.linalg.norm(gamut.lab[a] - tgt_lab, axis=-1)
+    for al in MIX_ALPHAS:
+        aim = np.clip(ca + (tgt - ca) / al, 0.0, 1.0)
+        _, b = gamut.tree.query(tdcolor.linear_to_lab(aim), workers=-1)
+        d = gamut.colors[b] - ca
+        # Refine the fraction for the state actually found, capped at 1/2 so
+        # `a` stays the dominant colour.
+        den = np.maximum((d * d).sum(-1), 1e-12)
+        alpha = np.clip(((tgt - ca) * d).sum(-1) / den, 0.0, 0.5)
+        mixed = ca + alpha[:, None] * d
+        err = np.linalg.norm(tdcolor.linear_to_lab(mixed) - tgt_lab, axis=-1)
+        better = err < best_err - 1e-6
+        best_err = np.where(better, err, best_err)
+        best_b = np.where(better, b, best_b)
+        best_alpha = np.where(better, alpha, best_alpha)
+    shape = np.asarray(img).shape[:2]
+    return a.reshape(shape), best_b.reshape(shape), best_alpha.reshape(shape)
+
+
 def solve_image(gamut, img, dither):
     """img (h,w,3) uint8 -> (h,w) gamut state index."""
     if dither == "none":
         return gamut.query(img)
 
-    if dither == "ordered":
+    if dither in ("ordered", "blue"):
         h, w = img.shape[:2]
-        spread = tdcolor.palette_spread(gamut.srgb()[:: max(1, len(gamut.colors) // 512)]) * 0.5
-        tile = np.tile(tdcolor.bayer(8), (h // 8 + 1, w // 8 + 1))[:h, :w] - 0.5
-        return gamut.query(np.clip(img + tile[:, :, None] * spread, 0, 255))
+        a, b, alpha = mix_pairs(gamut, img)
+        n = 8 if dither == "ordered" else 64
+        t = tdcolor.bayer(8) if dither == "ordered" else tdcolor.blue_noise(64)
+        thr = np.tile(t, (h // n + 1, w // n + 1))[:h, :w]
+        return np.where(thr < alpha, b, a)
 
     if dither == "floyd":
         pal = gamut.srgb()
@@ -424,10 +470,12 @@ def main(argv=None):
                     help="color layers above the base; the gamut stops growing "
                          "once the deepest stack goes opaque, so more is just time")
     ap.add_argument("--base-layers", type=int, default=5, help="opaque backing layers")
-    ap.add_argument("--dither", choices=["none", "ordered", "floyd"], default="none",
-                    help="rarely worth it here: vertical stacking already fills the "
-                         "gamut densely, so dithering adds geometry without reducing "
-                         "error. Try it only with 2-3 filaments")
+    ap.add_argument("--dither", choices=["none", "ordered", "blue", "floyd"], default="none",
+                    help="spatial mixing of two stacks per pixel. 'blue' (blue-noise "
+                         "screen) and 'ordered' (Bayer) only help when stacks are "
+                         "shallow (--max-layers <= ~4); with deep stacks the gamut is "
+                         "already dense and they change nothing. 'floyd' is usually "
+                         "worse. See halftone_compare.py")
     ap.add_argument("--fit", choices=["contain", "cover", "stretch"], default="cover")
     ap.add_argument("--grid", type=int, default=192,
                     help="gamut dedup resolution; higher = finer and slower")

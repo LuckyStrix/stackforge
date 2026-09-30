@@ -18,6 +18,7 @@ indirect daylight with a white card in frame works well enough -- sample the
 middle of each step, average a patch, and white-balance against the card.
 
     calibrate.py wedge --filament teal --base white -o wedge_teal.3mf
+    calibrate.py chips --filament teal -o chips_teal.3mf     # transmission, see munki.py
     calibrate.py fit --filament teal --base "#F4F5F0" \
         --measured "#D8E6E4,#B4D2D0,#8FBEBC,#6FADAB,#54A09E,#3E9694,#2C8E8C,#1F8886"
     calibrate.py fit --filament teal --base "#F4F5F0" --from-image shot.png
@@ -69,6 +70,38 @@ def build_wedge(steps, layer_h, base_layers, step_w, step_d, gap, rows=1, row_ga
         m = bb.mesh()
         decals.append((r + 2, m[0], m[1]))
     return plate, decals, total_w, base_h
+
+
+def build_chips(steps, layer_h, step_w, step_d, gap):
+    """Standalone chips of 1..N layers, no base: light has to get through them.
+
+    The reflectance wedge sits on an opaque base, which blocks the backlight, so
+    transmission measurements (munki.py transmission) need the filament alone.
+    """
+    return [
+        td3mf.Item(f"chip_{i + 1}",
+                   td3mf.box_verts(i * (step_w + gap), 0, 0,
+                                   i * (step_w + gap) + step_w, step_d, (i + 1) * layer_h),
+                   td3mf.BOX_TRIS.copy())
+        for i in range(steps)
+    ]
+
+
+def cmd_chips(args):
+    db = DB(args.db)
+    fil = db.resolve(args.filament)
+    if len(fil) != 1:
+        raise SystemExit("chips: give exactly one --filament")
+    fil = fil[0]
+    items = build_chips(args.steps, args.layer_height, args.step_width,
+                        args.step_depth, args.gap)
+    td3mf.get_writer(args.flavor)(args.output, items, {}, 1, "part", colors=[fil.color])
+    print(f"chips: {args.steps} standalone steps, 1..{args.steps} layers of {fil.label()}, "
+          f"{args.step_width:.0f} x {args.step_depth:.0f} mm each")
+    print(f"wrote {args.output}")
+    print(f"Slice at layer height EXACTLY {args.layer_height} mm, and remember the first "
+          f"layer may be thicker: the thickness to give munki.py is what you measure "
+          f"with calipers, not steps x layer height.")
 
 
 def cmd_wedge(args):
@@ -311,6 +344,17 @@ def main(argv=None):
     p.add_argument("--gap", type=float, default=0.0)
     p.add_argument("--flavor", choices=["orca", "prusa"], default="orca")
     p.set_defaults(fn=cmd_wedge)
+
+    p = sub.add_parser("chips", help="standalone filament-only chips, for transmission")
+    p.add_argument("--filament", required=True)
+    p.add_argument("-o", "--output", required=True)
+    p.add_argument("--steps", type=int, default=8)
+    p.add_argument("--layer-height", type=float, default=0.08)
+    p.add_argument("--step-width", type=float, default=20.0)
+    p.add_argument("--step-depth", type=float, default=20.0)
+    p.add_argument("--gap", type=float, default=2.0)
+    p.add_argument("--flavor", choices=["orca", "prusa"], default="orca")
+    p.set_defaults(fn=cmd_chips)
 
     p = sub.add_parser("fit", help="fit td + colour from measured patches")
     p.add_argument("--filament", required=True)
