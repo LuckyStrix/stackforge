@@ -48,3 +48,24 @@ a sample is unverified.
 ## Tests
 `python3 -m unittest discover -s tests` runs the fake-spotread and maths tests. With the meter
 connected: `STACKFORGE_MUNKI=1 python3 -m unittest tests.test_munki`.
+
+## ColorMunki facts and where they came from
+Looked up 2026-09-30. Re-check a source before relying on a number for anything expensive.
+
+| fact | value | source |
+|---|---|---|
+| sampling area | ~8 mm circle (7.77 x 7.95 mm measured) | [Argyll list: patch sizes](https://argyllcms.freelists.narkive.com/UpodF1z0/limitations-on-colormunki-patch-sizes) |
+| patch size that reads the same as 20 mm | down to 7 mm; ~6 mm nearly; 5 mm bad | same thread |
+| edge handling | samples over a patch transition plus a margin are discarded; patches with too few samples (~3-4) rejected | same thread (Graeme Gill) |
+| UV | UV-cut only, white-LED illuminant; no fluorescent-whitener compensation | [Argyll instruments doc](https://www.argyllcms.com/doc/instruments.html) |
+| modes | reflective and emissive spot/strip; transmission not listed for the ColorMunki | same doc |
+| native reflective standard | X-Rite XRGA | same doc |
+| geometry | 45/0, UV cut (i1Studio, the ColorMunki's successor) | [X-Rite aperture guidance](https://www.xrite.com/service-support/patch__aperture_size_requirements__xrite_exact) |
+| repeatability | moving the meter on a smooth uniform patch can shift ~0.2 dE | [Argyll list: drift](https://argyllcms.freelists.narkive.com/38w37snS/colormunki-measurement-drift) |
+
+Also useful:
+- [Argyll spotread docs](https://www.argyllcms.com/doc/spotread.html) for flags (`-s` spectrum, `-e` emissive, `-i` illuminant, `-Q` observer)
+- The calibration-suite repo (LuckyStrix/calibration-suite): the stale-dial power-cycle procedure, and a transcript of a real ColorMunki Photo's spotread session (`calsuite/display/backends/spotread_session.py`)
+
+Not found in any source I read (so still to measure): the aperture's field of view in emissive mode,
+and the meter's footprint on a stepped surface.
