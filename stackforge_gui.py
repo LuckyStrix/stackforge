@@ -87,7 +87,9 @@ class Worker:
                 self.q.put(Job(kind, fn()))
             except Cancelled:
                 self.q.put(Job("cancelled"))
-            except Exception:
+            except BaseException:
+                # SystemExit too: filamentdb/td3mf report bad data that way,
+                # and an uncaught one kills this thread with the UI still busy.
                 self.q.put(Job(kind, error=traceback.format_exc()))
 
         self._thread = threading.Thread(target=run, daemon=True)
@@ -329,7 +331,7 @@ class App(tk.Tk):
         g.pack(fill="x", pady=(0, 8))
         self.v_width = tk.DoubleVar(value=150.0)
         self.v_height = tk.DoubleVar(value=0.0)
-        self.v_res = tk.DoubleVar(value=0.4)
+        self.v_res = tk.DoubleVar(value=sf.MIN_FEATURE_MM)
         self.v_layer = tk.DoubleVar(value=0.08)
         self.v_first = tk.DoubleVar(value=0.08)
         self.v_maxl = tk.IntVar(value=16)
@@ -376,7 +378,7 @@ class App(tk.Tk):
         self.v_slots = tk.IntVar(value=4)
         self.v_top = tk.IntVar(value=5)
         self.v_rankby = tk.StringVar(value="mean")
-        self.v_samples = tk.IntVar(value=4000)
+        self.v_samples = tk.IntVar(value=20000)
         r.field("Toolheads", num(r, self.v_slots, 2, 8, 1),
                 "Total spools loaded, including the base. Set this to 4 for a "
                 "four-toolhead machine.")
@@ -385,7 +387,7 @@ class App(tk.Tk):
                                         values=["mean", "p95"], width=10),
                 "p95 targets worst-case error instead of average — better when a "
                 "few badly-wrong regions bother you more than a slight overall shift.")
-        r.field("Score samples", num(r, self.v_samples, 500, 40000, 500))
+        r.field("Colours scored", num(r, self.v_samples, 500, 100000, 500))
         self.v_slots.trace_add("write", lambda *_: self._refresh_estimate())
 
         # output
@@ -461,7 +463,7 @@ class App(tk.Tk):
 
         names = [f.id for f in self.db.filaments.values()]
         self.cb_base["values"] = names
-        if names:
+        if names and self.v_base.get() not in names:
             white = next((n for n in names if "white" in n), names[0])
             self.v_base.set(white)
         self._refresh_estimate()
@@ -527,7 +529,15 @@ class App(tk.Tk):
             a = self.config_ns()
         except (tk.TclError, ValueError):
             return
+        problems = sf.check_args(a)
+        if problems:
+            self.lbl_est.config(text="\n".join(problems))
+            return
         sel = self.selected()
+        # _validate adds the base if it is unticked, so count it here too.
+        base_id = self.v_base.get()
+        if base_id in self.db.filaments and base_id not in {f.id for f in sel}:
+            sel = sel + [self.db.filaments[base_id]]
         n, slots = len(sel), a.slots
         total = (a.first_layer_height
                  + (a.base_layers - 1 + a.max_layers) * a.layer_height)
@@ -597,7 +607,9 @@ class App(tk.Tk):
         w_px = max(1, int(round(a.width / a.resolution)))
         h_px = (max(1, int(round(a.height / a.resolution))) if a.height > 0
                 else max(1, int(round(w_px * self.source_img.height / self.source_img.width))))
-        self.fitted = tdcolor.fit_image(self.image_path, w_px, h_px, a.fit)
+        base = self.db.filaments.get(self.v_base.get())
+        pad = tuple(int(v) for v in base.rgb()) if base else (255, 255, 255)
+        self.fitted = tdcolor.fit_image(self.image_path, w_px, h_px, a.fit, pad=pad)
         self.view_target.set_image(self.fitted)
         self.nb.select(0)
         self._update_legend()
@@ -628,7 +640,15 @@ class App(tk.Tk):
         if not v:
             return
         sel, base = v
-        a = self.config_ns()
+        try:
+            a = self.config_ns()
+        except (tk.TclError, ValueError):
+            messagebox.showwarning(APP, "A setting is empty or not a number.")
+            return
+        problems = sf.check_args(a)
+        if problems:
+            messagebox.showwarning(APP, "\n".join(problems))
+            return
         self._refresh_fit()
         img = self.fitted
 
@@ -642,14 +662,16 @@ class App(tk.Tk):
                      verbose=False, progress=self.worker.progress)
         self.worker.progress(0.7, "matching pixels to reachable colours")
         state = sf.solve_image(g, img, a.dither)
-        achieved = g.srgb()[state]
+        achieved = np.round(g.srgb()[state])
         err = np.linalg.norm(
             tdcolor.srgb_to_lab(achieved.astype(np.float64))
             - tdcolor.srgb_to_lab(img.astype(np.float64)), axis=-1)
         self.worker.progress(0.95, "building layer labels")
+        blurred = tdcolor.blurred_de(achieved, img, sf.BLUR_MM / a.resolution)[0]
         labels, _ = sf.trim_base_layers(sf.layer_labels(g, state), g.base_index)
         return {"gamut": g, "labels": labels, "achieved": achieved, "err": err,
-                "fils": sel, "base": base, "args": a}
+                "blurred": blurred, "fils": sel, "base": base, "args": a,
+                "image_path": self.image_path}
 
     def _job_rank(self, sel, base, a, img):
         res = sf.rank_subsets(sel, base, a, img,
@@ -660,7 +682,8 @@ class App(tk.Tk):
             res, base, a, img, top,
             progress=lambda f, m: self.worker.progress(0.8 + f * 0.2, m))
         import tempfile
-        path = os.path.join(tempfile.gettempdir(), "stackforge_combos.png")
+        fd, path = tempfile.mkstemp(prefix="stackforge_combos_", suffix=".png")
+        os.close(fd)
         sf.contact_sheet(path, entries, img)
         return {"results": res, "entries": entries, "sheet": path,
                 "fils": sel, "base": base, "args": a}
@@ -725,10 +748,15 @@ class App(tk.Tk):
 
         e = r["err"]
         labels = r["labels"]
-        changes = sum(len(np.unique(labels[i])) for i in range(labels.shape[0]))
+        per_layer = np.mean([len(np.unique(labels[i])) for i in range(labels.shape[0])])
+        capped = "   ·   gamut hit the state cap" if r["gamut"].capped else ""
+        thin = sf.thin_fraction(labels, r["gamut"].base_index)
+        if thin > 0.05 and r["args"].resolution < sf.MIN_FEATURE_MM - 1e-9:
+            capped += f"   ·   {100*thin:.0f}% of colour in 1-px features (slicer drops them)"
         self._status(
             f"dE mean {e.mean():.1f}  p95 {np.percentile(e,95):.1f}  "
-            f"max {e.max():.1f}   ·   ~{changes} tool changes",
+            f"max {e.max():.1f}  (blurred {r['blurred']:.1f})   ·   "
+            f"{per_layer:.1f} filaments per layer{capped}",
             OK if e.mean() < 8 else WARN)
 
     def _on_ranked(self, r):
@@ -751,20 +779,38 @@ class App(tk.Tk):
             keep = {f.id for f in best["fils"]}
             for fid, v in self.checks.items():
                 v.set(fid in keep)
+            self.v_base.set(r["base"].id)
             self._generate()
 
     def _export(self):
+        if self.worker.busy:            # Ctrl+E bypasses the disabled button
+            return
         if not self.result:
             messagebox.showwarning(APP, "Generate a preview first.")
             return
+        r = self.result
+        try:
+            now = self.config_ns()
+        except (tk.TclError, ValueError):
+            now = None
+        sel = {f.id for f in self.selected()} | {self.v_base.get()}
+        if (now != r["args"] or self.image_path != r["image_path"]
+                or sel != {f.id for f in r["fils"]} or self.v_base.get() != r["base"].id):
+            if not messagebox.askyesno(
+                APP,
+                "The image, filaments or settings have changed since this preview "
+                "was generated. The export will be the preview as generated, "
+                f"at {r['args'].layer_height} mm layers / "
+                f"{r['args'].first_layer_height} mm first layer.\n\n"
+                "Export it anyway? (No, then Generate again, to use the new settings.)"):
+                return
         p = filedialog.asksaveasfilename(
             title="Export 3MF", defaultextension=".3mf",
             filetypes=[("3MF", "*.3mf")],
-            initialfile=os.path.splitext(os.path.basename(self.image_path or "plaque"))[0]
+            initialfile=os.path.splitext(os.path.basename(r["image_path"] or "plaque"))[0]
             + "_plaque.3mf")
         if not p:
             return
-        r = self.result
         a = r["args"]
         try:
             plate, decals, total_h = sf.build_geometry(
@@ -776,7 +822,7 @@ class App(tk.Tk):
                 r["gamut"].base_index, self.v_part.get(),
                 self.v_template.get() or None, a.layer_height,
                 a.first_layer_height)
-        except Exception as exc:
+        except (Exception, SystemExit) as exc:
             messagebox.showerror(APP, f"Export failed:\n{exc}")
             return
         nbox = sum(len(t) // 12 for _, _, t in decals)
@@ -807,7 +853,12 @@ class App(tk.Tk):
                                        filetypes=[("3MF project", "*.3mf")])
         if not p:
             return
-        with zipfile.ZipFile(p) as z:
+        try:
+            z = zipfile.ZipFile(p)
+        except (zipfile.BadZipFile, OSError) as exc:
+            messagebox.showwarning(APP, f"{os.path.basename(p)} is not a 3MF: {exc}")
+            return
+        with z:
             if "Metadata/project_settings.config" not in z.namelist():
                 messagebox.showwarning(
                     APP,
@@ -825,6 +876,9 @@ class App(tk.Tk):
             self.v_first.set(flh or lh)
             self._status(f"adopted layer height {lh} mm, first layer "
                          f"{flh or lh} mm from template", OK)
+        else:
+            self._status("template has no layer height; set it to match "
+                         "the profile by hand", WARN)
         self._refresh_estimate()
 
     def _clear_template(self):

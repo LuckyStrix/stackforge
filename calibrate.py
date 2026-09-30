@@ -30,7 +30,6 @@ import argparse
 import sys
 
 import numpy as np
-from PIL import Image
 from scipy.optimize import least_squares
 
 import td3mf
@@ -146,7 +145,7 @@ def cmd_wedge(args):
 
 def sample_image(path, n, axis="x"):
     """Average n evenly spaced patches along the wedge from a photo."""
-    im = np.asarray(Image.open(path).convert("RGB"), dtype=np.float64)
+    im = np.asarray(tdcolor.open_image(path), dtype=np.float64)
     h, w = im.shape[:2]
     out = []
     for i in range(n):

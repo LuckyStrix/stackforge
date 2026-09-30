@@ -60,6 +60,8 @@ eval, so restrict globals and document it). Warn on box count as stackforge does
 functions on a small grid, box emission on the fixture, `tests/test_smoke.py` style end-to-end.
 
 ## C. Blue-noise halftoning (idea 24) in stackforge
+> Superseded: thresholding the target before the query moved it by less than the gamut's
+> spacing and changed nothing. `stackforge.mix_pairs` (two-stack mixing) replaced it.
 - `tdcolor.py`: add `dither` mode `blue` next to `none/ordered/floyd` (`bayer()` is the model for
   the threshold matrix): void-and-cluster blue-noise tile generated with numpy, cached under
   `data/` (generate once, commit the small `.npy`).

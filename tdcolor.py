@@ -258,7 +258,18 @@ def open_image(path, background=(255, 255, 255)) -> Image.Image:
     `background` rather than keeping whatever colour the encoder left in them.
     """
     im = ImageOps.exif_transpose(Image.open(path))
-    if im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info):
+    if im.mode in ("I;16", "I;16B", "I;16L", "I", "F"):
+        # 16-bit / float greyscale: convert("RGB") clips at 255 instead of
+        # scaling, which turns every photo into pure black and white.
+        a = np.asarray(im, dtype=np.float64)
+        if im.mode.startswith("I;16") or a.max() > 255:
+            top = 65535.0
+        elif im.mode == "F" and a.max() <= 1.0:
+            top = 1.0
+        else:
+            top = 255.0
+        im = Image.fromarray(np.round(np.clip(a / top, 0, 1) * 255).astype(np.uint8))
+    if im.mode in ("RGBA", "LA", "PA") or "transparency" in im.info:
         im = im.convert("RGBA")
         bg = Image.new("RGBA", im.size, tuple(background) + (255,))
         im = Image.alpha_composite(bg, im)

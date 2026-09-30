@@ -36,13 +36,13 @@ OPTICAL MODEL
 USAGE
     stackforge.py photo.jpg -o plaque.3mf \
         --filaments white,black,blue,red --base white \
-        --width 150 --layer-height 0.08 --max-layers 14 --dither floyd
+        --template project.3mf --width 150 --max-layers 16
 """
 
 from __future__ import annotations
 
 import argparse
-import sys
+import os
 import time
 
 import itertools
@@ -61,11 +61,15 @@ from filamentdb import DB
 # --------------------------------------------------------------------------
 
 
+# Linear-light change below which a same-cell child counts as converged.
+CARRY_EPS = 1e-4
+
+
 class Gamut:
     """All colors reachable by stacking <= max_layers of the given filaments.
 
-    Built by breadth-first expansion in linear RGB with dedup on a quantized
-    grid. The state is just the composited color -- the stack below it stops
+    Built by breadth-first expansion, compositing in linear light and deduping
+    on a quantized grid over the sRGB encoding. The state is just the composited color -- the stack below it stops
     mattering once it is obscured -- so the search stays 3-dimensional no
     matter how deep it goes.
     """
@@ -92,15 +96,22 @@ class Gamut:
         seen = {self._key(base_lin, grid)}
         frontier = np.array([0])
 
+        self.capped = False
         t0 = time.time()
         for d in range(1, max_layers + 1):
             fc = np.array([colors[i] for i in frontier])            # (m,3)
+            fkeys = self._keys(fc, grid)
             new_c, new_p, new_f = [], [], []
             for fi in range(self.n):
                 cand = fc * trans[fi] + cols[fi] * (1.0 - trans[fi])
                 keys = self._keys(cand, grid)
+                moved = np.abs(cand - fc).max(-1) > CARRY_EPS
                 for j, k in enumerate(keys):
-                    if k in seen:
+                    # A layer that moves the colour by less than one cell lands
+                    # in its parent's own cell. Dropping it would stop that
+                    # filament accumulating at all: white + a translucent
+                    # natural never got past 3 layers. Keep it while it moves.
+                    if k in seen and not (k == fkeys[j] and moved[j]):
                         continue
                     seen.add(k)
                     new_c.append(cand[j])
@@ -121,8 +132,10 @@ class Gamut:
             if progress:
                 progress(d / max_layers, f"gamut depth {d}/{max_layers}: {len(colors)} colors")
             if len(colors) > cap:
-                print(f"  ! hit --cap {cap} at depth {d}; stopping expansion early. "
-                      f"Lower --grid or --max-layers for a cleaner search.", file=sys.stderr)
+                self.capped = True
+                if verbose:
+                    print(f"  ! hit --cap {cap} at depth {d}; stopping expansion early. "
+                          f"Lower --grid or --max-layers for a cleaner search.")
                 break
 
         self.colors = np.array(colors)
@@ -183,6 +196,13 @@ class Gamut:
 
 # --------------------------------------------------------------------------
 
+
+# Smallest pixel whose one-pixel features Flash Studio 1.7.8 still extrudes
+# with a 0.4 mm nozzle: 0.4 lost 5-9% of colour pixels, 0.6 lost 0.1%.
+MIN_FEATURE_MM = 0.6
+
+# Eye low-pass at arm's length, in mm on the plaque (1.5 px at 0.4 mm/px).
+BLUR_MM = 0.6
 
 MIX_ALPHAS = (0.125, 0.25, 0.375, 0.5)
 
@@ -271,6 +291,22 @@ def trim_base_layers(labels, base_index):
     return labels[trim:], trim
 
 
+def thin_fraction(labels, base_index):
+    """Fraction of colour (non-base) layer-pixels in features one pixel wide.
+
+    Sliced in Flash Studio 1.7.8, every modifier region gets its own walls and
+    a region one 0.4 mm pixel across is below what it will extrude: 5-9% of
+    colour pixels on an undithered test plaque got no plastic, almost all in
+    such features. At 0.6 mm pixels the same plaque lost 0.1%.
+    """
+    p = np.pad(labels, ((0, 0), (1, 1), (1, 1)), constant_values=-1)
+    c = p[:, 1:-1, 1:-1]
+    thin_x = (p[:, 1:-1, :-2] != c) & (p[:, 1:-1, 2:] != c)
+    thin_y = (p[:, :-2, 1:-1] != c) & (p[:, 2:, 1:-1] != c)
+    colour = c != base_index
+    return float(((thin_x | thin_y) & colour).sum() / max(colour.sum(), 1))
+
+
 def build_geometry(labels, width_mm, res, layer_h, base_h, base_index, n_fil):
     """labels (L,h,w) -> plaque mesh + one modifier volume per filament."""
     L, h, w = labels.shape
@@ -307,20 +343,19 @@ def write_plaque(path, flavor, plate, decals, fils, base_index, part_type,
                  template, layer_height, first_layer_height, solid=True):
     """Write the 3MF. Shared by the CLI and the GUI so both force solid infill."""
     # Orca discards project-level values whose preset name matches a system
-    # preset, so solid infill goes in per-object overrides, which survive.
-    # The prusa writer carries no profile at all, so the layer height has to
-    # ride along the same way (its first layer is a print-only setting).
-    if flavor == "orca":
-        obj = {"sparse_infill_density": "100%", "infill_combination": "0"} if solid else {}
-    else:
-        obj = {"layer_height": f"{layer_height:g}"}
-        if solid:
-            obj.update(fill_density="100%", infill_every_layers="1")
+    # preset, so settings that must hold go in per-object overrides, which
+    # survive; the prusa writer carries no profile at all. The first layer has
+    # no per-object form, so the profile rewrite is all it gets.
+    obj = {"layer_height": f"{layer_height:g}"}
+    if solid and flavor == "orca":
+        obj.update(sparse_infill_density="100%", infill_combination="0")
+    elif solid:
+        obj.update(fill_density="100%", infill_every_layers="1")
     td3mf.get_writer(flavor)(
         path, [plate], {0: decals}, base_index + 1, part_type,
         template=template, colors=[f.color for f in fils],
         layer_height=layer_height, first_layer_height=first_layer_height,
-        solid=solid, object_settings=obj or None,
+        solid=solid, object_settings=obj,
     )
 
 
@@ -329,20 +364,48 @@ def write_plaque(path, flavor, plate, decals, fils, base_index, part_type,
 # --------------------------------------------------------------------------
 
 
-def sample_pixels(img, n, seed=0):
-    """A uniform sample of the image, which weights colors by the area they cover."""
-    flat = img.reshape(-1, 3).astype(np.float64)
-    if len(flat) <= n:
-        return flat
-    rng = np.random.default_rng(seed)
-    return flat[rng.choice(len(flat), n, replace=False)]
+def colour_histogram(img, max_colours):
+    """Distinct colours of `img` and how many pixels have each: (rgb (k,3), counts (k,)).
+
+    Scoring these weighted by count is exact. A random pixel sample was not:
+    when the top two combinations were 0.04 dE apart the winner changed with
+    the seed. An image with more than `max_colours` distinct colours has low
+    bits dropped (to the bin centre) until it fits, moving each by a few codes.
+    """
+    px = img.reshape(-1, 3).astype(np.int64)
+    for drop in range(8):
+        q = ((px >> drop) << drop) + ((1 << drop) >> 1)
+        u, counts = np.unique((q[:, 0] << 16) | (q[:, 1] << 8) | q[:, 2],
+                              return_counts=True)
+        if len(u) <= max_colours:
+            break
+    rgb = np.stack([(u >> 16) & 255, (u >> 8) & 255, u & 255], -1).astype(np.float64)
+    return rgb, counts.astype(np.float64)
 
 
-def score_subset(fils, base, args, samples_lab):
-    """dE of the best achievable match for each sampled color."""
+def weighted_percentile(values, weights, q):
+    order = np.argsort(values)
+    cum = np.cumsum(weights[order])
+    i = np.searchsorted(cum, q / 100.0 * cum[-1])
+    return float(values[order][min(i, len(values) - 1)])
+
+
+def score_subset(fils, base, args, rgb):
+    """dE of the best achievable match for each colour in `rgb` (k,3 sRGB).
+
+    With --dither ordered/blue the plaque shows a two-stack mix, so that mix is
+    what gets scored; ranking on the undithered nearest match picked different
+    winners. floyd has no per-colour equivalent and is scored undithered.
+    """
     g = Gamut(fils, base, args.layer_height, args.max_layers,
               args.grid, args.cap, verbose=False)
-    return g.tree.query(samples_lab, workers=-1)[0]
+    lab = tdcolor.srgb_to_lab(rgb)
+    if getattr(args, "dither", "none") in ("ordered", "blue"):
+        a, b, al = mix_pairs(g, rgb[:, None, :])
+        a, b, al = a[:, 0], b[:, 0], al[:, 0]
+        mixed = g.colors[a] + al[:, None] * (g.colors[b] - g.colors[a])
+        return np.linalg.norm(tdcolor.linear_to_lab(mixed) - lab, axis=-1), g.capped
+    return g.tree.query(lab, workers=-1)[0], g.capped
 
 
 def rank_subsets(all_fils, base, args, img, progress=None, verbose=True):
@@ -352,26 +415,27 @@ def rank_subsets(all_fils, base, args, img, progress=None, verbose=True):
     if not combos:
         raise SystemExit(f"--slots {args.slots} needs more filaments than that")
 
-    samples_rgb = sample_pixels(img, args.rank_samples)
-    samples_lab = tdcolor.srgb_to_lab(samples_rgb)
+    rgb, weight = colour_histogram(img, args.rank_samples)
 
     if verbose:
         print(f"ranking {len(combos)} combinations of {args.slots} "
               f"(base {base.name} always included), "
-              f"{len(samples_rgb)} sampled pixels")
+              f"{len(rgb)} distinct colours from {int(weight.sum())} pixels")
         if len(combos) > 200:
             print(f"  ! {len(combos)} combos will take a while; "
                   f"narrow --filaments or lower --grid")
 
     results = []
+    capped = 0
     t0 = time.time()
     for i, combo in enumerate(combos, 1):
         subset = [base] + list(combo)
-        de = score_subset(subset, base, args, samples_lab)
+        de, cap_hit = score_subset(subset, base, args, rgb)
+        capped += cap_hit
         results.append({
             "fils": subset,
-            "mean": float(de.mean()),
-            "p95": float(np.percentile(de, 95)),
+            "mean": float(np.average(de, weights=weight)),
+            "p95": weighted_percentile(de, weight, 95),
             "max": float(de.max()),
         })
         if progress:
@@ -381,6 +445,9 @@ def rank_subsets(all_fils, base, args, img, progress=None, verbose=True):
             print(f"  {i}/{len(combos)}  ({time.time()-t0:.0f}s)", end="\r", flush=True)
     if verbose:
         print()
+        if capped:
+            print(f"  ! {capped} combination(s) hit --cap and were scored on a "
+                  f"truncated gamut; raise --cap or lower --grid")
 
     key = "mean" if args.rank_by == "mean" else "p95"
     results.sort(key=lambda r: r[key])
@@ -393,7 +460,7 @@ def render_candidates(results, base, args, img, top, progress=None):
     for i, r in enumerate(results[:top], 1):
         g = Gamut(r["fils"], base, args.layer_height, args.max_layers,
                   args.grid, args.cap, verbose=False)
-        state = g.query(img)
+        state = solve_image(g, img, getattr(args, "dither", "none"))
         out.append(dict(r, image=np.round(g.srgb()[state]).astype(np.uint8)))
         if progress:
             progress(i / top, f"rendering candidate {i}/{top}")
@@ -455,7 +522,9 @@ def contact_sheet(path, entries, target, cols=3, thumb=280, pad=14):
         d.text((cx, y + sw_h - 2), c["label"], font=f_big, fill=(235, 235, 240))
         if c["fils"]:
             names = " + ".join(f.name for f in c["fils"])
-            d.text((cx, y + sw_h + 16), names[:52], font=f_small, fill=(150, 150, 158))
+            while len(names) > 1 and d.textlength(names, font=f_small) > thumb:
+                names = names[:-2] + "…"
+            d.text((cx, y + sw_h + 16), names, font=f_small, fill=(150, 150, 158))
 
     sheet.save(path)
 
@@ -483,10 +552,38 @@ def cmd_rank(all_fils, base, args, img):
 # --------------------------------------------------------------------------
 
 
+class _HelpFormatter(argparse.ArgumentDefaultsHelpFormatter):
+    """Defaults in the help, except "None", which says nothing (and some help
+    texts already explain their default)."""
+
+    def _get_help_string(self, action):
+        if action.default is None or action.required:
+            return action.help
+        return super()._get_help_string(action)
+
+
+def check_args(a):
+    """Nonsense sizes, as a list of messages. Shared by the CLI and the GUI."""
+    out = []
+    if a.slots < 2:
+        out.append("--slots counts the base, so it needs at least 2")
+    for name in ("width", "resolution", "layer_height", "first_layer_height"):
+        v = getattr(a, name, None)
+        if v is not None and v <= 0:
+            out.append(f"--{name.replace('_', '-')} must be positive")
+    # base_h is first_layer + (base_layers - 1) * layer: with no base layer
+    # the first colour layer would be the thick first layer.
+    for name in ("max_layers", "base_layers", "grid", "rank_samples", "top"):
+        if getattr(a, name) < (0 if name == "top" else 1):
+            out.append(f"--{name.replace('_', '-')} must be at least "
+                       f"{0 if name == 'top' else 1}")
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(
         description="Flat full-color plaques from per-pixel filament stacks.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        formatter_class=_HelpFormatter,
     )
     ap.add_argument("image")
     ap.add_argument("-o", "--output",
@@ -499,8 +596,10 @@ def main(argv=None):
                          "OCCUPIES ONE TOOLHEAD (default: first in --filaments)")
     ap.add_argument("--width", type=float, default=150.0, help="plaque width in mm")
     ap.add_argument("--height", type=float, default=0.0, help="plaque height in mm (0 = from aspect)")
-    ap.add_argument("--resolution", type=float, default=0.4,
-                    help="mm per pixel; match your nozzle width")
+    ap.add_argument("--resolution", type=float, default=MIN_FEATURE_MM,
+                    help="mm per pixel. Sliced in Flash Studio with a 0.4 mm nozzle, "
+                         "0.4 lost 5-9%% of colour pixels (one-pixel features get "
+                         "no extrusion) and 0.6 lost 0.1%%")
     ap.add_argument("--layer-height", type=float, default=None,
                     help="must match what the slicer will use (default: from "
                          "--template, else 0.08)")
@@ -518,12 +617,19 @@ def main(argv=None):
                          "shallow (--max-layers <= ~4); with deep stacks the gamut is "
                          "already dense and they change nothing. 'floyd' is usually "
                          "worse. See halftone_compare.py")
-    ap.add_argument("--fit", choices=["contain", "cover", "stretch"], default="cover")
+    ap.add_argument("--fit", choices=["contain", "cover", "stretch"], default="cover",
+                    help="how the image meets --width x --height: cover crops, contain "
+                         "pads with the base colour, stretch distorts")
     ap.add_argument("--grid", type=int, default=192,
-                    help="gamut dedup resolution; higher = finer and slower")
-    ap.add_argument("--cap", type=int, default=400_000, help="max gamut states")
-    ap.add_argument("--flavor", choices=["orca", "prusa"], default="orca")
-    ap.add_argument("--part-type", choices=["modifier", "part"], default="modifier")
+                    help="gamut dedup cells per sRGB channel (of 255); higher = finer "
+                         "and slower")
+    ap.add_argument("--cap", type=int, default=400_000,
+                    help="stop expanding the gamut after the depth that passes this "
+                         "many states (that depth is kept whole, so it can overshoot)")
+    ap.add_argument("--flavor", choices=["orca", "prusa"], default="orca",
+                    help="orca for Flash Studio / Orca / Bambu Studio")
+    ap.add_argument("--part-type", choices=["modifier", "part"], default="modifier",
+                    help="colour as modifier volumes inside one plate, or as real parts")
     ap.add_argument("--no-force-solid", action="store_true",
                     help="leave the template's infill density alone. The colour "
                          "model assumes every layer is a continuous film, so only "
@@ -550,27 +656,32 @@ def main(argv=None):
     mx.add_argument("--no-rank", action="store_true",
                     help="skip ranking and use the base plus the first --slots-1 others as listed")
     g.add_argument("--top", type=int, default=5, help="combinations to render")
-    g.add_argument("--rank-by", choices=["mean", "p95"], default="mean")
-    g.add_argument("--rank-samples", type=int, default=4000,
-                   help="pixels sampled when scoring; scoring every pixel is wasted effort")
+    g.add_argument("--rank-by", choices=["mean", "p95"], default="mean",
+                   help="sort by average error, or by the worst 5%%")
+    g.add_argument("--rank-samples", type=int, default=20000,
+                   help="most distinct colours scored per combination; every pixel "
+                        "counts, and images with more colours are binned to fit")
     g.add_argument("--rank-sheet", default="combos.png", help="contact sheet output")
     args = ap.parse_args(argv)
-    if args.slots < 2:
-        ap.error("--slots counts the base, so it needs at least 2")
-    for name in ("width", "resolution"):
-        if getattr(args, name) <= 0:
-            ap.error(f"--{name} must be positive")
-    for name in ("layer_height", "first_layer_height"):
-        if getattr(args, name) is not None and getattr(args, name) <= 0:
-            ap.error(f"--{name.replace('_', '-')} must be positive")
-    # base_h is first_layer + (base_layers - 1) * layer: with no base layer
-    # the first colour layer would be the thick first layer.
-    for name in ("max_layers", "base_layers", "grid", "rank_samples"):
-        if getattr(args, name) < 1:
-            ap.error(f"--{name.replace('_', '-')} must be at least 1")
+    problems = check_args(args)
+    if problems:
+        ap.error("; ".join(problems))
+    # Fail before minutes of compute, not after it.
+    for path in (args.output, args.preview, args.gamut_preview, args.rank_sheet):
+        if path and not os.path.isdir(os.path.dirname(os.path.abspath(path))):
+            raise SystemExit(f"{path}: directory does not exist")
+    if not os.path.exists(args.db):
+        raise SystemExit(f"--db {args.db}: no such file")
+    if args.template:
+        td3mf.check_template(args.template)
+    elif args.flavor == "orca":
+        print("  ! no --template: Flash Studio needs one to open this as a project, "
+              "and the layer grid below is a guess rather than your profile's.")
 
     db = DB(args.db)
     fils = db.resolve(args.filaments)
+    if len(fils) < 2:
+        raise SystemExit("--filaments needs at least two: the base and a colour")
     base = db.get(args.base) if args.base else fils[0]
     if base.id not in {f.id for f in fils}:
         raise SystemExit(f"--base {base.id} must also appear in --filaments")
@@ -595,7 +706,8 @@ def main(argv=None):
     print(f"filaments ({len(fils)}):")
     for i, f in enumerate(fils, 1):
         flag = "" if f.provenance == "measured" else "  <- not measured"
-        print(f"  T{i}  {f.color}  td={f.td:.3f}  {f.label()}{flag}")
+        td = "/".join(f"{v:.3f}" for v in f.td_vec()) if f.td_rgb else f"{f.td:.3f}"
+        print(f"  T{i}  {f.color}  td={td}  {f.label()}{flag}")
     print(f"base: {base.label()}")
     if est:
         print(f"\n  ! {len(est)} of {len(fils)} filaments have estimated optical data.")
@@ -609,9 +721,15 @@ def main(argv=None):
         if args.height > 0
         else max(1, int(round(w_px * im.height / im.width)))
     )
-    img = tdcolor.fit_image(args.image, w_px, h_px, args.fit)
+    # Transparent pixels (and contain-padding) become base: nothing printed.
+    img = tdcolor.fit_image(args.image, w_px, h_px, args.fit,
+                            pad=tuple(int(v) for v in base.rgb()))
     print(f"image: {w_px} x {h_px} px  ->  "
           f"{w_px*args.resolution:.1f} x {h_px*args.resolution:.1f} mm")
+    bed = td3mf.template_bed_size(args.template) if args.template else None
+    if bed and (w_px * args.resolution > bed[0] or h_px * args.resolution > bed[1]):
+        raise SystemExit(f"the plaque does not fit the template's {bed[0]:g} x {bed[1]:g} mm "
+                         f"bed; set --width/--height")
 
     # --- ranking mode ---
     ranking = args.rank or (len(fils) > args.slots and not args.no_rank)
@@ -654,7 +772,7 @@ def main(argv=None):
     print(f"  color error dE: mean {err.mean():.1f}, p95 {np.percentile(err, 95):.1f}, "
           f"max {err.max():.1f}")
     # Per-pixel error always penalises a dither; compare dither modes on this.
-    bm, bp = tdcolor.blurred_de(achieved, img)
+    bm, bp = tdcolor.blurred_de(achieved, img, BLUR_MM / args.resolution)
     print(f"  at arm's length (blurred dE): mean {bm:.1f}, p95 {bp:.1f}")
 
     if args.preview:
@@ -680,12 +798,19 @@ def main(argv=None):
     # tint everything above it.
     t_base = float(base.transmittance(base_h).max())
     if t_base > 0.01:
-        need = int(np.ceil(base.td_vec().max() * 4.6 / args.layer_height))
+        # 1% transmission is ln(100) = 4.6 td; the first layer counts at its own height.
+        opaque = base.td_vec().max() * np.log(100)
+        need = 1 + int(np.ceil(max(0.0, opaque - args.first_layer_height) / args.layer_height))
         print(f"  ! {args.base_layers} base layers of {base.name} ({base_h:.2f} mm) "
               f"still pass {100*t_base:.0f}% of the light reaching them.")
-        print(f"    The gamut assumes an opaque backing, so the print will pick up "
-              f"whatever is under it. Use --base-layers {need} ({need*args.layer_height:.2f} mm), "
-              f"or a more opaque --base.")
+        if opaque > 10:
+            print(f"    The gamut assumes an opaque backing, and {base.name} would need "
+                  f"{opaque:.0f} mm to become one: choose a more opaque --base.")
+        else:
+            print(f"    The gamut assumes an opaque backing, so the print will pick up "
+                  f"whatever is under it. Use --base-layers {need} "
+                  f"({args.first_layer_height + (need-1)*args.layer_height:.2f} mm), "
+                  f"or a more opaque --base.")
 
     plate, decals, total_h = build_geometry(
         labels, args.width, args.resolution, args.layer_height,
@@ -694,7 +819,7 @@ def main(argv=None):
     nbox = sum(len(t) // 12 for _, _, t in decals)
     print(f"plaque: {total_h:.2f} mm thick "
           f"({args.base_layers} base + {labels.shape[0]} color layers)")
-    print(f"  {nbox} boxes in {len(decals)} modifier volumes ({nbox*12} triangles)")
+    print(f"  {nbox} boxes in {len(decals)} {args.part_type} volumes ({nbox*12} triangles)")
     if nbox > 250_000:
         print(f"  ! that is a lot of geometry and your slicer will be slow to load it.")
         print(f"    Coarsen --resolution, drop --dither, or cut --max-layers.")
@@ -704,8 +829,24 @@ def main(argv=None):
     for f, c in zip(used, counts):
         print(f"  T{f+1} {fils[f].name:14} {100*c/tot:5.1f}% of layer-pixels")
 
-    changes = sum(len(np.unique(labels[li])) for li in range(labels.shape[0]))
-    print(f"  ~{changes} tool changes ({changes/labels.shape[0]:.1f} per layer)")
+    per_layer = [len(np.unique(labels[li])) for li in range(labels.shape[0])]
+    print(f"  {np.mean(per_layer):.1f} filaments per colour layer on average "
+          f"(roughly that many tool changes per layer)")
+
+    thin = thin_fraction(labels, gamut.base_index)
+    if thin > 0.05 and args.resolution < MIN_FEATURE_MM - 1e-9:
+        print(f"  ! {100*thin:.0f}% of colour layer-pixels are in features one pixel "
+              f"({args.resolution} mm) wide. The slicer walls each modifier region and "
+              f"drops features that narrow, so those spots print as whatever is "
+              f"around them. --resolution {MIN_FEATURE_MM} printed them.")
+
+    if args.no_force_solid and args.template:
+        solid_mm = td3mf.template_top_solid_depth(args.template, args.layer_height)
+        stack_mm = labels.shape[0] * args.layer_height
+        if solid_mm is not None and solid_mm < stack_mm - 1e-9:
+            print(f"  ! --no-force-solid, but the profile is solid only {solid_mm:.2f} mm "
+                  f"deep and the colour stack is {stack_mm:.2f} mm: the layers below "
+                  f"print as sparse infill and the colours will not match.")
 
     write_plaque(
         args.output, args.flavor, plate, decals, fils, gamut.base_index,

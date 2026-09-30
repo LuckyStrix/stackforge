@@ -464,8 +464,10 @@ over an existing color *C*: `T = exp(-h/td_f)`, then `C' = C·T + color_f·(1-T)
 through the stack a second time, the same approximation HueForge uses. It
 holds up well for pigmented PLA.
 
-The gamut is built by breadth-first expansion with dedup on a quantized grid.
-The state is just the composited color — what's underneath stops mattering
+The gamut is built by breadth-first expansion, deduplicated on a grid over the
+sRGB encoding (a linear-light grid lumped L\* 0–5 into one cell). A layer that
+moves the colour by less than one cell is still followed, so translucent
+filaments keep accumulating. The state is just the composited color — what's underneath stops mattering
 once obscured — so the search stays 3-dimensional however deep it goes.
 
 Short stacks pad at the **bottom** with base filament, which is optically
@@ -494,9 +496,13 @@ is rejected rather than quietly added. The base is a full color as well as the
 backing — short stacks pad against it at the bottom, so it does double duty
 without costing an extra slot.
 
-Scoring samples `--rank-samples` pixels (default 4000) rather than solving
-every pixel, which is what keeps it quick: 35 combinations of 8 filaments took
-about 30 s. The base is held fixed in every subset, so with N filaments and S
+Scoring weights each distinct colour of the image by how many pixels have it,
+so it is exact and repeatable (a random sample of 4000 pixels flipped the winner
+between seeds when the top two were 0.04 dE apart). Images with more than
+`--rank-samples` distinct colours (default 20000) are binned to fit. With
+`--dither ordered/blue` the two-stack mix is scored, since that is what prints;
+the contact sheet is rendered with the same dither. 35 combinations of 8
+filaments take about 50 s. The base is held fixed in every subset, so with N filaments and S
 slots there are `C(N-1, S-1)` combinations — 8 filaments and 4 slots gives
 `C(7,3)` = 35.
 
@@ -504,9 +510,9 @@ slots there are `C(N-1, S-1)` combinations — 8 filaments and 4 slots gives
 a few badly-wrong regions bother you more than a slight overall shift.
 `--no-rank` skips it and uses the base plus the first `--slots`-1 others as listed.
 
-As a sanity check: given a target sweeping the full hue circle, the ranker
-picks white + blue + yellow + magenta — it rediscovers subtractive primaries
-without being told about them.
+As a sanity check: on `docs/stackforge_target.png` (a full hue sweep) the
+ranker's top two are white + blue + red + yellow and white + blue + yellow +
+magenta — subtractive-ish primaries, found without being told about them.
 
 ### GUI
 
@@ -527,7 +533,9 @@ by looking at renders instead of reading a table.
   straight away.
 - Solves run on a worker thread with a progress bar and a working Cancel, so
   the window never locks up.
-- Export reports the load order (T1…T4) and the exact layer height to slice at.
+- Export reports the load order (T1…T4) and the exact layer height to slice at,
+  and asks first if the image, filaments or settings changed since Generate.
+- The base is always T1 in the GUI; use the CLI to put it on another toolhead.
 - *Database ▸ Edit filaments…* opens `filamentdb_gui` over the top and reloads
   the library when it closes, keeping whatever was already ticked. Both windows
   share `guikit.py` for their theme and widgets, so they look like one program.
@@ -541,24 +549,28 @@ Gaussian blur that stands in for the eye, since per-pixel dE punishes any dither
 ![target and each dither mode, 2 layers](docs/halftone_2layers.png)
 
 Measured on a smooth test scene with five filaments: with **1-2 layers** blue and ordered cut
-blurred dE from 27.7 to about 25.7; at 4 layers the gain shrinks to under 1; with deep stacks
-(12 layers) it is zero, because the stack gamut is already dense. Blue and ordered score
-alike on dE; blue trades Bayer's crosshatch for grain, which is the reason to prefer it.
-`floyd` was worse than no dither in every case here. So: dither only with shallow stacks.
-Not tested on a printed plaque.
+blurred dE from 27.7 to about 25.7; at 4 layers the gain shrinks to under 1. With deep stacks
+it depends on the scene: under 0.1 on this one, about 0.7–1.1 on saturated hue sweeps whose
+targets fall outside the gamut. Blue and ordered score alike on dE; blue trades Bayer's
+crosshatch for grain, which is the reason to prefer it. `floyd` beat `none` at 1-2 layers but
+trailed blue/ordered, and was worse than `none` from 4 layers up.
+
+**Those are simulated gains; the slicer takes most of them back.** A dither is made of
+one-pixel features, and Flash Studio 1.7.8 gives each modifier region its own walls and
+does not extrude features one 0.4 mm pixel wide (see *Slicing*). Dithered plaques are
+11–33% one-pixel features. Until that is solved, prefer `--dither none`.
 
 ### Notes from testing
 
 - **The gamut saturates.** With 4–5 filaments at 0.08 mm it stops growing
   around 16 layers, once the deepest stack goes opaque. `--max-layers 20` adds
   time and no color.
-- **Dithering is usually not worth it here**, which surprised me. Vertical
-  stacking already fills the gamut densely (~226k reachable colors), so there's
-  nothing left to interpolate: dE went 10.7 → 11.3 while triangles rose 75%.
-  Default is `none`. Try it only with 2–3 filaments. It *does* matter in
+- **Dither only shallow stacks.** With 12+ layers the gamut is already dense
+  (~215k colours for 5 filaments at 16 layers) and blue/ordered gain little;
+  see *Dithering*, including why the slicer undoes it. It *does* matter in
   `topdeco`, where the palette is flat.
 - **Residual error is gamut, not solver.** Feeding a rendered result back in
-  gives mean dE 0.5. If `--gamut-preview` shows red regions, those colors are
+  gives mean dE 0.1. If `--gamut-preview` shows red regions, those colors are
   genuinely unreachable with that filament set — add a filament, don't tweak
   settings.
 - **Geometry gets big.** A 120 mm plaque at 0.4 mm / 16 layers is ~2M
@@ -585,10 +597,15 @@ land on a lattice rather than a surface.
 ### The base has to actually be opaque
 
 The gamut starts from "the base is an opaque backing", and with a realistic td
-that is not free. White is far more transmissive than it looks — Polymaker
-publish TD 3.2–4.2 for their whites, i.e. `td` 0.70–0.91 mm — so the default
-5 base layers (0.40 mm) pass **51%** of the light reaching them, and the print
-picks up whatever is underneath. Black at `td` 0.027 is opaque in 2 layers.
+that is not free. White is far more transmissive than it looks: the shipped
+Polymaker PLA Pro White (`td` 0.467 mm, estimated) passes **42%** through the
+default 5 base layers (0.40 mm), and the print picks up whatever is underneath;
+stackforge asks for 27 (2.16 mm). Black at `td` 0.022 is opaque in 2 layers.
+
+What `td` means matters here. `calibrate.py` fits it to *reflected* light,
+which crosses each layer twice, so it is an effective value; `munki.py
+measure-transmission` measures single-pass `td`, which for a clear absorber is
+about twice as large. stackforge uses the reflectance kind.
 
 `stackforge` now warns when the base passes more than 1% and tells you the
 layer count that would fix it; the GUI's estimate panel shows the same. The old
@@ -620,11 +637,24 @@ Two things set that grid, and both are read from `--template` automatically
   offsets **every** layer above it. A 5-layer base is
   `first + 4 × layer`, not `5 × layer`.
 
-Because the heights are baked into the output's `project_settings.config`, the
-geometry and the profile that opens alongside it cannot disagree — including
-when you override with `--layer-height` / `--first-layer-height`, which
-rewrites the profile to match rather than leaving a silent conflict. A height
+The heights are baked into the output's `project_settings.config`, and the layer
+height is also written as a per-object override (Orca drops project values
+whose preset name matches a system preset; per-object ones survive). That holds
+when you override with `--layer-height` / `--first-layer-height` too, which
+rewrites the profile to match rather than leaving a silent conflict. The first
+layer has no per-object form, so it relies on the profile rewrite. A height
 outside the profile's own `min_layer_height`/`max_layer_height` is warned about.
+
+**Features one pixel wide do not print at 0.4 mm.** Sliced headlessly in Flash
+Studio 1.7.8 and compared pixel by pixel with the design, every extruded pixel
+had the designed tool, but 5–9% of colour pixels got no plastic at
+`--resolution 0.4`: each modifier region gets its own walls, and a region one
+nozzle-width across is dropped. At 0.6 mm the same plaque lost 0.1%, so 0.6 is
+the default and stackforge warns below it.
+
+**The prime tower is moved in if it would run off the bed.** A single-colour
+template never grew a tower, so its saved position can be too close to the back
+edge; Flash Studio then refuses to slice ("G-code in unprintable area").
 
 Getting this wrong has a distinctive symptom: colour appears on some layers and
 not others in a repeating pattern, because the boxes beat against the real layer
@@ -659,16 +689,18 @@ same thing — short stacks pad downward with base filament by design.
 - **Give the template as many filament slots as you print with.** Set all four
   up in Flash Studio before exporting it. Dozens of per-filament arrays in the
   profile are indexed in lockstep (type, temperature, flow, retraction), so the
-  writer refuses to grow `filament_colour` by itself -- it warns instead and
-  leaves the extra extruders on the template's defaults.
+  writer will not grow `filament_colour` by itself, and it refuses to write the
+  file: sliced, the missing extruders collapse onto extruder 1 and those colours
+  print in the base.
 
 - Confirmed working against Flash Studio 1.7.x with a Creator 5 profile: loads
-  as a project, four parts on extruders 1-4.
+  as a project, four parts on extruders 1-4, and (sliced with Flash Studio 1.7.8
+  from the command line) the extruder overrides on modifier volumes are honoured.
 
-- If your slicer ignores extruder overrides on modifier volumes, use
-  `--part-type part` for real overlapping solids.
+- `--part-type part` gives real overlapping solids instead of modifiers.
 - Output 3MFs are regenerated clean: transforms are baked to world space and
-  slicer settings in the input are **not** carried over. Re-apply your profile.
+  slicer settings in the *input model* (topdeco/surfacecolor) are **not**
+  carried over; `--template` supplies the profile.
 - Always check `--preview` before slicing. It costs nothing.
 
 ## surfacecolor.py

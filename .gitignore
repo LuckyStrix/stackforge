@@ -10,3 +10,4 @@ dist/
 .pytest_cache/
 *.3mf
 !tests/fixtures/*.3mf
+combos.png

@@ -111,7 +111,9 @@ class Filament:
         """Per-channel transmission distance, mm."""
         if self.td_rgb:
             v = np.asarray(self.td_rgb, dtype=np.float64)
-            if v.shape != (3,) or (v <= 0).any():
+            # None/NaN (munki writes null for a channel it cannot fit) would
+            # pass `v <= 0` and surface later as a KD-tree "not finite" error.
+            if v.shape != (3,) or not np.isfinite(v).all() or (v <= 0).any():
                 raise SystemExit(f"{self.id}: td_rgb must be three positive numbers")
             return v
         if self.td <= 0:
@@ -156,7 +158,16 @@ class DB:
             if extra:
                 print(f"  ! {entry.get('id')}: ignoring unknown fields {sorted(extra)}",
                       file=sys.stderr)
-            self.filaments[entry["id"]] = Filament(**{k: v for k, v in entry.items() if k in known})
+            fid = entry.get("id")
+            if not fid:
+                raise SystemExit(f"{self.path}: a filament entry has no id: {entry}")
+            try:
+                fil = Filament(**{k: v for k, v in entry.items() if k in known})
+                tdcolor.parse_hex(fil.color)
+                fil.td = float(fil.td)
+            except (TypeError, ValueError) as exc:
+                raise SystemExit(f"{self.path}: filament {fid!r}: {exc}")
+            self.filaments[fid] = fil
 
     def save(self):
         payload = {

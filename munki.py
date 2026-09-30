@@ -430,12 +430,15 @@ def cmd_transmission(args):
         print(f"{t:6.2f} {row[0]:7.3f} {row[1]:7.3f} {row[2]:7.3f} {tw:8.3f}")
     print(f"\ntd (mm) R/G/B = {np.round(td, 3).tolist()}   (fit rms in ln T {np.round(rms, 3).tolist()})")
     print("A screen is a narrow-band, polarised source: treat this as a cross-check on\n"
-          "the reflectance-fit td, not a replacement for it.")
+          "the reflectance-fit td, not a replacement for it.\n"
+          "This td is SINGLE-PASS. calibrate.py and stackforge use a reflectance-fit td,\n"
+          "where light crosses each layer twice; for a clear absorber that is about half\n"
+          "this value. Do not paste it into td_rgb as-is.")
     if args.output:
         with open(args.output, "w") as f:
             json.dump({**_meta("emissive-transmission", sargs), "thickness_mm": thick,
                        "bare": bare, "drift": drift, "T": T.tolist(), "T_white": Tw.tolist(),
-                       "td_rgb": [None if np.isnan(v) else float(v) for v in td]}, f, indent=1)
+                       "td_transmission_rgb": [None if np.isnan(v) else float(v) for v in td]}, f, indent=1)
         print(f"saved {args.output}")
 
 

@@ -227,7 +227,10 @@ def main(argv=None):
     if not mask.any():
         raise SystemExit("nothing visible from above -- check --region or model orientation")
 
-    img = tdcolor.fit_image(args.image, w, h, args.fit, args.rotate, args.flip)
+    # Transparent pixels and contain-padding take the base's colour, so they
+    # quantize to the base extruder and stay unpainted.
+    pad = tuple(int(v) for v in palette[args.base_extruder - 1])
+    img = tdcolor.fit_image(args.image, w, h, args.fit, args.rotate, args.flip, pad=pad)
     labels = tdcolor.quantize(img, palette, mask, args.dither)
 
     if args.preview:

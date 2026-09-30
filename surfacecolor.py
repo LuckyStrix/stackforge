@@ -179,7 +179,7 @@ def _sample(img, u, v):
 def _load(a):
     if not a.image:
         raise SystemExit(f"--pattern {a.pattern} needs --image")
-    return np.asarray(Image.open(a.image).convert("RGB"))
+    return np.asarray(tdcolor.open_image(a.image))
 
 
 def p_image_spherical(cd, a, n, palette):

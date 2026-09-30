@@ -12,6 +12,7 @@ import os
 import zipfile
 from dataclasses import dataclass, field
 from xml.etree import ElementTree as ET
+from xml.sax.saxutils import escape as _xml_escape
 
 import numpy as np
 
@@ -414,6 +415,8 @@ def _patch_settings(raw: bytes, colors=None, layer_height=None,
 
     if colors:
         _patch_colors(settings, colors)
+        if len(colors) > 1:
+            _fit_prime_tower(settings)
     return json.dumps(settings, indent=4).encode()
 
 
@@ -424,6 +427,46 @@ def _first_num(v):
         return float(v)
     except (TypeError, ValueError):
         return None
+
+
+# Depth the prime tower grew to for a 4-filament plaque in Flash Studio 1.7.8
+# (from y=220.6 it reached y=269.3), plus a margin.
+PRIME_TOWER_DEPTH = 55.0
+
+
+def _fit_prime_tower(settings) -> None:
+    """Pull the prime tower in from the back edge if it cannot fit there.
+
+    A single-colour template never grows a tower, so its saved position can sit
+    too close to the edge: Flash Studio 1.7.8 then refuses to slice ("G-code in
+    unprintable area"). Moving it is what the user would do by hand.
+    """
+    def num(v):
+        v = v[0] if isinstance(v, list) and v else v
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+    if num(settings.get("enable_prime_tower")) != 1:
+        return
+    y = num(settings.get("wipe_tower_y"))
+    area = settings.get("printable_area")
+    try:
+        bed_y = max(float(p.split("x")[1]) for p in area)
+    except (TypeError, ValueError, IndexError, AttributeError):
+        return
+    if y is None or bed_y - y >= PRIME_TOWER_DEPTH:
+        return
+    new = max(0.0, bed_y - PRIME_TOWER_DEPTH)
+    raw = settings["wipe_tower_y"]
+    settings["wipe_tower_y"] = [f"{new:g}"] * len(raw) if isinstance(raw, list) else f"{new:g}"
+    print(f"  - prime tower moved from y={y:g} to y={new:g}: at {y:g} mm it runs off "
+          f"the {bed_y:g} mm bed once it has colour changes to prime")
+
+
+def _attr(v) -> str:
+    """Escape for a double-quoted XML attribute (object names come from users)."""
+    return _xml_escape(str(v), {'"': "&quot;"})
 
 
 def _patch_colors(settings, colors) -> None:
@@ -439,19 +482,23 @@ def _patch_colors(settings, colors) -> None:
     if len(existing) < len(colors):
         # Dozens of per-filament arrays in this profile are indexed in
         # lockstep (type, temperature, flow, retraction, ...). Growing just
-        # this one would desynchronise them, so say what is wrong and let the
-        # slicer be the one to add the slots.
-        print(
-            f"  ! template has only {len(existing)} filament slot(s) but "
-            f"{len(colors)} filaments are in use.\n"
-            f"    Extruders {len(existing)+1}-{len(colors)} will fall back to the "
-            f"template's defaults.\n"
-            f"    Set up all {len(colors)} filaments in your slicer and re-export "
-            f"the template to fix this."
+        # this one would desynchronise them, so let the slicer add the slots.
+        # Sliced in Flash Studio 1.7.8, the missing extruders collapse onto
+        # extruder 1: those colours print in the base, so refuse outright.
+        raise SystemExit(
+            f"template has only {len(existing)} filament slot(s) but "
+            f"{len(colors)} filaments are in use; extruders "
+            f"{len(existing)+1}-{len(colors)} would print as extruder 1.\n"
+            f"Set up all {len(colors)} filaments in your slicer and re-export "
+            f"the template."
         )
-    for i, hexcol in enumerate(colors[: len(existing)]):
-        existing[i] = hexcol
-    settings["filament_colour"] = existing
+    # filament_multi_colour mirrors filament_colour in newer profiles; leaving
+    # it stale shows the template's swatches instead of ours.
+    for key in ("filament_colour", "filament_multi_colour"):
+        arr = settings.get(key)
+        if isinstance(arr, list) and len(arr) >= len(colors):
+            for i, hexcol in enumerate(colors):
+                arr[i] = hexcol
 
 
 def write_prusa(out_path, items, decals, base_ext, part_type="modifier",
@@ -470,7 +517,7 @@ def write_prusa(out_path, items, decals, base_ext, part_type="modifier",
         voff, toff = len(item.verts), len(item.tris)
         vols = [
             f'  <volume firstid="0" lastid="{toff - 1}">\n'
-            f'   <metadata type="volume" key="name" value="{item.name}"/>\n'
+            f'   <metadata type="volume" key="name" value="{_attr(item.name)}"/>\n'
             f'   <metadata type="volume" key="volume_type" value="ModelPart"/>\n'
             f'   <metadata type="volume" key="extruder" value="{base_ext}"/>\n'
             f"  </volume>\n"
@@ -495,8 +542,8 @@ def write_prusa(out_path, items, decals, base_ext, part_type="modifier",
         )
         cfg_xml.append(
             f' <object id="{oid}">\n'
-            f'  <metadata type="object" key="name" value="{item.name}"/>\n'
-            + "".join(f'  <metadata type="object" key="{k}" value="{v}"/>\n'
+            f'  <metadata type="object" key="name" value="{_attr(item.name)}"/>\n'
+            + "".join(f'  <metadata type="object" key="{_attr(k)}" value="{_attr(v)}"/>\n'
                       for k, v in (object_settings or {}).items())
             + "".join(vols)
             + " </object>\n"
@@ -562,6 +609,31 @@ def template_layer_settings(template):
             return None
 
     return num("layer_height"), num("initial_layer_print_height")
+
+
+def check_template(template) -> None:
+    """Refuse an unusable --template before any work is done, not at write time."""
+    try:
+        with zipfile.ZipFile(template) as tz:
+            names = set(tz.namelist())
+    except (zipfile.BadZipFile, OSError) as exc:
+        raise SystemExit(f"--template {template}: not a readable 3MF ({exc})")
+    if "Metadata/project_settings.config" not in names:
+        raise SystemExit(
+            f"--template {template}: no Metadata/project_settings.config. Export it "
+            f"from your slicer as a PROJECT (.3mf), not as a plain model.")
+
+
+def template_bed_size(template):
+    """(x, y) extent of the printable area in mm, or None."""
+    try:
+        with zipfile.ZipFile(template) as tz:
+            settings = json.loads(tz.read("Metadata/project_settings.config"))
+        pts = [tuple(float(v) for v in p.split("x")) for p in settings["printable_area"]]
+    except (KeyError, zipfile.BadZipFile, OSError, ValueError, TypeError, AttributeError):
+        return None
+    xs, ys = zip(*pts)
+    return max(xs) - min(xs), max(ys) - min(ys)
 
 
 def template_top_solid_depth(template, layer_height):
@@ -663,18 +735,18 @@ def write_orca(out_path, items, decals, base_ext, part_type="modifier",
         # project_settings.config are discarded when its preset name matches an
         # installed system preset, so anything that must survive belongs here.
         overrides = "".join(
-            f'  <metadata key="{k}" value="{v}"/>\n'
+            f'  <metadata key="{_attr(k)}" value="{_attr(v)}"/>\n'
             for k, v in (object_settings or {}).items()
         )
         cfg_xml.append(
             f' <object id="{asm_id}">\n'
-            f'  <metadata key="name" value="{item.name}"/>\n'
+            f'  <metadata key="name" value="{_attr(item.name)}"/>\n'
             f'  <metadata key="extruder" value="{base_ext}"/>\n'
             + overrides
             + f'  <metadata face_count="{sum(faces.values())}"/>\n'
             + "".join(
                 f'  <part id="{pid}" subtype="{st}">\n'
-                f'   <metadata key="name" value="{name}"/>\n'
+                f'   <metadata key="name" value="{_attr(name)}"/>\n'
                 f'   <metadata key="matrix" value="{IDENTITY_16}"/>\n'
                 f'   <metadata key="source_file" value=""/>\n'
                 f'   <metadata key="source_object_id" value="0"/>\n'

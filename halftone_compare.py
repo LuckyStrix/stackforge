@@ -35,20 +35,25 @@ def main(argv=None):
     ap.add_argument("--filaments", required=True)
     ap.add_argument("--base")
     ap.add_argument("--width", type=float, default=60.0, help="plaque width in mm")
-    ap.add_argument("--resolution", type=float, default=0.4)
+    ap.add_argument("--resolution", type=float, default=sf.MIN_FEATURE_MM)
     ap.add_argument("--layer-height", type=float, default=0.08)
     ap.add_argument("--max-layers", type=int, default=12)
-    ap.add_argument("--blur", type=float, default=1.5, help="eye low-pass sigma, px")
+    ap.add_argument("--blur", type=float, default=None,
+                    help=f"eye low-pass sigma, px (default {sf.BLUR_MM} mm / --resolution)")
     ap.add_argument("--sheet", help="contact sheet PNG")
     args = ap.parse_args(argv)
+    if args.blur is None:
+        args.blur = sf.BLUR_MM / args.resolution
 
     db = DB(args.db)
     fils = db.resolve(args.filaments)
     base = db.get(args.base) if args.base else fils[0]
+    if base.id not in {f.id for f in fils}:
+        raise SystemExit(f"--base {base.id} must also appear in --filaments")
     w = max(1, round(args.width / args.resolution))
     im = tdcolor.open_image(args.image)
     h = max(1, round(w * im.height / im.width))
-    img = tdcolor.fit_image(args.image, w, h, "cover")
+    img = tdcolor.fit_image(args.image, w, h, "cover", pad=tuple(int(v) for v in base.rgb()))
     gamut = sf.Gamut(fils, base, args.layer_height, args.max_layers, verbose=False)
 
     rows, tiles = [], [("target", img)]

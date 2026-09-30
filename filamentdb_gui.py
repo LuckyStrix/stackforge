@@ -170,7 +170,7 @@ class PhotoPicker(tk.Toplevel):
         self.result = None
         self.patch = patch
 
-        self.src = np.asarray(Image.open(path).convert("RGB"), dtype=np.float64)
+        self.src = np.asarray(tdcolor.open_image(path), dtype=np.float64)
         ih, iw = self.src.shape[:2]
         scale = min(880 / iw, 620 / ih, 1.0)
         self.scale = scale
