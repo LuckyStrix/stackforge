@@ -322,7 +322,7 @@ def cmd_fit(args):
     print(f"\nwrote {fil.id} to {db.path}")
 
 
-def main(argv=None):
+def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -372,6 +372,11 @@ def main(argv=None):
     p.add_argument("--write", action="store_true", help="save into the database")
     p.set_defaults(fn=cmd_fit)
 
+    return ap
+
+
+def main(argv=None):
+    ap = build_parser()
     args = ap.parse_args(argv)
     args.fn(args)
 

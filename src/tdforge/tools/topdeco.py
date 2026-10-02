@@ -141,7 +141,7 @@ def save_preview(path, labels, palette, mask):
     Image.fromarray(out).save(path)
 
 
-def main(argv=None):
+def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
         description="Project an image onto the top-visible surfaces of a 3MF.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -176,6 +176,11 @@ def main(argv=None):
                          "filament and print settings are carried over verbatim so "
                          "the output opens as a project rather than bare geometry")
     ap.add_argument("--preview", help="write a PNG of what will be painted")
+    return ap
+
+
+def main(argv=None):
+    ap = build_parser()
     args = ap.parse_args(argv)
 
     if args.filaments:

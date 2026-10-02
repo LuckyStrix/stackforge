@@ -580,7 +580,7 @@ def check_args(a):
     return out
 
 
-def main(argv=None):
+def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
         description="Flat full-color plaques from per-pixel filament stacks.",
         formatter_class=_HelpFormatter,
@@ -662,6 +662,11 @@ def main(argv=None):
                    help="most distinct colours scored per combination; every pixel "
                         "counts, and images with more colours are binned to fit")
     g.add_argument("--rank-sheet", default="combos.png", help="contact sheet output")
+    return ap
+
+
+def main(argv=None):
+    ap = build_parser()
     args = ap.parse_args(argv)
     problems = check_args(args)
     if problems:

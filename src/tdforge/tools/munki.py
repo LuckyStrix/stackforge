@@ -578,7 +578,7 @@ def cmd_verify(args):
         print("  ! above 5: the td/colour data behind this prediction are probably not measured yet")
 
 
-def main(argv=None):
+def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--spotread-arg", action="append", default=[], metavar="ARG",
@@ -605,6 +605,11 @@ def main(argv=None):
     p.add_argument("--predicted", required=True, help="comma-separated hex, one per patch")
     p.set_defaults(fn=cmd_verify)
 
+    return ap
+
+
+def main(argv=None):
+    ap = build_parser()
     args = ap.parse_args(argv)
     try:
         args.fn(args)

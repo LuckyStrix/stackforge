@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generate test 3MFs: a tiled 'chainmail' sheet and a domed badge."""
-import sys, zipfile, math
+import argparse, os, zipfile, math
 import numpy as np
 
 CORE = "http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
@@ -68,7 +68,14 @@ def write(path, objs):
     print(f"{path}: {len(objs)} objects, {sum(len(t) for _, t in objs)} triangles")
 
 
-def main():
+def build_parser() -> argparse.ArgumentParser:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--out-dir", default=".", help="directory for fabric.3mf and badge.3mf")
+    return ap
+
+
+def main(argv=None):
+    args = build_parser().parse_args(argv)
     # chainmail: 40x40 tiles of 3mm on a 4mm pitch, 1.2mm thick
     parts = []
     pitch, tile, th = 4.0, 3.0, 1.2
@@ -76,10 +83,10 @@ def main():
         for ix in range(40):
             x, y = ix * pitch, iy * pitch
             parts.append(box(x, y, 0, x + tile, y + tile, th))
-    write("fabric.3mf", [merge(parts)])
+    write(os.path.join(args.out_dir, "fabric.3mf"), [merge(parts)])
 
     # badge: a 60mm dome on a 70mm plinth (tests non-flat top + occlusion)
-    write("badge.3mf", [merge([box(0, 0, 0, 70, 70, 3), dome(35, 35, 30, 12)])])
+    write(os.path.join(args.out_dir, "badge.3mf"), [merge([box(0, 0, 0, 70, 70, 3), dome(35, 35, 30, 12)])])
 
 
 if __name__ == "__main__":

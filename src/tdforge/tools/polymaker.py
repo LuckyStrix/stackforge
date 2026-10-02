@@ -604,7 +604,7 @@ def cmd_guess_td(args):
         print("\n(dry run — pass --write to save)")
 
 
-def main(argv=None):
+def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--catalog", default=CACHE, help="cached scrape of the wiki")
@@ -642,6 +642,11 @@ def main(argv=None):
     p.add_argument("--write", action="store_true", help="save the database")
     p.set_defaults(fn=cmd_import)
 
+    return ap
+
+
+def main(argv=None):
+    ap = build_parser()
     args = ap.parse_args(argv)
     args.fn(args)
 

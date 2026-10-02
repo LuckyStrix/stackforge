@@ -387,7 +387,7 @@ def cmd_import_hueforge(db, args):
     print(f"{f.id}: td={f.td:.4f} (from HueForge TD {args.hueforge_td})")
 
 
-def main(argv=None):
+def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--db", default=DEFAULT_DB, help="path to the JSON database")
@@ -455,6 +455,11 @@ def main(argv=None):
     p.add_argument("hueforge_td", type=float)
     p.set_defaults(fn=cmd_import_hueforge)
 
+    return ap
+
+
+def main(argv=None):
+    ap = build_parser()
     args = ap.parse_args(argv)
     args.fn(DB(args.db), args)
 

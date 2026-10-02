@@ -28,7 +28,7 @@ MODES = ["none", "ordered", "blue", "floyd"]
 blurred_de = tdcolor.blurred_de  # moved to tdcolor; kept importable here
 
 
-def main(argv=None):
+def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("image")
     ap.add_argument("--db", default="filaments.json")
@@ -41,6 +41,11 @@ def main(argv=None):
     ap.add_argument("--blur", type=float, default=None,
                     help=f"eye low-pass sigma, px (default {sf.BLUR_MM} mm / --resolution)")
     ap.add_argument("--sheet", help="contact sheet PNG")
+    return ap
+
+
+def main(argv=None):
+    ap = build_parser()
     args = ap.parse_args(argv)
     if args.blur is None:
         args.blur = sf.BLUR_MM / args.resolution

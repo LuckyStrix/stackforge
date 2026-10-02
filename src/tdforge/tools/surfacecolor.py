@@ -341,7 +341,7 @@ def save_preview(path, lab, palette):
 # --------------------------------------------------------------------------
 
 
-def main(argv=None):
+def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0],
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     ap.add_argument("model")
@@ -375,6 +375,11 @@ def main(argv=None):
     ap.add_argument("--part-type", choices=["modifier", "part"], default="modifier")
     ap.add_argument("--template", help="a project .3mf exported from your slicer")
     ap.add_argument("--preview", help="PNG: top and front view of the painted colours")
+    return ap
+
+
+def main(argv=None):
+    ap = build_parser()
     args = ap.parse_args(argv)
 
     if args.filaments:
