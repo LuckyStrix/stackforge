@@ -46,7 +46,7 @@ from datetime import datetime, timezone
 
 import numpy as np
 
-import tdcolor
+from tdforge.core import tdcolor
 
 try:
     import pty

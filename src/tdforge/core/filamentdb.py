@@ -39,7 +39,7 @@ from datetime import date
 
 import numpy as np
 
-import tdcolor
+from tdforge.core import tdcolor
 
 DEFAULT_DB = os.environ.get("FILAMENT_DB", "filaments.json")
 SCHEMA_VERSION = 1
@@ -363,7 +363,7 @@ def cmd_seed(db, args):
 
 def cmd_import_sku(db, args):
     """Fill an entry in from a vendor part number."""
-    import polymaker            # imports filamentdb, so it cannot load at top
+    from tdforge.tools import polymaker            # imports filamentdb, so it cannot load at top
 
     cat = polymaker.Catalog(args.catalog)
     fil, p, warnings, verb = polymaker.import_sku(

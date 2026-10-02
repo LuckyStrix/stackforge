@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """filamentdb_gui -- browse, edit and grow the filament database.
 
-    python3 filamentdb_gui.py [filaments.json]
+    python3 -m tdforge.gui.filamentdb_gui [filaments.json]
 
 The database is the weakest link in every other tool here: stackforge's colour
 maths is only as good as the `td` and colour it is handed. The CLI can already
@@ -35,14 +35,14 @@ import tkinter as tk
 from PIL import Image, ImageTk
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 
-import calibrate
-import guikit
-import polymaker
-import td3mf
-import tdcolor
-from filamentdb import (DB, PROVENANCE, TD_GUESS, Filament, hueforge_td,
+from tdforge.tools import calibrate
+from tdforge.gui import theme as guikit
+from tdforge.tools import polymaker
+from tdforge.core import td3mf
+from tdforge.core import tdcolor
+from tdforge.core.filamentdb import (DB, PROVENANCE, TD_GUESS, Filament, hueforge_td,
                         seed_db, slugify)
-from guikit import (ACCENT, BG, BG3, ERR, FG, FG_DIM, LINE, OK, WARN,
+from tdforge.gui.theme import (ACCENT, BG, BG3, ERR, FG, FG_DIM, LINE, OK, WARN,
                     ScrollFrame, Section, readable_on, spin, swatch_image,
                     text_view)
 

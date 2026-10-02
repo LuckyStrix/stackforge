@@ -5,8 +5,8 @@ import os, shutil, stat, sys, tempfile, unittest
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT)
-import calibrate, munki, tdcolor
+from tdforge.tools import calibrate, munki
+from tdforge.core import tdcolor
 
 FAKE = r'''#!/usr/bin/env python3
 import os, sys

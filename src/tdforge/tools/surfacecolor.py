@@ -33,8 +33,8 @@ import numpy as np
 from PIL import Image
 from scipy.ndimage import distance_transform_edt
 
-import td3mf
-import tdcolor
+from tdforge.core import td3mf
+from tdforge.core import tdcolor
 
 EPS_JITTER = 1.7e-7   # pixel centres are nudged off exact triangle edges (see voxelize)
 
@@ -378,7 +378,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     if args.filaments:
-        from filamentdb import DB
+        from tdforge.core.filamentdb import DB
         fils = DB(args.db).resolve(args.filaments)
         palette = np.array([f.rgb() for f in fils], float)
         for i, f in enumerate(fils, 1):

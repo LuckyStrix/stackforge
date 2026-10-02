@@ -5,10 +5,9 @@ import numpy as np
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT)
 
-import stackforge as sf
-import td3mf
+from tdforge.tools import stackforge as sf
+from tdforge.core import td3mf
 
 FILS = ",".join(f"polymaker-pla-pro-{c}" for c in ("white", "black", "blue", "red"))
 LH, FLH = 0.12, 0.2

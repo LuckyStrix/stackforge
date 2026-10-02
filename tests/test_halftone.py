@@ -1,8 +1,7 @@
 import os, sys, unittest
 import numpy as np
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import tdcolor
+from tdforge.core import tdcolor
 
 
 class BlueNoise(unittest.TestCase):

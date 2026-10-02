@@ -4,8 +4,7 @@ import os, subprocess, sys, tempfile, unittest
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT)
-import make_fixture as mf
+from tdforge.tools import make_fixture as mf
 
 
 class Transparency(unittest.TestCase):
@@ -18,7 +17,7 @@ class Transparency(unittest.TestCase):
             im.paste((255, 0, 0, 255), (15, 15, 25, 25))      # red square, 1/16 of the area
             im.save(logo)
             r = subprocess.run(
-                [sys.executable, "topdeco.py", src, logo, "--palette", "000000,ff0000,ffff00",
+                [sys.executable, "-m", "tdforge.tools.topdeco", src, logo, "--palette", "000000,ff0000,ffff00",
                  "-o", os.path.join(d, "out.3mf")],
                 cwd=ROOT, capture_output=True, text=True)
             self.assertEqual(r.returncode, 0, r.stderr + r.stdout)

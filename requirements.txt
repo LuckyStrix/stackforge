@@ -1,4 +1,0 @@
-numpy
-Pillow
-scipy
-# GUIs also need tkinter: apt install python3-tk

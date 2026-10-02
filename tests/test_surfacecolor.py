@@ -2,10 +2,9 @@ import os, subprocess, sys, tempfile, unittest, zipfile
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT)
-import make_fixture as mf
-import surfacecolor as sc
-import td3mf
+from tdforge.tools import make_fixture as mf
+from tdforge.tools import surfacecolor as sc
+from tdforge.core import td3mf
 
 
 def cube_item(size=10.0):
@@ -112,7 +111,7 @@ class EndToEnd(unittest.TestCase):
             b = badge_item()
             mf.write(src, [(b.verts, b.tris)])
             out = os.path.join(d, "out.3mf")
-            r = subprocess.run([sys.executable, "surfacecolor.py", src, "-o", out,
+            r = subprocess.run([sys.executable, "-m", "tdforge.tools.surfacecolor", src, "-o", out,
                                 "--palette", "#FFFFFF,#101010", "--pattern", "checker3d",
                                 "--scale", "8", "--resolution", "1.5"],
                                cwd=ROOT, capture_output=True, text=True)

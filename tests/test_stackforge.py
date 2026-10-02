@@ -5,18 +5,17 @@ import numpy as np
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT)
 
-import stackforge as sf
-import tdcolor
-from filamentdb import DB
+from tdforge.tools import stackforge as sf
+from tdforge.core import tdcolor
+from tdforge.core.filamentdb import DB
 
 IDS = [f"polymaker-pla-pro-{c}" for c in ("black", "blue", "red", "yellow", "white")]
 
 
 def run(*extra, img):
     return subprocess.run(
-        [sys.executable, "stackforge.py", img, "--width", "6", "--max-layers", "3",
+        [sys.executable, "-m", "tdforge.tools.stackforge", img, "--width", "6", "--max-layers", "3",
          "--base-layers", "3", *extra],
         cwd=ROOT, capture_output=True, text=True)
 
@@ -120,7 +119,7 @@ class Model(unittest.TestCase):
     def test_translucent_filament_keeps_accumulating(self):
         # One layer of it moved the colour less than a dedup cell, so it was
         # dropped and 16 layers of it were unreachable (dE 3.5).
-        from filamentdb import Filament
+        from tdforge.core.filamentdb import Filament
         base = Filament(id="w", color="#F4F5F0", td=0.13)
         nat = Filament(id="n", color="#E8E2D2", td=1.67)
         g = sf.Gamut([base, nat], base, 0.08, 16, verbose=False)
@@ -170,7 +169,7 @@ class Db(unittest.TestCase):
                     DB(p)
 
     def test_nan_td_rgb_is_refused(self):
-        from filamentdb import Filament
+        from tdforge.core.filamentdb import Filament
         f = Filament(id="x", color="#ffffff", td_rgb=[0.3, None, 0.2])
         with self.assertRaises(SystemExit):
             f.td_vec()

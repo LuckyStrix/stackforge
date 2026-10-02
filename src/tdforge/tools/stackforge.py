@@ -51,9 +51,9 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from scipy.spatial import cKDTree
 
-import tdcolor
-import td3mf
-from filamentdb import DB
+from tdforge.core import tdcolor
+from tdforge.core import td3mf
+from tdforge.core.filamentdb import DB
 
 
 # --------------------------------------------------------------------------

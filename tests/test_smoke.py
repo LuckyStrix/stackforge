@@ -13,7 +13,7 @@ class Smoke(unittest.TestCase):
             out = os.path.join(d, "out.3mf")
             ids = ",".join(f"polymaker-pla-pro-{c}" for c in ("white", "black", "blue", "red"))
             r = subprocess.run(
-                [sys.executable, "stackforge.py", img, "--filaments", ids,
+                [sys.executable, "-m", "tdforge.tools.stackforge", img, "--filaments", ids,
                  "--base", "polymaker-pla-pro-white", "--width", "6",
                  "--max-layers", "4", "--base-layers", "3", "-o", out],
                 cwd=ROOT, capture_output=True, text=True)
@@ -28,7 +28,7 @@ class Smoke(unittest.TestCase):
             Image.linear_gradient("L").resize((24, 16)).convert("RGB").save(img)
             ids = ",".join(f"polymaker-pla-pro-{c}" for c in ("white", "black", "blue", "red", "yellow"))
             r = subprocess.run(
-                [sys.executable, "stackforge.py", img, "--filaments", ids,
+                [sys.executable, "-m", "tdforge.tools.stackforge", img, "--filaments", ids,
                  "--base", "polymaker-pla-pro-white", "--slots", "3", "--width", "6",
                  "--max-layers", "3", "--rank-samples", "50", "--top", "2",
                  "--rank-sheet", os.path.join(d, "sheet.png")],

@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tdforge"
+version = "0.1.0"
+description = "Full-colour multi-toolhead 3D printing: per-pixel filament stacks, surface colouring, filament calibration"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+# The GUIs also need tkinter, which pip cannot install: apt install python3-tk
+dependencies = ["numpy", "Pillow", "scipy"]
+
+[project.scripts]
+stackforge = "tdforge.tools.stackforge:main"
+topdeco = "tdforge.tools.topdeco:main"
+surfacecolor = "tdforge.tools.surfacecolor:main"
+calibrate = "tdforge.tools.calibrate:main"
+munki = "tdforge.tools.munki:main"
+polymaker = "tdforge.tools.polymaker:main"
+filamentdb = "tdforge.core.filamentdb:main"
+halftone-compare = "tdforge.tools.halftone_compare:main"
+make-fixture = "tdforge.tools.make_fixture:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

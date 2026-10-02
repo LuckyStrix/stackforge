@@ -19,9 +19,9 @@ import argparse
 import numpy as np
 from PIL import Image, ImageDraw
 
-import stackforge as sf
-import tdcolor
-from filamentdb import DB
+from tdforge.tools import stackforge as sf
+from tdforge.core import tdcolor
+from tdforge.core.filamentdb import DB
 
 MODES = ["none", "ordered", "blue", "floyd"]
 

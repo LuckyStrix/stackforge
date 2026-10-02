@@ -5,7 +5,7 @@ Every option the CLI exposes is here, plus the things a GUI is actually better
 at: seeing the simulated print next to the target while you turn knobs, and
 picking a filament loadout by looking at renders rather than reading a table.
 
-    python3 stackforge_gui.py [image.jpg]
+    python3 -m tdforge.gui.stackforge_gui [image.jpg]
 
 Nothing heavy runs on the UI thread. Solves and rankings go to a worker and
 report back through a queue, so the window stays responsive and every
@@ -29,12 +29,12 @@ import tkinter as tk
 from PIL import Image
 from tkinter import filedialog, messagebox, simpledialog, ttk
 
-import guikit
-import stackforge as sf
-import tdcolor
-import td3mf
-from filamentdb import DB
-from guikit import (ACCENT, BG, BG3, ERR, FG, FG_DIM, OK, WARN, ImageView,
+from tdforge.gui import theme as guikit
+from tdforge.tools import stackforge as sf
+from tdforge.core import tdcolor
+from tdforge.core import td3mf
+from tdforge.core.filamentdb import DB
+from tdforge.gui.theme import (ACCENT, BG, BG3, ERR, FG, FG_DIM, OK, WARN, ImageView,
                     Section, swatch_image)
 
 APP = "stackforge"
@@ -1002,7 +1002,7 @@ class App(tk.Tk):
     def _edit_filaments(self):
         # Imported here rather than at module scope: the editor is a separate
         # tool and nothing in a normal solve needs it loaded.
-        import filamentdb_gui
+        from tdforge.gui import filamentdb_gui
 
         def reopen(path):
             self.db_path = path

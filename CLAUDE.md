@@ -1,7 +1,8 @@
 # Working notes
 
-**The rule:** stackforge's colour maths (`stackforge.py`, `tdcolor.py`) is pure numpy; all 3MF
-I/O goes through `td3mf.py`. GUIs (`*_gui.py`) only wrap the CLIs and share `guikit.py`.
+**The rule:** stackforge's colour maths (`tools/stackforge.py`, `core/tdcolor.py`) is pure numpy; all 3MF
+I/O goes through `core/td3mf.py`. GUIs (`gui/*_gui.py`) only wrap the CLIs and share `gui/theme.py`.
+Code is the `tdforge` package in `src/tdforge/` (`core/`, `tools/`, `gui/`); `pip install -e .`.
 
 ## Load-bearing
 
@@ -19,13 +20,13 @@ I/O goes through `td3mf.py`. GUIs (`*_gui.py`) only wrap the CLIs and share `gui
 - **One-pixel features don't print at 0.4 mm.** Each modifier region gets walls; a region one
   nozzle-width across gets no plastic (5-9% of colour pixels lost at `--resolution 0.4`, 0.1% at
   0.6). Default is 0.6 (`MIN_FEATURE_MM`). Dithers are mostly one-pixel features.
-- **td is the reflectance-fit kind** (`calibrate.py`: light crosses each layer twice). munki's
+- **td is the reflectance-fit kind** (`tools/calibrate.py`: light crosses each layer twice). munki's
   transmission td is single-pass, ~2x for a clear absorber; never paste it in as `td_rgb`.
 
 ## Bite
 
 - `filaments.json` tds are mostly estimates; never present them as measured.
-- `polymaker.py` fetches from the network; the catalogue is cached in `polymaker_catalog.json`.
+- `tools/polymaker.py` fetches from the network; the catalogue is cached in `polymaker_catalog.json`.
 - **surfacecolor voxelisation uses a winding number from above, not parity.** Overlapping open
   shells (the badge fixture) flip parity and leave a hollow; `tests/test_surfacecolor.py` covers it.
 - **surfacecolor `--expr` is `eval`.** Builtins stripped, dunders refused; still only for trusted input.
@@ -35,7 +36,7 @@ I/O goes through `td3mf.py`. GUIs (`*_gui.py`) only wrap the CLIs and share `gui
   implementation). Floyd diffusing error in linear light was measured too: not adopted.
 - Unverified: PrusaSlicer honouring the per-object `layer_height`/`fill_density` that
   `--flavor prusa` writes (no Prusa profile is carried over, so nothing else sets them).
-- **munki.py is unverified on hardware.** Its spotread session is copied from calibration-suite (do not
+- **`tools/munki.py` is unverified on hardware.** Its spotread session is copied from calibration-suite (do not
   import it, the repos are independent). All-zero XYZ is refused: a stale ColorMunki dial prints zeros.
 - **`--nospos` = patched Argyll with no dial check** (`~/.local/bin/argyll-nospos`, unconditional
   patch; `ARGYLL_NOSPOS=1` is only the wrapper's marker). Always go through the wrapper, never the

@@ -43,8 +43,8 @@ import urllib.request
 from dataclasses import asdict, dataclass, field
 from datetime import date
 
-import tdcolor
-from filamentdb import DB, DEFAULT_DB, TD_GUESS, Filament, hueforge_td, slugify
+from tdforge.core import tdcolor
+from tdforge.core.filamentdb import DB, DEFAULT_DB, TD_GUESS, Filament, hueforge_td, slugify
 
 URL = ("https://wiki.polymaker.com/polymaker-products/more-about-our-products/"
        "hex-codes-and-transmission-distances")

@@ -32,9 +32,9 @@ import sys
 import numpy as np
 from scipy.optimize import least_squares
 
-import td3mf
-import tdcolor
-from filamentdb import DB, Filament
+from tdforge.core import td3mf
+from tdforge.core import tdcolor
+from tdforge.core.filamentdb import DB, Filament
 
 
 # --------------------------------------------------------------------------

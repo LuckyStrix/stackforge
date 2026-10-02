@@ -19,8 +19,8 @@ image ──► gamut search ──► per-pixel stack ──► 3MF (modifier v
 ## Quick start
 
 ```sh
-pip install -r requirements.txt
-python3 stackforge.py docs/stackforge_target.png --base polymaker-pla-pro-white \
+pip install -e .   # tkinter (for the GUIs): apt install python3-tk
+stackforge docs/stackforge_target.png --base polymaker-pla-pro-white \
     --filaments polymaker-pla-pro-white,polymaker-pla-pro-blue,polymaker-pla-pro-red,polymaker-pla-pro-yellow \
     --width 60 --base-layers 27 --preview sim.png -o plaque.3mf
 ```
@@ -40,24 +40,26 @@ Always look at `--preview` before slicing. Run `python3 -m unittest discover -s 
 
 ## Repository layout
 
-The rest of this repo is the toolchain stackforge stands on. Tool changes are assumed cheap,
+Everything lives in the `tdforge` package under `src/tdforge/` (`core/` libraries, `tools/` CLIs,
+`gui/`); `pip install -e .` puts one console script per tool on PATH, and
+`python -m tdforge.tools.<tool>` also works. The rest of this repo is the toolchain stackforge stands on. Tool changes are assumed cheap,
 so nothing here tries to minimize them.
 
 | tool | what it does |
 |---|---|
-| `filamentdb.py` | filament colors + optical properties, grown over time |
-| `filamentdb_gui.py` | desktop editor for that database, with the calibration loop built in |
-| `polymaker.py` | look a Polymaker SKU up in their published hex/TD table |
-| `calibrate.py` | step-wedge generator and td/color fitter |
-| `topdeco.py` | project an image onto the top-visible surface of any 3MF |
-| `surfacecolor.py` | colour any 3MF from a pattern or a wrapped image, anywhere on its surface |
-| `munki.py` | measure wedges, plaques and chip transmission with a ColorMunki / ArgyllCMS |
-| `halftone_compare.py` | score stackforge's dither modes by blurred dE |
-| `make_fixture.py` | generate `fabric.3mf` and `badge.3mf` test models |
-| `stackforge.py` | flat full-color plaques from per-pixel filament stacks |
-| `stackforge_gui.py` | desktop front end for stackforge |
-| `td3mf.py`, `tdcolor.py` | shared 3MF I/O and color math |
-| `guikit.py` | shared tkinter theme and widgets for the two GUIs |
+| `filamentdb` (`core/`) | filament colors + optical properties, grown over time |
+| `gui/filamentdb_gui.py` | desktop editor for that database, with the calibration loop built in |
+| `polymaker` (`tools/`) | look a Polymaker SKU up in their published hex/TD table |
+| `calibrate` (`tools/`) | step-wedge generator and td/color fitter |
+| `topdeco` (`tools/`) | project an image onto the top-visible surface of any 3MF |
+| `surfacecolor` (`tools/`) | colour any 3MF from a pattern or a wrapped image, anywhere on its surface |
+| `munki` (`tools/`) | measure wedges, plaques and chip transmission with a ColorMunki / ArgyllCMS |
+| `halftone_compare` (`tools/`) | score stackforge's dither modes by blurred dE |
+| `make_fixture` (`tools/`) | generate `fabric.3mf` and `badge.3mf` test models |
+| `stackforge` (`tools/`) | flat full-color plaques from per-pixel filament stacks |
+| `gui/stackforge_gui.py` | desktop front end for stackforge |
+| `core/td3mf.py`, `core/tdcolor.py` | shared 3MF I/O and color math |
+| `gui/theme.py` | shared tkinter theme and widgets for the two GUIs |
 
 `surfacecolor.py` is built to the first three steps of `docs/plans/surfacecolor.md`
 (patterns, wrapped images, shell masking); the interactive painting window is not.
@@ -78,12 +80,12 @@ eye, good to ~±15%) → `vendor` (published by the manufacturer) → `estimated
 (a guess). Only the first is trusted without a warning.
 
 ```sh
-python3 filamentdb.py seed                 # starter Polymaker PLA Pro set
-python3 filamentdb.py list
-python3 filamentdb.py add --name Teal --color "#00757F" --td 0.13
-python3 filamentdb.py show teal --layer-height 0.08
-python3 filamentdb.py set teal --td 0.128 --provenance measured
-python3 filamentdb.py import-sku CA02001    # colour + TD from Polymaker
+filamentdb seed                 # starter Polymaker PLA Pro set
+filamentdb list
+filamentdb add --name Teal --color "#00757F" --td 0.13
+filamentdb show teal --layer-height 0.08
+filamentdb set teal --td 0.128 --provenance measured
+filamentdb import-sku CA02001    # colour + TD from Polymaker
 ```
 
 ### Transmission distance
@@ -107,7 +109,7 @@ saturated darks become unreachable.
 ## filamentdb_gui.py
 
 ```sh
-python3 filamentdb_gui.py [filaments.json]
+python3 -m tdforge.gui.filamentdb_gui [filaments.json]
 ```
 
 The database is the weakest link in everything else here — stackforge's colour
@@ -170,12 +172,12 @@ database does.
 [poly]: https://wiki.polymaker.com/polymaker-products/more-about-our-products/hex-codes-and-transmission-distances
 
 ```sh
-python3 polymaker.py refresh              # re-scrape (needs network)
-python3 polymaker.py lookup CA02001
-python3 polymaker.py search silk blue
-python3 polymaker.py import CA02001 --write
+polymaker refresh              # re-scrape (needs network)
+polymaker lookup CA02001
+polymaker search silk blue
+polymaker import CA02001 --write
 
-python3 filamentdb.py import-sku CA02001  # same thing, from the db tool
+filamentdb import-sku CA02001  # same thing, from the db tool
 ```
 
 ```
@@ -240,8 +242,8 @@ blue. *Refresh from wiki* re-scrapes on a worker thread.
 Most SKUs have no published TD, so `guess-td` learns one from the 384 that do:
 
 ```sh
-python3 polymaker.py guess-td --all           # dry run over the database
-python3 polymaker.py guess-td teal --write
+polymaker guess-td --all           # dry run over the database
+polymaker guess-td teal --write
 ```
 
 It fits log(TD) against L\*a\*b\* within a finish group, and **picks between that
@@ -303,10 +305,10 @@ maths, same refusals, but you can see the residuals per step.
 
 ```sh
 # 1. print this
-python3 calibrate.py wedge --filament teal --base white -o wedge_teal.3mf
+calibrate wedge --filament teal --base white -o wedge_teal.3mf
 
 # 2. read the patches, then fit
-python3 calibrate.py fit --filament teal --base "#F4F5F0" \
+calibrate fit --filament teal --base "#F4F5F0" \
     --measured "#BAC8C7,#8CA8AB,..." --write
 ```
 
@@ -326,7 +328,7 @@ A second wedge over a contrasting base breaks the degeneracy, because both
 must be explained by one color and one td. Same data, joint fit: **0.9003**.
 
 ```sh
-python3 calibrate.py fit --filament natural \
+calibrate fit --filament natural \
     --base  "#F4F5F0" --measured  "..." \
     --base2 "#1A1A1C" --measured2 "..." --write
 ```
@@ -388,7 +390,7 @@ over a shared base, each on its own extruder — so a four-head machine
 calibrates three filaments per print:
 
 ```sh
-python3 calibrate.py wedge --filament black,blue,red --base white \
+calibrate wedge --filament black,blue,red --base white \
     -o wedge.3mf --steps 8 --base-layers 27
 ```
 
@@ -418,7 +420,7 @@ this works on arbitrary geometry — a flat chainmail sheet, a domed badge, and 
 terrain tile all get the image laid over their real top surface.
 
 ```sh
-python3 topdeco.py fabric.3mf logo.png -o out.3mf \
+topdeco fabric.3mf logo.png -o out.3mf \
     --filaments white,black,blue,red --depth 0.6 --preview prev.png
 ```
 
@@ -450,7 +452,7 @@ encoded in vertical composition, so there's no surface topography to catch
 raking light.
 
 ```sh
-python3 stackforge.py photo.jpg -o plaque.3mf \
+stackforge photo.jpg -o plaque.3mf \
     --filaments white,black,blue,red,yellow --base white \
     --width 150 --layer-height 0.08 --max-layers 16 \
     --preview sim.png --gamut-preview check.png
@@ -481,7 +483,7 @@ fits, so you can see which loadout suits the image before committing to a
 print. Ranking turns on automatically; `-o` is not needed.
 
 ```sh
-python3 stackforge.py photo.jpg --base white \
+stackforge photo.jpg --base white \
     --filaments white,black,blue,red,yellow,teal,orange,magenta \
     --slots 4 --top 5 --rank-sheet combos.png
 ```
@@ -517,7 +519,7 @@ magenta — subtractive-ish primaries, found without being told about them.
 ### GUI
 
 ```sh
-python3 stackforge_gui.py [image.jpg]
+python3 -m tdforge.gui.stackforge_gui [image.jpg]
 ```
 
 Every CLI option, plus the things a GUI is genuinely better at: seeing the
@@ -538,7 +540,7 @@ by looking at renders instead of reading a table.
 - The base is always T1 in the GUI; use the CLI to put it on another toolhead.
 - *Database ▸ Edit filaments…* opens `filamentdb_gui` over the top and reloads
   the library when it closes, keeping whatever was already ticked. Both windows
-  share `guikit.py` for their theme and widgets, so they look like one program.
+  share `gui/theme.py` for their theme and widgets, so they look like one program.
 
 ### Dithering
 
@@ -711,11 +713,11 @@ the model on the slicer's layer grid, evaluates a pattern at every voxel within
 The slicer does the intersection, so the mesh is never touched.
 
 ```sh
-python3 surfacecolor.py badge.3mf -o out.3mf --filaments white,black \
+surfacecolor badge.3mf -o out.3mf --filaments white,black \
     --pattern checker3d --scale 6 --preview preview.png
-python3 surfacecolor.py globe.3mf -o mars.3mf --filaments white,red,orange,black \
+surfacecolor globe.3mf -o mars.3mf --filaments white,red,orange,black \
     --pattern image-spherical --image mars_equirect.jpg
-python3 surfacecolor.py vase.3mf -o out.3mf --filaments white,black \
+surfacecolor vase.3mf -o out.3mf --filaments white,black \
     --pattern expr --expr "sin(z/3 + theta*4) > 0"
 ```
 
@@ -747,9 +749,9 @@ use `--nospos` (patched ArgyllCMS via `argyll-nospos`, dial check off; munki.py 
 checks). Setup, the power-cycle fallback, and first-run checklist: `docs/measuring.md`.
 
 ```sh
-python3 munki.py measure-wedge --steps 12 -o wedge.json
-python3 calibrate.py chips --filament teal -o chips.3mf
-python3 munki.py transmission --thickness 0.25,0.33,0.41,0.49
+munki measure-wedge --steps 12 -o wedge.json
+calibrate chips --filament teal -o chips.3mf
+munki transmission --thickness 0.25,0.33,0.41,0.49
 ```
 
 ## make_fixture.py

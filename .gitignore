@@ -11,3 +11,4 @@ dist/
 *.3mf
 !tests/fixtures/*.3mf
 combos.png
+*.egg-info/

@@ -12,12 +12,12 @@ Works on arbitrary geometry, not just flat plates: the modifier boxes follow
 the z-buffer, so a chainmail sheet, a domed badge and a terrain tile all get
 the image laid over their real top surface.
 
-    python3 topdeco.py fabric.3mf logo.png -o out.3mf \
+    topdeco fabric.3mf logo.png -o out.3mf \
         --palette "#101010,#0B3D91,#FC3D21,#FFFFFF" --depth 0.6
 
 Colors can come from the filament database instead of --palette:
 
-    python3 topdeco.py fabric.3mf logo.png -o out.3mf \
+    topdeco fabric.3mf logo.png -o out.3mf \
         --filaments white,black,blue,red
 
 See --help for the rest.
@@ -32,8 +32,8 @@ import os
 import numpy as np
 from PIL import Image
 
-import td3mf
-import tdcolor
+from tdforge.core import td3mf
+from tdforge.core import tdcolor
 
 
 # --------------------------------------------------------------------------
@@ -179,7 +179,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     if args.filaments:
-        from filamentdb import DB
+        from tdforge.core.filamentdb import DB
         fils = DB(args.db).resolve(args.filaments)
         palette = np.array([f.rgb() for f in fils])
         for i, f in enumerate(fils, 1):
