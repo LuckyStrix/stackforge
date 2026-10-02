@@ -48,7 +48,7 @@ so nothing here tries to minimize them.
 | tool | what it does |
 |---|---|
 | `filamentdb` (`core/`) | filament colors + optical properties, grown over time |
-| `gui/filamentdb_gui.py` | desktop editor for that database, with the calibration loop built in |
+| `gui/tabs/filaments/` | desktop editor for that database, with the calibration loop built in |
 | `polymaker` (`tools/`) | look a Polymaker SKU up in their published hex/TD table |
 | `calibrate` (`tools/`) | step-wedge generator and td/color fitter |
 | `topdeco` (`tools/`) | project an image onto the top-visible surface of any 3MF |
@@ -57,7 +57,7 @@ so nothing here tries to minimize them.
 | `halftone_compare` (`tools/`) | score stackforge's dither modes by blurred dE |
 | `make_fixture` (`tools/`) | generate `fabric.3mf` and `badge.3mf` test models |
 | `stackforge` (`tools/`) | flat full-color plaques from per-pixel filament stacks |
-| `gui/stackforge_gui.py` | desktop front end for stackforge |
+| `gui/tabs/plaque/` | desktop front end for stackforge |
 | `core/td3mf.py`, `core/tdcolor.py` | shared 3MF I/O and color math |
 | `gui/theme.py` | shared tkinter theme and widgets for the two GUIs |
 
@@ -106,10 +106,10 @@ saturated darks become unreachable.
 
 ---
 
-## filamentdb_gui.py
+## Filaments tab (tdforge-gui)
 
 ```sh
-python3 -m tdforge.gui.filamentdb_gui [filaments.json]
+tdforge-gui   # then the Filaments tab
 ```
 
 The database is the weakest link in everything else here — stackforge's colour
@@ -226,7 +226,7 @@ by accident would be a real loss.
 
 ### From the GUI
 
-`filamentdb_gui.py` has a **Polymaker SKU** box on the Details tab (type it,
+the Filaments tab has a **Polymaker SKU** box on the Details tab (type it,
 press Look up) and *Add from Polymaker SKU…* for browsing the catalogue by
 colour with swatches and TDs:
 
@@ -300,7 +300,7 @@ cached JSON keeps working in the meantime.
 ## calibrate.py
 
 Turns estimated entries into measured ones. Every step below is also available
-inside `filamentdb_gui.py`, which is usually the easier way to run it — same
+inside the Filaments tab, which is usually the easier way to run it — same
 maths, same refusals, but you can see the residuals per step.
 
 ```sh
@@ -340,7 +340,7 @@ refuses `--write` in that case.
 
 If you have no spectrophotometer and no white card, you can still do far better
 than a guess: print patches, then compare them against the model's prediction
-on screen. `filamentdb_gui.py` has a **Match by eye** tab for exactly this.
+on screen. the Filaments tab has a **Match by eye** tab for exactly this.
 
 ![matching by eye](docs/match_by_eye.png)
 
@@ -519,7 +519,7 @@ magenta — subtractive-ish primaries, found without being told about them.
 ### GUI
 
 ```sh
-python3 -m tdforge.gui.stackforge_gui [image.jpg]
+tdforge-gui [image.jpg]   # the Plaque tab
 ```
 
 Every CLI option, plus the things a GUI is genuinely better at: seeing the

@@ -15,6 +15,7 @@ class ProjectBar(ttk.Frame):
         s = project.settings
         self.vars = {k: tk.StringVar(value=s.get(k)) for k in ("db", "template", "flavor", "part_type",
                                                                 "layer_height", "first_layer")}
+        self.vars["db"].set(project.get("db"))      # the path in effect, not a blank
         self.override = tk.BooleanVar(value=project.override)
         self._warn = tk.StringVar()
         self._loading = False

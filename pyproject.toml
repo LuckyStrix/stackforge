@@ -22,6 +22,7 @@ polymaker = "tdforge.tools.polymaker:main"
 filamentdb = "tdforge.core.filamentdb:main"
 halftone-compare = "tdforge.tools.halftone_compare:main"
 make-fixture = "tdforge.tools.make_fixture:main"
+tdforge-gui = "tdforge.gui.app:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
