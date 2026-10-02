@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import sys
 
-from PySide6.QtCore import QByteArray
+from PySide6.QtCore import QByteArray, QLoggingCategory
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
 from PySide6.QtWidgets import QApplication, QMainWindow, QTabWidget, QVBoxLayout, QWidget
 
@@ -127,6 +127,9 @@ class HostWindow(QMainWindow):
 
 
 def main(argv=None):
+    # Qt's own file dialog asks the system icon theme for oversized SVGs and logs a harmless
+    # warning for each; hide just that category
+    QLoggingCategory.setFilterRules("qt.svg.draw=false")
     app = QApplication.instance() or QApplication(sys.argv if argv is None else argv)
     theme.apply(app)
     args = sys.argv[1:] if argv is None else argv
