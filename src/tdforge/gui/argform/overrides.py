@@ -45,6 +45,19 @@ OVERRIDES: dict = {
     ("make_fixture", "*", "out_dir"): "file_out",
 }
 
+# (tool, dest) -> (controlling dest, values of it for which this field applies). argparse does
+# not encode that --scale only matters to checker3d, so it is a table here.
+VISIBLE_WHEN: dict = {
+    ("surfacecolor", "scale"): ("pattern", {"checker3d"}),
+    ("surfacecolor", "lat"): ("pattern", {"checker-sphere"}),
+    ("surfacecolor", "lon"): ("pattern", {"checker-sphere"}),
+    ("surfacecolor", "axis"): ("pattern", {"stripes", "gradient", "image-planar"}),
+    ("surfacecolor", "period"): ("pattern", {"stripes"}),
+    ("surfacecolor", "image"): ("pattern", {"image-planar", "image-cylindrical", "image-spherical"}),
+    ("surfacecolor", "lon_offset"): ("pattern", {"image-cylindrical", "image-spherical"}),
+    ("surfacecolor", "expr"): ("pattern", {"expr"}),
+}
+
 # dest -> project binding key; filled from the project bar, excluded from presets
 PROJECT_BOUND = {
     "db": "db", "template": "template", "flavor": "flavor", "part_type": "part_type",

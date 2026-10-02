@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import os
 import tempfile
-import tkinter as tk
 from tkinter import messagebox, ttk
 
 from tdforge.gui import theme

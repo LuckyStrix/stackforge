@@ -7,7 +7,7 @@ from tkinter import ttk
 from tdforge.gui import theme
 from tdforge.gui.argform import argv as av
 from tdforge.gui.argform import overrides, widgets
-from tdforge.gui.argform.spec import FieldSpec, FormSpec
+from tdforge.gui.argform.spec import FormSpec
 
 
 class _Entry:
@@ -18,6 +18,8 @@ class _Entry:
         self.project_key = overrides.project_key(field) if overrides.is_project_kind(kind) else None
         self.unlocked = False
         self.spec = section_spec
+        self.rows: list = []         # grid widgets of this field's row(s), for show/hide
+        self.visible = True
 
 
 class CommandForm(ttk.Frame):
@@ -79,8 +81,10 @@ class CommandForm(ttk.Frame):
                 hint = f.help
                 if overrides.is_project_kind(kind):
                     hint = (hint + "  " if hint else "") + "(from project)"
+                first = sec._row
                 sec.field(label, w.frame, hint or None)
                 e = _Entry(f, kind, w, label, sp)
+                e.rows = [x for r in range(first, sec._row) for x in sec.grid_slaves(row=r)]
                 self.entries[f.dest] = e
                 if e.project_key:
                     ck = ttk.Checkbutton(w.frame, text="override", command=lambda e=e: self._unlock(e))
@@ -126,6 +130,7 @@ class CommandForm(ttk.Frame):
         self._busy = True
         try:
             self._apply_exclusion()
+            self._apply_visibility()
         finally:
             self._busy = False
         vals, errs = self.collect()
@@ -135,6 +140,19 @@ class CommandForm(ttk.Frame):
         self._cmdline.set(av.command_line(self.prog, av.build_argv(self.root_spec, vals, self.command)))
         if self.on_change:
             self.on_change(self)
+
+    def _apply_visibility(self):
+        """Show a field only when the field that selects it has a matching value."""
+        for dest, e in self.entries.items():
+            rule = overrides.VISIBLE_WHEN.get((self.tool, dest))
+            if rule is None:
+                continue
+            ctrl = self.entries.get(rule[0])
+            on = ctrl is None or ctrl.widget.get() in rule[1]
+            if on != e.visible:
+                e.visible = on
+                for w in e.rows:
+                    w.grid() if on else w.grid_remove()
 
     def _apply_exclusion(self):
         for sp in self.chain:
@@ -170,6 +188,8 @@ class CommandForm(ttk.Frame):
         """-> ({dest: typed value}, [error strings])."""
         vals, errs = {}, []
         for dest, e in self.entries.items():
+            if not e.visible:           # a field the chosen pattern does not use is not sent
+                continue
             try:
                 vals[dest] = av.coerce(e.field, e.widget.get())
             except ValueError as ex:

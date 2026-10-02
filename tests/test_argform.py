@@ -203,3 +203,34 @@ class FormSmoke(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(os.environ.get("DISPLAY"), "needs a display")
+class PatternVisibility(unittest.TestCase):
+    def test_pattern_shows_only_its_parameters(self):
+        import tkinter as tk
+        from tdforge.gui.argform.form import CommandForm
+        try:
+            root = tk.Tk()
+        except tk.TclError:
+            self.skipTest("no usable display")
+        self.addCleanup(root.destroy)
+        _, parser, spec = [s for s in specs() if s[0] == "surfacecolor"][0]
+        form = CommandForm(root, spec, "surfacecolor")
+        root.update()
+        vis = lambda: {d for d, e in form.entries.items() if e.visible}
+        self.assertFalse(vis() & {"scale", "lat", "period", "expr"})
+        form.set_values({"pattern": "stripes", "period": 3.0, "scale": 9.0})
+        self.assertTrue({"axis", "period"} <= vis())
+        self.assertNotIn("scale", vis())
+        self.assertNotIn("scale", form.values())       # hidden fields are not sent
+        form.set_values({"pattern": "checker3d"})
+        self.assertIn("scale", vis())
+        self.assertNotIn("period", form.values())
+        # every table entry names a real dest, and a real controlling dest
+        have = {f.dest for f in spec.fields}
+        for (tool, dest), (ctrl, vals) in overrides.VISIBLE_WHEN.items():
+            self.assertIn(dest, have)
+            self.assertIn(ctrl, have)
+            ctrl_f = next(f for f in spec.fields if f.dest == ctrl)
+            self.assertTrue(vals <= set(ctrl_f.choices), (dest, vals))

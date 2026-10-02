@@ -57,6 +57,8 @@ class HostApp(tk.Tk):
         from tdforge.gui.tabs.plaque.tab import PlaqueTab
         self.add_tab(PlaqueTab(self.nb, image_path, self.project.get("db"), host=self))
         self.add_tab(FilamentsTab(self.nb, self.project))
+        from tdforge.gui.tabs.paint import PaintTab
+        self.add_tab(PaintTab(self.nb, self.project, self.presets))
 
     def add_tab(self, tab):
         self.tabs[tab.title] = tab
