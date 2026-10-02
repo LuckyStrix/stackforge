@@ -15,6 +15,7 @@ from tdforge.gui import theme
 from tdforge.gui.argform import argv as av
 from tdforge.gui.argform.form import CommandForm
 from tdforge.gui.run.runner import tool_command, Job
+from tdforge.gui.presetbar import PresetBar
 from tdforge.gui.run.terminal import TerminalView
 
 PREVIEW_DESTS = ("preview", "gamut_preview", "rank_sheet")
@@ -22,7 +23,7 @@ PREVIEW_DESTS = ("preview", "gamut_preview", "rank_sheet")
 
 class ToolPanel(ttk.Frame):
     def __init__(self, master, spec, tool: str, command: tuple = (), project=None,
-                 cwd: str | None = None):
+                 cwd: str | None = None, presets=None):
         super().__init__(master)
         self.tool, self.command, self.cwd = tool, tuple(command), cwd
         self.job: Job | None = None
@@ -38,6 +39,11 @@ class ToolPanel(ttk.Frame):
 
         self.form = CommandForm(left, spec, tool, self.command, project, on_change=self._form_changed)
         self.form.pack(fill="both", expand=True)
+        if project is not None:
+            project.subscribe(self.form.refresh_project)
+        self.presets = PresetBar(left, self.form, presets) if presets is not None else None
+        if self.presets:
+            self.presets.pack(fill="x", pady=(6, 0))
         btns = ttk.Frame(left)
         btns.pack(fill="x", pady=(6, 0))
         self.run_btn = ttk.Button(btns, text="Run", command=self.run)
