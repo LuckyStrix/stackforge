@@ -111,11 +111,33 @@ def spin(parent, var, frm, to, inc, command=None, width=10):
     )
 
 
+def scrolled_text(parent, height=14, wrap="none", **kw):
+    """A tk.Text inside a frame with scrollbars; returns the Text.
+
+    The Text's pack/grid/place are redirected to the frame, so callers lay it out as if it
+    were the bare widget. The horizontal bar is only added for wrap="none".
+    """
+    frame = ttk.Frame(parent)
+    t = tk.Text(frame, height=height, wrap=wrap, **kw)
+    ys = ttk.Scrollbar(frame, orient="vertical", command=t.yview)
+    t.configure(yscrollcommand=ys.set)
+    ys.pack(side="right", fill="y")
+    if wrap == "none":
+        xs = ttk.Scrollbar(frame, orient="horizontal", command=t.xview)
+        t.configure(xscrollcommand=xs.set)
+        xs.pack(side="bottom", fill="x")
+    t.pack(side="left", fill="both", expand=True)
+    t.pack, t.grid, t.place = frame.pack, frame.grid, frame.place
+    t.pack_forget, t.grid_forget, t.grid_remove = frame.pack_forget, frame.grid_forget, frame.grid_remove
+    t.frame = frame
+    return t
+
+
 def text_view(parent, height=14, **kw):
     """A read-only monospace pane for reports."""
-    t = tk.Text(parent, height=height, bg=BG2, fg=FG, insertbackground=FG,
-                relief="flat", borderwidth=0, padx=10, pady=8, wrap="none",
-                font=("TkFixedFont", 9), **kw)
+    t = scrolled_text(parent, height=height, bg=BG2, fg=FG, insertbackground=FG,
+                      relief="flat", borderwidth=0, padx=10, pady=8,
+                      font=("TkFixedFont", 9), **kw)
     t.tag_configure("dim", foreground=FG_DIM)
     t.tag_configure("warn", foreground=WARN)
     t.tag_configure("err", foreground=ERR)

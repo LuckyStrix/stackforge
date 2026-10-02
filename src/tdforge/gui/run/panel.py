@@ -39,22 +39,25 @@ class ToolPanel(ttk.Frame):
         if terminal is None:
             paned.add(right, weight=2)
 
-        self.form = CommandForm(left, spec, tool, self.command, project, on_change=self._form_changed)
-        self.form.pack(fill="both", expand=True)
+        scroll = theme.ScrollFrame(left, width=460)       # long forms (stackforge, surfacecolor)
+        self.form = CommandForm(scroll.inner, spec, tool, self.command, project,
+                                on_change=self._form_changed)
+        self.form.pack(fill="x")
         if project is not None:
             project.subscribe(self.form.refresh_project)
-        self.presets = PresetBar(left, self.form, presets) if presets is not None else None
-        if self.presets:
-            self.presets.pack(fill="x", pady=(6, 0))
         btns = ttk.Frame(left)
-        btns.pack(fill="x", pady=(6, 0))
+        btns.pack(side="bottom", fill="x", pady=(6, 0))
         self.run_btn = ttk.Button(btns, text="Run", command=self.run)
         self.run_btn.pack(side="left")
         self.cancel_btn = ttk.Button(btns, text="Cancel", command=self.cancel, state="disabled")
         self.cancel_btn.pack(side="left", padx=(6, 0))
 
+        self.presets = PresetBar(left, self.form, presets) if presets is not None else None
+        if self.presets:
+            self.presets.pack(side="bottom", fill="x", pady=(6, 0))
+        scroll.pack(fill="both", expand=True)
         self.shared_terminal = terminal is not None
-        self.term = terminal or TerminalView(right)
+        self.term = terminal or TerminalView(right, height=8)
         if terminal is None:
             self.term.pack(fill="both", expand=True)
         self.view: theme.ImageView | None = None

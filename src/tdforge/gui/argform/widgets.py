@@ -106,9 +106,9 @@ def build(parent, f: FieldSpec, kind: str, on_change) -> FieldWidget:
         w = _entry_widget(parent, f, on_change, width=12)
         return w
     if kind == "repeat":
-        txt = tk.Text(parent, height=3, width=30, bg=theme.BG3, fg=theme.FG,
-                      insertbackground=theme.FG, relief="flat", borderwidth=4,
-                      highlightthickness=0, font=("TkDefaultFont", 9))
+        txt = theme.scrolled_text(parent, height=3, wrap="word", width=30, bg=theme.BG3,
+                                  fg=theme.FG, insertbackground=theme.FG, relief="flat",
+                                  borderwidth=4, highlightthickness=0, font=("TkDefaultFont", 9))
         txt.bind("<<Modified>>", lambda e: (txt.edit_modified(False), on_change()))
 
         def get():
@@ -117,7 +117,7 @@ def build(parent, f: FieldSpec, kind: str, on_change) -> FieldWidget:
         def set_(v):
             txt.delete("1.0", "end")
             txt.insert("1.0", "\n".join(str(x) for x in (v or [])))
-        return FieldWidget(txt, get, set_, [txt])
+        return FieldWidget(txt.frame, get, set_, [txt])
     if kind in ("file_in", "model_3mf"):
         return _entry_widget(parent, f, on_change,
                              _open(MODEL_TYPES if kind == "model_3mf" else [("All files", "*.*")],

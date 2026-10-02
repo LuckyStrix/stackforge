@@ -20,7 +20,7 @@ from tdforge.gui.tabs.filaments.preview import PhotoPicker
 from tdforge.gui.tabs.filaments.match import MatchTab
 from tdforge.gui.tabs.filaments.sku_browser import SkuBrowser
 from tdforge.core.filamentdb import DB, PROVENANCE, TD_GUESS, Filament, seed_db, slugify
-from tdforge.gui.theme import BG, BG3, ERR, FG, FG_DIM, OK, WARN, ScrollFrame, Section, spin, swatch_image, text_view
+from tdforge.gui.theme import BG, BG3, ERR, FG, FG_DIM, OK, WARN, ScrollFrame, Section, scrolled_text, spin, swatch_image, text_view
 from tdforge.gui.tabs.filaments import APP
 
 
@@ -188,8 +188,10 @@ class FilamentEditor(ttk.Frame):
         self.nb.pack(fill="both", expand=True)
         self.nb.add(self._build_details(self.nb), text="Details")
         self.nb.add(self._build_look(self.nb), text="Look")
-        self.match = MatchTab(self.nb, self)
-        self.nb.add(self.match, text="Match by eye")
+        match_scroll = ScrollFrame(self.nb, width=520)
+        self.match = MatchTab(match_scroll.inner, self)
+        self.match.pack(fill="both", expand=True)
+        self.nb.add(match_scroll, text="Match by eye")
         self.nb.add(self._build_calibrate(self.nb), text="Calibrate")
         return f
 
@@ -306,15 +308,17 @@ class FilamentEditor(ttk.Frame):
                  "The layer height the measurement was taken at.")
         self.v_tags = self._var("s", "tags")
         pv.field("Tags", ttk.Entry(pv, textvariable=self.v_tags), "Comma separated.")
-        self.t_notes = tk.Text(pv, height=4, bg=BG3, fg=FG, insertbackground=FG,
-                               relief="flat", borderwidth=0, padx=6, pady=4,
-                               wrap="word", font=("TkDefaultFont", 9))
+        self.t_notes = scrolled_text(pv, height=4, wrap="word", bg=BG3, fg=FG, insertbackground=FG,
+                                     relief="flat", borderwidth=0, padx=6, pady=4,
+                                     font=("TkDefaultFont", 9))
         self.t_notes.bind("<KeyRelease>", lambda e: self._on_notes())
         pv.field("Notes", self.t_notes)
         return sc
 
     def _build_look(self, master):
-        f = ttk.Frame(master, padding=12)
+        sc = ScrollFrame(master, width=520)
+        f = ttk.Frame(sc.inner, padding=12)
+        f.pack(fill="both", expand=True)
         ttk.Label(f, text="Stacked over white and over black",
                   style="Head.TLabel").pack(anchor="w")
         ttk.Label(
@@ -344,7 +348,7 @@ class FilamentEditor(ttk.Frame):
 
         self.t_optics = text_view(f, height=12)
         self.t_optics.pack(fill="x", pady=(10, 0))
-        return f
+        return sc
 
     def _build_calibrate(self, master):
         sc = self.cal_scroll = ScrollFrame(master, width=520)
@@ -411,9 +415,9 @@ class FilamentEditor(ttk.Frame):
         v_base = tk.StringVar(value=default_base)
         ttk.Combobox(top, textvariable=v_base, width=22).pack(side="left", padx=6)
         ttk.Label(top, text="hex, or a filament id", style="Hint.TLabel").pack(side="left")
-        txt = tk.Text(box, height=3, bg=BG3, fg=FG, insertbackground=FG,
-                      relief="flat", borderwidth=0, padx=6, pady=4, wrap="word",
-                      font=("TkFixedFont", 9))
+        txt = scrolled_text(box, height=3, wrap="word", bg=BG3, fg=FG, insertbackground=FG,
+                            relief="flat", borderwidth=0, padx=6, pady=4,
+                            font=("TkFixedFont", 9))
         txt.pack(fill="x", pady=4)
         btns = ttk.Frame(box)
         btns.pack(fill="x")

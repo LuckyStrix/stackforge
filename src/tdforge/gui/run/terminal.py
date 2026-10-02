@@ -15,14 +15,14 @@ POLL_MS = 50
 
 
 class TerminalView(ttk.Frame):
-    def __init__(self, master, on_finish=None):
+    def __init__(self, master, on_finish=None, height=14):
         super().__init__(master)
         self.on_finish = on_finish
         self._on_finish = on_finish
         self.job: Job | None = None
         self.screen = Screen()
         self._status = tk.StringVar(value="idle")
-        self.text = theme.text_view(self, height=14)
+        self.text = theme.text_view(self, height=height)
         self.text.config(state="disabled")
         bar = ttk.Frame(self)
         self.entry = ttk.Entry(bar)
