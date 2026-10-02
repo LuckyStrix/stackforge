@@ -1,0 +1,97 @@
+"""Semantic widget kinds argparse cannot express. No tkinter.
+
+`resolve_kind(tool, command, field)` returns one of KINDS. Order: explicit table, then
+filename heuristics, then the plain kind implied by argparse (entry / spin / combo / check /
+list / repeat), so an unlisted new flag always gets a sensible widget.
+"""
+from __future__ import annotations
+
+from tdforge.gui.argform.spec import FieldSpec
+
+# semantic kinds (hand-built widgets live in gui/pickers)
+SEMANTIC = {"file_in", "file_out", "image", "model_3mf", "filament_ids", "filament_id",
+            "hex_list", "hide"}
+# plain kinds derived from argparse itself
+PLAIN = {"entry", "int", "float", "check", "combo", "list", "repeat"}
+PROJECT_PREFIX = "project:"
+KINDS = SEMANTIC | PLAIN
+
+# (tool, command path "a b" or "*", dest) -> kind
+OVERRIDES: dict = {
+    ("stackforge", "*", "image"): "image",
+    ("stackforge", "*", "filaments"): "filament_ids",
+    ("stackforge", "*", "base"): "filament_id",
+    ("topdeco", "*", "model"): "model_3mf",
+    ("topdeco", "*", "image"): "image",
+    ("topdeco", "*", "palette"): "hex_list",
+    ("topdeco", "*", "filaments"): "filament_ids",
+    ("surfacecolor", "*", "model"): "model_3mf",
+    ("surfacecolor", "*", "image"): "image",
+    ("surfacecolor", "*", "palette"): "hex_list",
+    ("surfacecolor", "*", "filaments"): "filament_ids",
+    ("calibrate", "*", "filament"): "filament_id",
+    ("calibrate", "*", "base"): "filament_id",
+    ("calibrate", "fit", "measured"): "hex_list",
+    ("calibrate", "fit", "measured2"): "hex_list",
+    ("calibrate", "fit", "from_image"): "image",
+    ("calibrate", "fit", "from_image2"): "image",
+    ("halftone_compare", "*", "image"): "image",
+    ("halftone_compare", "*", "filaments"): "filament_ids",
+    ("halftone_compare", "*", "base"): "filament_id",
+    ("munki", "verify-plaque", "predicted"): "file_in",
+    ("filamentdb", "show", "id"): "filament_id",
+    ("filamentdb", "set", "id"): "filament_id",
+    ("filamentdb", "rm", "id"): "filament_id",
+    ("make_fixture", "*", "out_dir"): "file_out",
+}
+
+# dest -> project binding key; filled from the project bar, excluded from presets
+PROJECT_BOUND = {
+    "db": "db", "template": "template", "flavor": "flavor", "part_type": "part_type",
+    "layer_height": "layer_height", "first_layer_height": "first_layer",
+    "catalog": "catalog",
+}
+
+_OUT_HINTS = ("output", "preview", "sheet")
+_IN_HINTS = ("template", "model")
+
+
+def project_key(field: FieldSpec):
+    return PROJECT_BOUND.get(field.dest)
+
+
+def resolve_kind(tool: str, command: str, f: FieldSpec) -> str:
+    for key in ((tool, command, f.dest), (tool, "*", f.dest)):
+        if key in OVERRIDES:
+            return OVERRIDES[key]
+    pk = project_key(f)
+    if pk:
+        return PROJECT_PREFIX + pk
+    if f.kind == "str":
+        if any(h in f.dest for h in _OUT_HINTS):
+            return "file_out"
+        if f.dest in _IN_HINTS:
+            return "file_in"
+    return plain_kind(f)
+
+
+def plain_kind(f: FieldSpec) -> str:
+    if f.kind == "bool":
+        return "check"
+    if f.kind == "choice":
+        return "combo"
+    if f.kind == "append":
+        return "repeat"
+    if f.nargs is not None:
+        return "list"
+    if f.kind in ("int", "float"):
+        return f.kind
+    return "entry"
+
+
+def is_project_kind(kind: str) -> bool:
+    return kind.startswith(PROJECT_PREFIX)
+
+
+def kind_known(kind: str) -> bool:
+    return kind in KINDS or is_project_kind(kind)

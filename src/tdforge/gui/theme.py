@@ -209,6 +209,32 @@ class Section(ttk.LabelFrame):
         return self.row(lbl)
 
 
+class CollapsibleSection(ttk.Frame):
+    """A Section whose body can be folded away; `.body` is the Section to fill."""
+
+    def __init__(self, master, title, description="", collapsed=True):
+        super().__init__(master)
+        self._title = title
+        self._btn = ttk.Button(self, command=self.toggle, style="Toolbutton")
+        self._btn.pack(fill="x")
+        self.body = Section(self, "")
+        if description:
+            self.body.note(description)
+        self._open = not collapsed
+        self._sync()
+
+    def toggle(self):
+        self._open = not self._open
+        self._sync()
+
+    def _sync(self):
+        self._btn.config(text=("\u25be " if self._open else "\u25b8 ") + self._title)
+        if self._open:
+            self.body.pack(fill="x", pady=(2, 6))
+        else:
+            self.body.pack_forget()
+
+
 class ScrollFrame(ttk.Frame):
     """A vertically scrolling container. Put children in `.inner`."""
 
