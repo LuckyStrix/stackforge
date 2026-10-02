@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDoubleSpinBox, QFi
                                QSpinBox, QSplitter, QTabWidget, QVBoxLayout, QWidget)
 
 from tdforge.core import tdcolor
-from tdforge.core.filamentdb import DB
+from tdforge.core.filamentdb import DB, DEFAULT_DB
 from tdforge.gui.qt import theme
 from tdforge.gui.qt.imageview import ImageView
 from tdforge.gui.tabs.plaque.job import Worker
@@ -76,7 +76,7 @@ class PlaqueDesigner(QWidget):
         super().__init__()
         self.project, self.presets, self.host = project, presets, host
         self.worker = Worker()
-        self.db_path = project.get("db") if project else "filaments.json"
+        self.db_path = project.get("db") if project else DEFAULT_DB
         self.db = DB(self.db_path)
         self.image_path = None
         self.source_img = None

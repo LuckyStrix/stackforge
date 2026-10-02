@@ -39,16 +39,18 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.request
 from dataclasses import asdict, dataclass, field
 from datetime import date
 
 from tdforge.core import tdcolor
+from tdforge.core.paths import data_path
 from tdforge.core.filamentdb import DB, DEFAULT_DB, TD_GUESS, Filament, hueforge_td, slugify
 
 URL = ("https://wiki.polymaker.com/polymaker-products/more-about-our-products/"
        "hex-codes-and-transmission-distances")
-CACHE = os.environ.get("POLYMAKER_CATALOG", "polymaker_catalog.json")
+CACHE = os.environ.get("POLYMAKER_CATALOG") or data_path("polymaker_catalog.json")
 CACHE_VERSION = 1
 
 # The wiki is a GitBook page: every table cell is a div with role="cell" whose
@@ -126,18 +128,31 @@ class Product:
 # --------------------------------------------------------------------------
 
 
-def fetch_html(url=URL, timeout=120) -> str:
-    """Download the wiki page. ~450 KB gzipped, ~50 MB if the server refuses."""
+def fetch_html(url=URL, timeout=30, attempts=3, pause=2.0) -> str:
+    """Download the wiki page. ~450 KB gzipped, ~50 MB if the server refuses.
+
+    Retries a few times on network errors; if every attempt fails, exits with a message that
+    says the cached catalogue is untouched and still usable offline."""
     req = urllib.request.Request(url, headers={
         "User-Agent": "Mozilla/5.0 (3mf_scripts filament catalogue)",
         "Accept-Encoding": "gzip",
         "Accept": "text/html",
     })
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        raw = r.read()
-        if r.headers.get("Content-Encoding") == "gzip":
-            raw = gzip.decompress(raw)
-    return raw.decode("utf-8", errors="replace")
+    err = None
+    for i in range(attempts):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                raw = r.read()
+                if r.headers.get("Content-Encoding") == "gzip":
+                    raw = gzip.decompress(raw)
+            return raw.decode("utf-8", errors="replace")
+        except (OSError, EOFError) as e:  # URLError, HTTPError, timeouts and resets are OSErrors
+            err = e
+            if i + 1 < attempts:
+                time.sleep(pause * (i + 1))
+    raise SystemExit(f"could not fetch {url} after {attempts} attempts "
+                     f"({type(err).__name__}: {err}). The cached catalogue is unchanged and "
+                     f"still works offline.")
 
 
 def _cell_text(chunk: str) -> str:

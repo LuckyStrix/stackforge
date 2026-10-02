@@ -33,6 +33,7 @@ import numpy as np
 from PIL import Image
 
 from tdforge.core import td3mf
+from tdforge.core.filamentdb import DEFAULT_DB
 from tdforge.core import tdcolor
 
 
@@ -152,7 +153,7 @@ def build_parser() -> argparse.ArgumentParser:
     src = ap.add_mutually_exclusive_group()
     src.add_argument("--palette", help="filament colours in extruder order, comma-separated hex")
     src.add_argument("--filaments", help="comma-separated ids from the filament database")
-    ap.add_argument("--db", default="filaments.json")
+    ap.add_argument("--db", default=DEFAULT_DB)
     ap.add_argument("--base-extruder", type=int, default=1,
                     help="extruder the object already prints in; not emitted as a modifier")
     ap.add_argument("--resolution", type=float, default=0.4,

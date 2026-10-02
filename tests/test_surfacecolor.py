@@ -66,6 +66,22 @@ class Patterns(unittest.TestCase):
         with self.assertRaises(SystemExit):
             sc.evaluate("expr", self.cd, self.ns(expr="__import__('os')"), np.zeros((2, 3)))
 
+    def test_expr_whitelist_rejects_escapes(self):
+        for bad in ("x.__class__", "().__class__", "[c for c in (1,)]", "(lambda: 1)()",
+                    "open('f')", "x[0]", "'abc'", "sin.__call__(x)", "y if z else w2",
+                    "__import__('os').system('true')", "getattr(x, 'real')"):
+            with self.assertRaises(SystemExit, msg=bad):
+                sc.evaluate("expr", self.cd, self.ns(expr=bad), np.zeros((2, 3)))
+
+    def test_expr_huge_power_does_not_hang(self):
+        with self.assertRaises(SystemExit):   # float overflow, reported; bigints would hang
+            sc.evaluate("expr", self.cd, self.ns(expr="9 ** 9 ** 9"), np.zeros((2, 3)))
+
+    def test_expr_functions_and_constants(self):
+        got = sc.evaluate("expr", self.cd, self.ns(expr="where(sin(x * pi) > 0.5, 1, 0)"),
+                          np.zeros((2, 3)))
+        self.assertEqual(got.shape, self.cd.x.shape)
+
     def test_index_wraps_to_palette_size(self):
         got = sc.evaluate("expr", self.cd, self.ns(expr="x * 10"), np.zeros((3, 3)))
         self.assertTrue(((got >= 0) & (got < 3)).all())

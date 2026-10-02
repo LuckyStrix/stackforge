@@ -19,8 +19,9 @@ the code first.
   only wedge/chips geometry was missing (added).
 - "PTY blocking read at test_munki.py:247": no such line exists (file is shorter); the reader is a
   daemon thread and every wait has a timeout.
-- "eval in `--expr` can be escaped": true in principle, documented. It is for trusted local input
-  and refuses dunders/imports; not a sandbox.
+- "eval in `--expr` can be escaped": was true (builtins stripped + dunder check is not a sandbox).
+  Fixed 2026-10-02: the expression is parsed and checked against an AST whitelist
+  (`surfacecolor.compile_expr`) before `eval`; int literals become floats so `9**9**9` cannot hang.
 
 ## Still open
 - `stackforge --template` (layer-height inheritance, solid-infill flags) has no test: it needs a

@@ -53,7 +53,7 @@ from scipy.spatial import cKDTree
 
 from tdforge.core import tdcolor
 from tdforge.core import td3mf
-from tdforge.core.filamentdb import DB
+from tdforge.core.filamentdb import DEFAULT_DB, DB
 
 
 # --------------------------------------------------------------------------
@@ -588,7 +588,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("image")
     ap.add_argument("-o", "--output",
                     help="output .3mf; not needed when ranking combinations")
-    ap.add_argument("--db", default="filaments.json")
+    ap.add_argument("--db", default=DEFAULT_DB)
     ap.add_argument("--filaments", required=True,
                     help="comma-separated filament ids or name substrings, in extruder order")
     ap.add_argument("--base",
@@ -826,8 +826,8 @@ def main(argv=None):
           f"({args.base_layers} base + {labels.shape[0]} color layers)")
     print(f"  {nbox} boxes in {len(decals)} {args.part_type} volumes ({nbox*12} triangles)")
     if nbox > 250_000:
-        print(f"  ! that is a lot of geometry and your slicer will be slow to load it.")
-        print(f"    Coarsen --resolution, drop --dither, or cut --max-layers.")
+        print("  ! that is a lot of geometry and your slicer will be slow to load it.")
+        print("    Coarsen --resolution, drop --dither, or cut --max-layers.")
 
     used, counts = np.unique(labels, return_counts=True)
     tot = labels.size

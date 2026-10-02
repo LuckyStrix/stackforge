@@ -42,7 +42,9 @@ def dome(cx, cy, r, hgt, n=24):
 def merge(parts):
     vs, ts, off = [], [], 0
     for v, t in parts:
-        vs.append(v); ts.append(t + off); off += len(v)
+        vs.append(v)
+        ts.append(t + off)
+        off += len(v)
     return np.vstack(vs), np.vstack(ts)
 
 

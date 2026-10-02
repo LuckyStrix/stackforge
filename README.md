@@ -19,30 +19,32 @@ image ──► gamut search ──► per-pixel stack ──► 3MF (modifier v
 ## Quick start
 
 ```sh
-pip install -e .   # tkinter (for the GUIs): apt install python3-tk
+pip install -e .   # the command-line tools; add ".[gui]" for the Qt GUI
 stackforge docs/stackforge_target.png --base polymaker-pla-pro-white \
     --filaments polymaker-pla-pro-white,polymaker-pla-pro-blue,polymaker-pla-pro-red,polymaker-pla-pro-yellow \
     --width 60 --base-layers 27 --preview sim.png -o plaque.3mf
 ```
 
 Then pass `--template your_export.3mf` for Flash Studio / Orca-family slicers (see *Caveats*).
-Always look at `--preview` before slicing. Run `python3 -m unittest discover -s tests` for the smoke tests.
+Always look at `--preview` before slicing. Run `pip install -e ".[dev]" && pytest` for the tests (`python3 -m unittest discover -s tests` also works).
 
 ## One GUI for everything
 
 ```sh
-pip install -e .        # once; installs PySide6 too
+pip install -e ".[gui]"   # once; adds PySide6
 tdforge-gui [image.png] # or: python -m tdforge.gui.qt.app
 ```
 
 Start on the **Plaque** tab: open an image, tick the filaments you own (the list is your
 database), press **Generate**, then **Export 3MF**. Set your slicer project as the *Template*
 in the bar at the top and the layer height follows it. (`tdforge-gui-classic` is the old tk
-window, kept until the filament editor is ported.)
+window, kept only for the filament editor, which the Qt GUI has not ported yet; it needs
+`python3-tk`.)
 
 `tdforge-gui` opens a single window over every tool here: Plaque (the stackforge designer, plus
-an *All options* form), Paint (topdeco / surfacecolor), Filaments (the database editor and the
-filamentdb / polymaker commands), Calibrate, Measure (munki, with a terminal) and Tools.
+an *All options* form), Paint (topdeco / surfacecolor), Filaments (the filamentdb / polymaker
+forms; the full editor with details, look, match-by-eye and calibrate is still the classic
+window, one click away), Calibrate, Measure (munki, with a terminal) and Tools.
 
 ![tdforge-gui](docs/tdforge_gui.png)
 
@@ -56,10 +58,12 @@ presets live in `~/.config/tdforge/`. Ctrl+Enter runs the visible form, Esc canc
 ## Caveats up front
 
 - **Verified:** output loads as a project in Flash Studio 1.7.x with four parts on extruders 1-4.
-- **Not yet verified:** that the slicer honours extruder overrides on *modifier* volumes in the
-  sliced preview. If colours are wrong there, try `--part-type part`.
+- **Verified (headless slice, 2026-09-30):** Flash Studio honours extruder overrides on *modifier*
+  volumes. `tests/test_slice.py` re-checks this on every test run where Flash Studio is installed
+  (skip it with `TDFORGE_SKIP_SLICER=1`; locations via `FLASHSTUDIO_RUN` / `FLASHSTUDIO_TEMPLATE`).
+  If colours are wrong in your slicer, try `--part-type part`.
 - The optical model is single-pass alpha-over with per-filament `td`; accuracy depends on
-  calibrated `td` values (`calibrate.py`). Shipped `filaments.json` values are mostly estimates.
+  calibrated `td` values (`calibrate.py`). Shipped `filaments.json` (in `src/tdforge/data/`) values are mostly estimates.
 - The base must be opaque (`--base-layers`); stackforge warns when it is not.
 - Slice at exactly the `--layer-height` you generated with.
 
@@ -73,7 +77,7 @@ so nothing here tries to minimize them.
 | tool | what it does |
 |---|---|
 | `filamentdb` (`core/`) | filament colors + optical properties, grown over time |
-| `gui/tabs/filaments/` | desktop editor for that database, with the calibration loop built in |
+| `gui/tabs/filaments/` | tk desktop editor for that database, with the calibration loop built in (not yet ported to Qt) |
 | `polymaker` (`tools/`) | look a Polymaker SKU up in their published hex/TD table |
 | `calibrate` (`tools/`) | step-wedge generator and td/color fitter |
 | `topdeco` (`tools/`) | project an image onto the top-visible surface of any 3MF |
@@ -82,21 +86,24 @@ so nothing here tries to minimize them.
 | `halftone_compare` (`tools/`) | score stackforge's dither modes by blurred dE |
 | `make_fixture` (`tools/`) | generate `fabric.3mf` and `badge.3mf` test models |
 | `stackforge` (`tools/`) | flat full-color plaques from per-pixel filament stacks |
-| `gui/tabs/plaque/` | desktop front end for stackforge |
+| `gui/qt/` | the Qt GUI (`tdforge-gui`): host window, generated forms, plaque designer, pickers |
+| `gui/tabs/plaque/` | tk plaque designer (classic GUI; superseded by the Qt one) |
+| `data/` | shipped `filaments.json` and `polymaker_catalog.json`; a copy in the working directory wins |
 | `core/td3mf.py`, `core/tdcolor.py` | shared 3MF I/O and color math |
-| `gui/theme.py` | shared tkinter theme and widgets for the two GUIs |
+| `gui/theme.py`, `gui/qt/theme.py` | tk theme (classic GUI) and Qt theme |
+| `gui/argform/` | form specs generated from each tool's `build_parser()`; no GUI toolkit needed |
 
 `surfacecolor.py` is built to the first three steps of `docs/plans/surfacecolor.md`
 (patterns, wrapped images, shell masking); the interactive painting window is not.
 
-Requires `numpy`, `Pillow`, `scipy`; the two GUIs also need `tkinter`
-(`python3-tk` on Debian/Ubuntu). `polymaker.py` is stdlib only.
+Requires `numpy`, `Pillow`, `scipy`; `tdforge-gui` also needs `PySide6` (the `gui` extra) and the
+classic GUI needs `tkinter` (`python3-tk` on Debian/Ubuntu). `polymaker.py` is stdlib only.
 
 ---
 
 ## filamentdb.py
 
-One plain JSON file (`./filaments.json` by default, or `$FILAMENT_DB`) so it
+One plain JSON file (`./filaments.json` if present, else the copy shipped in the package; or `$FILAMENT_DB`) so it
 diffs cleanly in git and you can hand-edit it. Every entry records where its
 numbers came from, so estimated placeholders never get mistaken for measured
 values — `list` dims anything unmeasured. `provenance` runs
@@ -190,14 +197,15 @@ colour `#227788` comes back as 0.2997 / `#237788`.
 
 Polymaker publish a HEX code and a TD for most of their catalogue:
 [wiki.polymaker.com › Hex Codes and Transmission Distances][poly]. This scrapes
-that page once into `polymaker_catalog.json` and reads from there afterwards,
+that page once into `polymaker_catalog.json` (the packaged copy unless there is one in the
+working directory, or `$POLYMAKER_CATALOG`) and reads from there afterwards,
 so lookups are instant, work offline, and diff in git the way the filament
 database does.
 
 [poly]: https://wiki.polymaker.com/polymaker-products/more-about-our-products/hex-codes-and-transmission-distances
 
 ```sh
-polymaker refresh              # re-scrape (needs network)
+polymaker refresh              # re-scrape (needs network; retries, and leaves the cache alone on failure)
 polymaker lookup CA02001
 polymaker search silk blue
 polymaker import CA02001 --write
@@ -563,9 +571,9 @@ by looking at renders instead of reading a table.
 - Export reports the load order (T1…T4) and the exact layer height to slice at,
   and asks first if the image, filaments or settings changed since Generate.
 - The base is always T1 in the GUI; use the CLI to put it on another toolhead.
-- *Database ▸ Edit filaments…* opens `filamentdb_gui` over the top and reloads
-  the library when it closes, keeping whatever was already ticked. Both windows
-  share `gui/theme.py` for their theme and widgets, so they look like one program.
+- *Database ▸ Edit filaments…* (classic GUI) opens the filament editor over the top and reloads
+  the library when it closes, keeping whatever was already ticked. In the Qt GUI the editor
+  is not ported yet; the Filaments tab has a button that opens the classic window.
 
 ### Dithering
 
@@ -757,7 +765,10 @@ grid drop out on alternate layers).
   the top, so vertical walls colour correctly.
 - **Overlapping shells are fine** (winding number, not parity), as in the dome-on-plate
   fixture. Consistently oriented normals are assumed.
-- **`--expr` is an `eval`** with builtins removed. Run only expressions you trust.
+- **`--expr` is checked before it runs**: it is parsed and only arithmetic, comparisons, the
+  names `x y z r theta phi pi` and the listed numpy functions (`sin cos tan arctan2 sqrt abs
+  floor ceil mod where minimum maximum exp log sign round`) are accepted; attributes,
+  subscripts, lambdas, comprehensions and strings are refused. Safe on untrusted input.
 - **Unverified**: that Flash Studio honours the extruder on many small modifier volumes on a
   curved model when slicing (the same open question as everything else here), and
   performance on 100 mm models with busy patterns. The default `--resolution 0.8` keeps

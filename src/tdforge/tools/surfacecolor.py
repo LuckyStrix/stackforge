@@ -24,9 +24,9 @@ z, -pi..pi) and phi (elevation, -pi/2..pi/2) about its centre.
 from __future__ import annotations
 
 import argparse
+import ast
 import math
 import os
-import sys
 import time
 
 import numpy as np
@@ -34,6 +34,7 @@ from PIL import Image
 from scipy.ndimage import distance_transform_edt
 
 from tdforge.core import td3mf
+from tdforge.core.filamentdb import DEFAULT_DB
 from tdforge.core import tdcolor
 
 EPS_JITTER = 1.7e-7   # pixel centres are nudged off exact triangle edges (see voxelize)
@@ -212,21 +213,59 @@ _EXPR_NAMES = {k: getattr(np, k) for k in (
 _EXPR_NAMES["pi"] = math.pi
 
 
-def p_expr(cd, a, n):
-    """Arbitrary numpy expression of x,y,z,r,theta,phi. Bool -> 0/1, number -> floor.
+_EXPR_NODES = (
+    ast.Expression, ast.BinOp, ast.UnaryOp, ast.BoolOp, ast.Compare, ast.IfExp, ast.Call,
+    ast.Name, ast.Load, ast.Constant,
+    ast.Add, ast.Sub, ast.Mult, ast.Div, ast.FloorDiv, ast.Mod, ast.Pow, ast.BitAnd, ast.BitOr,
+    ast.BitXor, ast.Invert, ast.USub, ast.UAdd, ast.Not, ast.And, ast.Or,
+    ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE, ast.keyword)
 
-    This is `eval`. It is stripped of builtins and rejects dunder access, which
-    stops the casual mistakes, NOT a determined attacker: only run expressions
-    you wrote or read.
+
+class _Floats(ast.NodeTransformer):
+    """Numeric literals become floats, so `9**9**9` overflows instead of hanging on bigints."""
+
+    def visit_Constant(self, node):
+        if type(node.value) is int:
+            return ast.copy_location(ast.Constant(float(node.value)), node)
+        return node
+
+
+def compile_expr(text, names):
+    """Parse `text` and refuse anything but arithmetic, comparisons, `names` and calls to the
+    functions among them. No attributes, subscripts, lambdas, comprehensions or strings, so
+    there is nothing to escape through. Returns a code object for `eval` with no builtins."""
+    try:
+        tree = ast.parse(text.strip(), mode="eval")
+    except SyntaxError as e:
+        raise SystemExit(f"--expr: {e.msg}")
+    for node in ast.walk(tree):
+        if not isinstance(node, _EXPR_NODES):
+            raise SystemExit(f"--expr: {type(node).__name__} is not allowed "
+                             "(arithmetic, comparisons and the listed functions only)")
+        if isinstance(node, ast.Constant) and not isinstance(node.value, (int, float, bool)):
+            raise SystemExit("--expr: only numeric constants are allowed")
+        if isinstance(node, ast.Name) and node.id not in names:
+            raise SystemExit(f"--expr: unknown name {node.id!r}")
+        if isinstance(node, ast.Call) and not (isinstance(node.func, ast.Name)
+                                               and callable(names.get(node.func.id))):
+            raise SystemExit("--expr: only the listed functions can be called")
+    return compile(ast.fix_missing_locations(_Floats().visit(tree)), "<expr>", "eval")
+
+
+def p_expr(cd, a, n):
+    """Expression of x,y,z,r,theta,phi and a few numpy functions. Bool -> 0/1, number -> floor.
+
+    The text is parsed and checked against a whitelist (see `compile_expr`) before it is
+    evaluated, so it is safe on untrusted input.
     """
     if not a.expr:
         raise SystemExit("--pattern expr needs --expr")
-    if "__" in a.expr or "import" in a.expr:
-        raise SystemExit("--expr: dunders and imports are not allowed")
     env = {**_EXPR_NAMES, "x": cd.x, "y": cd.y, "z": cd.z, "r": cd.r,
            "theta": cd.theta, "phi": cd.phi}
+    code = compile_expr(a.expr, env)
     try:
-        val = eval(a.expr, {"__builtins__": {}}, env)
+        with np.errstate(all="ignore"):
+            val = eval(code, {"__builtins__": {}}, env)
     except Exception as e:
         raise SystemExit(f"--expr failed: {type(e).__name__}: {e}")
     val = np.broadcast_to(np.asarray(val), cd.x.shape)
@@ -349,7 +388,7 @@ def build_parser() -> argparse.ArgumentParser:
     src = ap.add_mutually_exclusive_group(required=True)
     src.add_argument("--palette", help="filament colours in extruder order, comma-separated hex")
     src.add_argument("--filaments", help="comma-separated ids from the filament database")
-    ap.add_argument("--db", default="filaments.json")
+    ap.add_argument("--db", default=DEFAULT_DB)
     ap.add_argument("--base-extruder", type=int, default=1,
                     help="extruder the object already prints in; voxels given this colour "
                          "emit no modifier")
@@ -363,7 +402,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--image", help="image for the image-* patterns")
     ap.add_argument("--lon-offset", type=float, default=0.0,
                     help="degrees to rotate a wrapped image about the vertical axis")
-    ap.add_argument("--expr", help="numpy expression for --pattern expr (trusted input only)")
+    ap.add_argument("--expr", help="expression for --pattern expr: x y z r theta phi, arithmetic, comparisons and sin cos tan arctan2 sqrt abs floor ceil mod where minimum maximum exp log sign round")
     ap.add_argument("--resolution", type=float, default=0.8,
                     help="mm per voxel in XY. Coarser than the nozzle keeps the box count sane")
     ap.add_argument("--depth", type=float, default=1.2,

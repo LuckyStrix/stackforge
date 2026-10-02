@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (QColorDialog, QComboBox, QDialog, QDialogButtonBo
                                QWidget)
 
 from tdforge.core import tdcolor
-from tdforge.core.filamentdb import DB
+from tdforge.core.filamentdb import DB, DEFAULT_DB
 from tdforge.gui.qt import theme
 from tdforge.gui.qt.widgets import FieldWidget
 
@@ -34,7 +34,7 @@ class FilamentSource:
 
     @property
     def path(self):
-        return (self.project.get("db") if self.project else None) or self._path or "filaments.json"
+        return (self.project.get("db") if self.project else None) or self._path or DEFAULT_DB
 
     def filaments(self) -> list:
         p = self.path

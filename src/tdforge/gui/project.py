@@ -10,6 +10,7 @@ import os
 
 from tdforge.core import td3mf
 from tdforge.core.filamentdb import DEFAULT_DB
+from tdforge.core.paths import data_path
 from tdforge.gui.settings import Settings
 
 KEYS = ("db", "template", "catalog", "flavor", "part_type", "layer_height", "first_layer")
@@ -73,7 +74,7 @@ class Project:
             return self.settings.get("db") or os.path.abspath(DEFAULT_DB)
         if key == "catalog":
             return self.settings.get("catalog") or os.path.abspath(
-                os.environ.get("POLYMAKER_CATALOG", "polymaker_catalog.json"))
+                os.environ.get("POLYMAKER_CATALOG") or data_path("polymaker_catalog.json"))
         if key in ("template", "flavor", "part_type"):
             return self.settings.get(key) or None
         if key in ("layer_height", "first_layer"):

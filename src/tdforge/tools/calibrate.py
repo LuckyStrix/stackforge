@@ -34,7 +34,7 @@ from scipy.optimize import least_squares
 
 from tdforge.core import td3mf
 from tdforge.core import tdcolor
-from tdforge.core.filamentdb import DB, Filament
+from tdforge.core.filamentdb import DEFAULT_DB, DB
 
 
 # --------------------------------------------------------------------------
@@ -326,7 +326,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    ap.add_argument("--db", default="filaments.json")
+    ap.add_argument("--db", default=DEFAULT_DB)
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("wedge", help="generate a step-wedge 3MF to print")

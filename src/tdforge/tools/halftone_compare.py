@@ -21,7 +21,7 @@ from PIL import Image, ImageDraw
 
 from tdforge.tools import stackforge as sf
 from tdforge.core import tdcolor
-from tdforge.core.filamentdb import DB
+from tdforge.core.filamentdb import DEFAULT_DB, DB
 
 MODES = ["none", "ordered", "blue", "floyd"]
 
@@ -31,7 +31,7 @@ blurred_de = tdcolor.blurred_de  # moved to tdcolor; kept importable here
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("image")
-    ap.add_argument("--db", default="filaments.json")
+    ap.add_argument("--db", default=DEFAULT_DB)
     ap.add_argument("--filaments", required=True)
     ap.add_argument("--base")
     ap.add_argument("--width", type=float, default=60.0, help="plaque width in mm")

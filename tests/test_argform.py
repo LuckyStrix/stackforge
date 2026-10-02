@@ -1,5 +1,4 @@
 """argform: spec / argv logic (no display needed) and a drift guard over every tool's parser."""
-import argparse
 import os
 import unittest
 
@@ -221,7 +220,8 @@ class PatternVisibility(unittest.TestCase):
         _, parser, spec = [s for s in specs() if s[0] == "surfacecolor"][0]
         form = CommandForm(root, spec, "surfacecolor")
         root.update()
-        vis = lambda: {d for d, e in form.entries.items() if e.visible}
+        def vis():
+            return {d for d, e in form.entries.items() if e.visible}
         self.assertFalse(vis() & {"scale", "lat", "period", "expr"})
         form.set_values({"pattern": "stripes", "period": 3.0, "scale": 9.0})
         self.assertTrue({"axis", "period"} <= vis())

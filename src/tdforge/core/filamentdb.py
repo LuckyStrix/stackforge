@@ -40,8 +40,9 @@ from datetime import date
 import numpy as np
 
 from tdforge.core import tdcolor
+from tdforge.core.paths import data_path
 
-DEFAULT_DB = os.environ.get("FILAMENT_DB", "filaments.json")
+DEFAULT_DB = os.environ.get("FILAMENT_DB") or data_path("filaments.json")
 SCHEMA_VERSION = 1
 
 # "matched" sits between a measurement and a guess: somebody printed the
@@ -443,7 +444,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("import-sku",
                        help="fill an entry in from a Polymaker SKU")
     p.add_argument("sku")
-    p.add_argument("--catalog", default="polymaker_catalog.json")
+    p.add_argument("--catalog", default=data_path("polymaker_catalog.json"))
     p.add_argument("--id", help="database id to use (default: from the product name)")
     p.add_argument("--force", action="store_true", help="update an existing entry")
     p.add_argument("--overwrite-measured", action="store_true",

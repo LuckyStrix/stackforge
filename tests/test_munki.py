@@ -1,7 +1,7 @@
 """munki.py against a fake spotread (transcript shape captured from a real
 ColorMunki Photo by the calibration-suite project), plus the pure maths.
 Hardware tests run only with STACKFORGE_MUNKI=1."""
-import os, shutil, stat, sys, tempfile, unittest
+import os, shutil, stat, tempfile, unittest
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

@@ -7,10 +7,15 @@ name = "tdforge"
 version = "0.1.0"
 description = "Full-colour multi-toolhead 3D printing: per-pixel filament stacks, surface colouring, filament calibration"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = { file = "LICENSE" }
-# The classic tk GUI (tdforge-gui-classic) also needs tkinter: apt install python3-tk
-dependencies = ["numpy", "Pillow", "scipy", "PySide6"]
+# The CLIs need only these. The Qt GUI is the `gui` extra; the classic tk GUI
+# (tdforge-gui-classic) needs no pip package but needs tkinter: apt install python3-tk
+dependencies = ["numpy", "Pillow", "scipy"]
+
+[project.optional-dependencies]
+gui = ["PySide6"]
+dev = ["pytest", "ruff", "PySide6"]
 
 [project.scripts]
 stackforge = "tdforge.tools.stackforge:main"
@@ -27,3 +32,19 @@ tdforge-gui-classic = "tdforge.gui.app:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+# the shipped filament database and Polymaker catalogue (src/tdforge/data/)
+[tool.setuptools.package-data]
+tdforge = ["data/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+# real mistakes only (pyflakes + pycodestyle errors); the codebase's style is not enforced
+select = ["E4", "E7", "E9", "F"]
+ignore = ["E401", "E402"]   # tests import after setting sys.path / ROOT

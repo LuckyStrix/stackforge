@@ -12,6 +12,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
+from tdforge.core.paths import packaged  # noqa: E402
 from tdforge.gui.argform import overrides  # noqa: E402
 from tdforge.gui.argform.spec import introspect  # noqa: E402
 from tdforge.gui.project import Project  # noqa: E402
@@ -161,11 +162,10 @@ class Pickers(unittest.TestCase):
     """Filaments and colours are chosen by looking at them, never by typing an id."""
 
     def setUp(self):
-        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.d = tempfile.TemporaryDirectory()
         self.addCleanup(self.d.cleanup)
         self.proj = Project(Settings(os.path.join(self.d.name, "s.json")))
-        self.proj.settings.set("db", os.path.join(root, "filaments.json"))
+        self.proj.settings.set("db", packaged("filaments.json"))
 
     def form(self, tool, builder, command=()):
         from importlib import import_module  # noqa: F401
@@ -246,7 +246,7 @@ class Designer(unittest.TestCase):
         self.addCleanup(self.d.cleanup)
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.proj = Project(Settings(os.path.join(self.d.name, "s.json")))
-        self.proj.settings.set("db", os.path.join(root, "filaments.json"))
+        self.proj.settings.set("db", packaged("filaments.json"))
         self.des = PlaqueDesigner(self.proj, PresetStore(os.path.join(self.d.name, "presets")),
                                   image_path=os.path.join(root, "docs", "stackforge_target.png"))
         self.des.show()

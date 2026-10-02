@@ -1,4 +1,4 @@
-import os, sys, unittest
+import unittest
 import numpy as np
 
 from tdforge.core import tdcolor

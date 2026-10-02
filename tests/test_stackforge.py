@@ -9,6 +9,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 from tdforge.tools import stackforge as sf
 from tdforge.core import tdcolor
 from tdforge.core.filamentdb import DB
+from tdforge.core.paths import packaged
 
 IDS = [f"polymaker-pla-pro-{c}" for c in ("black", "blue", "red", "yellow", "white")]
 
@@ -85,7 +86,7 @@ class Cli(unittest.TestCase):
 
 class Gamut(unittest.TestCase):
     def test_base_index_refuses_a_missing_base(self):
-        db = DB(os.path.join(ROOT, "filaments.json"))
+        db = DB(packaged("filaments.json"))
         fils = db.resolve(",".join(IDS[:3]))
         g = sf.Gamut(fils, db.get(IDS[4]), 0.08, 2, verbose=False)
         with self.assertRaises(ValueError):
@@ -94,7 +95,7 @@ class Gamut(unittest.TestCase):
     def test_dedup_keeps_darks(self):
         # Linear-light dedup merged everything from L* 0 to ~5 into one cell,
         # so dark colours a finer grid can reach were lost (p99 ~2.6 dE).
-        db = DB(os.path.join(ROOT, "filaments.json"))
+        db = DB(packaged("filaments.json"))
         fils = db.resolve(",".join([IDS[4]] + IDS[:3]))
         ref = sf.Gamut(fils, fils[0], 0.08, 8, grid=1024, cap=10**7, verbose=False)
         g = sf.Gamut(fils, fils[0], 0.08, 8, verbose=False)
@@ -105,7 +106,7 @@ class Gamut(unittest.TestCase):
 
 class Model(unittest.TestCase):
     def setUp(self):
-        self.db = DB(os.path.join(ROOT, "filaments.json"))
+        self.db = DB(packaged("filaments.json"))
 
     def test_stack_replays_to_its_colour(self):
         fils = self.db.resolve(",".join([IDS[4]] + IDS[:3]))

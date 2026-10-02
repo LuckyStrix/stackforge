@@ -1,13 +1,13 @@
 """stackforge against a synthetic Flash Studio-style --template: layer grid, patched settings."""
-import contextlib, io, json, os, re, sys, tempfile, unittest, zipfile
+import contextlib, io, json, os, re, tempfile, unittest, zipfile
 
 import numpy as np
-from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 from tdforge.tools import stackforge as sf
 from tdforge.core import td3mf
+from tdforge.core.paths import packaged
 
 FILS = ",".join(f"polymaker-pla-pro-{c}" for c in ("white", "black", "blue", "red"))
 LH, FLH = 0.12, 0.2
@@ -32,7 +32,7 @@ def run_main(*argv):
     out = io.StringIO()
     with contextlib.redirect_stdout(out):
         sf.main([os.path.join(ROOT, "docs", "stackforge_target.png"), "--db",
-                 os.path.join(ROOT, "filaments.json"), *argv])
+                 packaged("filaments.json"), *argv])
     return out.getvalue()
 
 
