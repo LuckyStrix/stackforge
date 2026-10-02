@@ -14,6 +14,7 @@ long-running job can be cancelled.
 
 from __future__ import annotations
 
+import json
 import os
 import queue
 import sys
@@ -26,7 +27,7 @@ from types import SimpleNamespace
 import numpy as np
 import tkinter as tk
 from PIL import Image
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 
 import guikit
 import stackforge as sf
@@ -37,6 +38,7 @@ from guikit import (ACCENT, BG, BG3, ERR, FG, FG_DIM, OK, WARN, ImageView,
                     Section, swatch_image)
 
 APP = "stackforge"
+PRESET_FILE = os.path.join(os.path.expanduser("~/.config"), "stackforge", "presets.json")
 
 
 # --------------------------------------------------------------------------
@@ -125,7 +127,7 @@ class App(tk.Tk):
         self.image_path = None
         self.source_img = None      # PIL, full res as loaded
         self.fitted = None          # ndarray at working resolution
-        self.result = None          # dict from the last solve
+        self.result = None          # dict from the last generate; None once stale
         self.rank_results = None
 
         self._init_style()
@@ -159,6 +161,10 @@ class App(tk.Tk):
         d.add_command(label="Reload database", command=self._reload_filaments)
         d.add_command(label="Open database file…", command=self._pick_db)
         m.add_cascade(label="Database", menu=d)
+
+        self.m_presets = tk.Menu(m, tearoff=0)
+        m.add_cascade(label="Presets", menu=self.m_presets)
+        self._rebuild_presets_menu()
 
         h = tk.Menu(m, tearoff=0)
         h.add_command(label="About", command=self._about)
@@ -274,7 +280,7 @@ class App(tk.Tk):
         self.view_target = ImageView(self.nb, "Open an image to begin  (Ctrl+O)")
         self.view_sim = ImageView(self.nb, "Generate to see the simulated print")
         self.view_err = ImageView(self.nb, "Generate to see where colour is unreachable")
-        self.view_combo = ImageView(self.nb, "Tick more filaments than toolheads, then Rank")
+        self.view_combo = ImageView(self.nb, "Tick more filaments than toolheads and Generate ranks them")
 
         self.nb.add(self.view_target, text="Target")
         self.nb.add(self.view_sim, text="Simulated print")
@@ -370,7 +376,8 @@ class App(tk.Tk):
                 "filaments.")
         c.field("Gamut grid", num(c, self.v_grid, 48, 384, 16),
                 "Dedup resolution of the colour search. Higher is finer and slower.")
-        self.v_fit.trace_add("write", lambda *_: self._refresh_fit())
+        self.v_fit.trace_add("write", lambda *_: (self._refresh_fit(), self._refresh_estimate()))
+        self.v_dither.trace_add("write", lambda *_: self._refresh_estimate())
 
         # ranking
         r = Section(f, "Combination ranking")
@@ -388,7 +395,8 @@ class App(tk.Tk):
                 "p95 targets worst-case error instead of average — better when a "
                 "few badly-wrong regions bother you more than a slight overall shift.")
         r.field("Colours scored", num(r, self.v_samples, 500, 100000, 500))
-        self.v_slots.trace_add("write", lambda *_: self._refresh_estimate())
+        for v in (self.v_slots, self.v_top, self.v_rankby, self.v_samples):
+            v.trace_add("write", lambda *_: self._refresh_estimate())
 
         # output
         o = Section(f, "Output")
@@ -426,7 +434,7 @@ class App(tk.Tk):
         bar = ttk.Frame(master)
         bar.pack(fill="x", pady=(8, 0))
 
-        self.btn_go = ttk.Button(bar, text="Generate preview", style="Go.TButton",
+        self.btn_go = ttk.Button(bar, text="Generate", style="Go.TButton",
                                  command=self._generate)
         self.btn_go.pack(side="left")
         self.btn_export = ttk.Button(bar, text="Export 3MF…", command=self._export,
@@ -525,6 +533,7 @@ class App(tk.Tk):
         )
 
     def _refresh_estimate(self):
+        self._check_stale()
         try:
             a = self.config_ns()
         except (tk.TclError, ValueError):
@@ -573,9 +582,6 @@ class App(tk.Tk):
         if est:
             lines.append(f"unmeasured {len(est)} of {n}")
         self.lbl_est.config(text="\n".join(lines))
-
-        mode = "Rank combinations" if n > slots else "Generate preview"
-        self.btn_go.config(text=mode)
 
     # -- image -----------------------------------------------------------
 
@@ -652,41 +658,78 @@ class App(tk.Tk):
         self._refresh_fit()
         img = self.fitted
 
-        if len(sel) > a.slots:
-            self._start("rank", lambda: self._job_rank(sel, base, a, img))
-        else:
-            self._start("solve", lambda: self._job_solve(sel, base, a, img))
+        sig = self._signature()
+        self._start("generate",
+                    lambda: dict(self._job_auto(sel, base, a, img), sig=sig))
 
-    def _job_solve(self, sel, base, a, img):
+    def _job_auto(self, sel, base, a, img):
+        """The whole pipeline: rank the pool if it is bigger than the
+        toolheads, then solve with the winner."""
+        ranked = None
+        lo = 0.0
+        if len(sel) > a.slots:
+            res = sf.rank_subsets(sel, base, a, img,
+                                  progress=lambda f, m: self.worker.progress(f * 0.5, m),
+                                  verbose=False)
+            top = min(a.top, len(res))
+            entries = sf.render_candidates(
+                res, base, a, img, top,
+                progress=lambda f, m: self.worker.progress(0.5 + f * 0.2, m))
+            import tempfile
+            fd, path = tempfile.mkstemp(prefix="stackforge_combos_", suffix=".png")
+            os.close(fd)
+            sf.contact_sheet(path, entries, img)
+            ranked = {"results": res, "sheet": path}
+            sel = res[0]["fils"]
+            lo = 0.7
+        r = self._job_solve(sel, base, a, img, lo)
+        r["ranked"] = ranked
+        return r
+
+    def _job_solve(self, sel, base, a, img, lo=0.0):
+        def prog(f, m):
+            self.worker.progress(lo + (1 - lo) * f, m)
         g = sf.Gamut(sel, base, a.layer_height, a.max_layers, a.grid, a.cap,
-                     verbose=False, progress=self.worker.progress)
-        self.worker.progress(0.7, "matching pixels to reachable colours")
+                     verbose=False, progress=prog)
+        prog(0.7, "matching pixels to reachable colours")
         state = sf.solve_image(g, img, a.dither)
         achieved = np.round(g.srgb()[state])
         err = np.linalg.norm(
             tdcolor.srgb_to_lab(achieved.astype(np.float64))
             - tdcolor.srgb_to_lab(img.astype(np.float64)), axis=-1)
-        self.worker.progress(0.95, "building layer labels")
+        prog(0.95, "building layer labels")
         blurred = tdcolor.blurred_de(achieved, img, sf.BLUR_MM / a.resolution)[0]
         labels, _ = sf.trim_base_layers(sf.layer_labels(g, state), g.base_index)
         return {"gamut": g, "labels": labels, "achieved": achieved, "err": err,
                 "blurred": blurred, "fils": sel, "base": base, "args": a,
                 "image_path": self.image_path}
 
-    def _job_rank(self, sel, base, a, img):
-        res = sf.rank_subsets(sel, base, a, img,
-                              progress=lambda f, m: self.worker.progress(f * 0.8, m),
-                              verbose=False)
-        top = min(a.top, len(res))
-        entries = sf.render_candidates(
-            res, base, a, img, top,
-            progress=lambda f, m: self.worker.progress(0.8 + f * 0.2, m))
-        import tempfile
-        fd, path = tempfile.mkstemp(prefix="stackforge_combos_", suffix=".png")
-        os.close(fd)
-        sf.contact_sheet(path, entries, img)
-        return {"results": res, "entries": entries, "sheet": path,
-                "fils": sel, "base": base, "args": a}
+    # -- staleness: any input change steps the pipeline back ---------------
+
+    def _signature(self):
+        """Everything the generated result depends on, or None if unreadable."""
+        try:
+            a = self.config_ns()
+        except (tk.TclError, ValueError):
+            return None
+        pool = tuple(sorted(repr(f) for f in self.selected()))
+        return (tuple(sorted(vars(a).items())), self.image_path, pool, self.v_base.get())
+
+    def _check_stale(self):
+        if self.result is None or self.result["sig"] == self._signature():
+            return
+        self.result = None
+        self.rank_results = None
+        self.btn_export.config(state="disabled")
+        self._tab_titles(stale=True)
+        self._status("inputs changed: Generate to update the preview", WARN)
+
+    def _tab_titles(self, stale):
+        sfx = " (out of date)" if stale else ""
+        for view, title in ((self.view_sim, "Simulated print"),
+                            (self.view_err, "Error map"),
+                            (self.view_combo, "Combinations")):
+            self.nb.tab(view, text=title + sfx)
 
     def _start(self, kind, fn):
         if self.worker.busy:
@@ -721,10 +764,8 @@ class App(tk.Tk):
                     self._finish()
                     self._status("failed", ERR)
                     messagebox.showerror(APP, job.error)
-                elif job.kind == "solve":
+                elif job.kind == "generate":
                     self._on_solved(job.result)
-                elif job.kind == "rank":
-                    self._on_ranked(job.result)
         finally:
             self.after(60, self._poll)
 
@@ -737,7 +778,12 @@ class App(tk.Tk):
     def _on_solved(self, r):
         self._finish()
         self.result = r
-        self.rank_results = None
+        self.rank_results = r["ranked"]
+        self._tab_titles(stale=False)
+        if r["ranked"]:
+            self.view_combo.set_image(Image.open(r["ranked"]["sheet"]))
+        else:
+            self.view_combo.set_image(None)
         self.view_sim.set_image(r["achieved"])
         heat = np.clip(r["err"] / 20.0, 0, 1)
         self.view_err.set_image(
@@ -753,57 +799,24 @@ class App(tk.Tk):
         thin = sf.thin_fraction(labels, r["gamut"].base_index)
         if thin > 0.05 and r["args"].resolution < sf.MIN_FEATURE_MM - 1e-9:
             capped += f"   ·   {100*thin:.0f}% of colour in 1-px features (slicer drops them)"
+        if r["ranked"]:
+            capped = (f"   ·   best of {len(r['ranked']['results'])} combinations: "
+                      + ", ".join(f.name for f in r["fils"]) + capped)
         self._status(
             f"dE mean {e.mean():.1f}  p95 {np.percentile(e,95):.1f}  "
             f"max {e.max():.1f}  (blurred {r['blurred']:.1f})   ·   "
             f"{per_layer:.1f} filaments per layer{capped}",
             OK if e.mean() < 8 else WARN)
-
-    def _on_ranked(self, r):
-        self._finish()
-        self.rank_results = r
-        self.result = None
-        self.btn_export.config(state="disabled")
-        self.view_combo.set_image(Image.open(r["sheet"]))
-        self.nb.select(3)
-        self._update_legend()
-        best = r["results"][0]
-        names = ", ".join(f.name for f in best["fils"])
-        self._status(f"best: {names}  (dE mean {best['mean']:.1f})", OK)
-        if messagebox.askyesno(
-            APP,
-            f"Best of {len(r['results'])} combinations:\n\n  {names}\n\n"
-            f"dE mean {best['mean']:.1f}, p95 {best['p95']:.1f}\n\n"
-            "Select just these filaments and generate the plaque?",
-        ):
-            keep = {f.id for f in best["fils"]}
-            for fid, v in self.checks.items():
-                v.set(fid in keep)
-            self.v_base.set(r["base"].id)
-            self._generate()
+        self._check_stale()     # inputs may have changed while it ran
 
     def _export(self):
         if self.worker.busy:            # Ctrl+E bypasses the disabled button
             return
         if not self.result:
-            messagebox.showwarning(APP, "Generate a preview first.")
+            messagebox.showwarning(APP, "Nothing to export yet: press Generate "
+                                        "(it is out of date if you changed anything).")
             return
         r = self.result
-        try:
-            now = self.config_ns()
-        except (tk.TclError, ValueError):
-            now = None
-        sel = {f.id for f in self.selected()} | {self.v_base.get()}
-        if (now != r["args"] or self.image_path != r["image_path"]
-                or sel != {f.id for f in r["fils"]} or self.v_base.get() != r["base"].id):
-            if not messagebox.askyesno(
-                APP,
-                "The image, filaments or settings have changed since this preview "
-                "was generated. The export will be the preview as generated, "
-                f"at {r['args'].layer_height} mm layers / "
-                f"{r['args'].first_layer_height} mm first layer.\n\n"
-                "Export it anyway? (No, then Generate again, to use the new settings.)"):
-                return
         p = filedialog.asksaveasfilename(
             title="Export 3MF", defaultextension=".3mf",
             filetypes=[("3MF", "*.3mf")],
@@ -884,6 +897,107 @@ class App(tk.Tk):
     def _clear_template(self):
         self.v_template.set("")
         self.lbl_template.config(text="(none)", foreground=FG_DIM)
+
+    # -- presets ---------------------------------------------------------
+
+    def _preset_vars(self):
+        return {"width": self.v_width, "height": self.v_height, "res": self.v_res,
+                "layer": self.v_layer, "first": self.v_first, "maxl": self.v_maxl,
+                "basel": self.v_basel, "fit": self.v_fit, "dither": self.v_dither,
+                "grid": self.v_grid, "slots": self.v_slots, "top": self.v_top,
+                "rankby": self.v_rankby, "samples": self.v_samples,
+                "flavor": self.v_flavor, "part": self.v_part,
+                "template": self.v_template}
+
+    def _read_presets(self):
+        try:
+            with open(PRESET_FILE) as fh:
+                data = json.load(fh)
+            return data if isinstance(data, dict) else {}
+        except (OSError, ValueError):
+            return {}
+
+    def _write_presets(self, data):
+        try:
+            os.makedirs(os.path.dirname(PRESET_FILE), exist_ok=True)
+            with open(PRESET_FILE, "w") as fh:
+                json.dump(data, fh, indent=2)
+        except OSError as exc:
+            messagebox.showerror(APP, f"Could not write {PRESET_FILE}:\n{exc}")
+
+    def _rebuild_presets_menu(self):
+        m = self.m_presets
+        m.delete(0, "end")
+        m.add_command(label="Save current settings as…", command=self._save_preset)
+        names = sorted(self._read_presets())
+        if names:
+            m.add_separator()
+            for n in names:
+                m.add_command(label=n, command=lambda n=n: self._apply_preset(n))
+            dm = tk.Menu(m, tearoff=0)
+            for n in names:
+                dm.add_command(label=n, command=lambda n=n: self._delete_preset(n))
+            m.add_cascade(label="Delete", menu=dm)
+
+    def _save_preset(self):
+        name = simpledialog.askstring(APP, "Preset name:", parent=self)
+        name = (name or "").strip()
+        if not name:
+            return
+        data = self._read_presets()
+        if name in data and not messagebox.askyesno(APP, f"Replace preset '{name}'?"):
+            return
+        try:
+            vals = {k: v.get() for k, v in self._preset_vars().items()}
+        except tk.TclError:
+            messagebox.showwarning(APP, "A setting is empty or not a number.")
+            return
+        data[name] = {"vars": vals,
+                      "filaments": sorted(f.id for f in self.selected()),
+                      "base": self.v_base.get()}
+        self._write_presets(data)
+        self._rebuild_presets_menu()
+        self._status(f"saved preset '{name}'", OK)
+
+    def _delete_preset(self, name):
+        if not messagebox.askyesno(APP, f"Delete preset '{name}'?"):
+            return
+        data = self._read_presets()
+        data.pop(name, None)
+        self._write_presets(data)
+        self._rebuild_presets_menu()
+
+    def _apply_preset(self, name):
+        p = self._read_presets().get(name)
+        if not p:
+            return
+        notes = []
+        tvars = self._preset_vars()
+        for k, val in p.get("vars", {}).items():
+            if k in tvars:
+                try:
+                    tvars[k].set(val)
+                except tk.TclError:
+                    notes.append(f"ignored bad {k}")
+        tpl = self.v_template.get()
+        if tpl and not os.path.exists(tpl):
+            notes.append(f"template {os.path.basename(tpl)} is missing")
+            tpl = ""
+        self.v_template.set(tpl)
+        self.lbl_template.config(text=os.path.basename(tpl) if tpl else "(none)",
+                                 foreground=OK if tpl else FG_DIM)
+        want = set(p.get("filaments", []))
+        missing = want - set(self.checks)
+        for fid, v in self.checks.items():
+            v.set(fid in want)
+        if missing:
+            notes.append(f"{len(missing)} filament(s) no longer in the database")
+        if p.get("base") in self.db.filaments:
+            self.v_base.set(p["base"])
+        self._refresh_fit()
+        self._refresh_estimate()
+        self._status(f"loaded preset '{name}'" + (f" ({'; '.join(notes)})" if notes else ""),
+                     WARN if notes else OK)
 
     def _edit_filaments(self):
         # Imported here rather than at module scope: the editor is a separate
