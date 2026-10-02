@@ -489,19 +489,26 @@ def cmd_measure_wedge(args):
 def cmd_transmission(args):
     thick = [float(t) for t in args.thickness.split(",")]
     sargs = EMISSIVE_ARGS + args.spotread_arg
-    root = None
-    try:
-        import tkinter as tk
-        root = tk.Tk()
-        root.attributes("-fullscreen", True)
-        root.configure(cursor="none")
-    except Exception as e:  # no display: the user must show the patch themselves
+    root = app = None
+    try:    # a full-screen patch window needs PySide6 (the `gui` extra) and a display
+        from PySide6.QtCore import Qt
+        from PySide6.QtGui import QColor, QPalette
+        from PySide6.QtWidgets import QApplication, QWidget
+        app = QApplication.instance() or QApplication([])
+        root = QWidget()
+        root.setAutoFillBackground(True)
+        root.setCursor(Qt.BlankCursor)
+        root.showFullScreen()
+    except Exception as e:  # no display or no PySide6: the user must show the patch themselves
+        root = None
         print(f"  ! no window ({e}); show a full-screen white/red/green/blue patch yourself.")
 
     def show(rgb):
         if root is not None:
-            root.configure(bg="#%02x%02x%02x" % rgb)
-            root.update()
+            pal = root.palette()
+            pal.setColor(QPalette.Window, QColor(*rgb))
+            root.setPalette(pal)
+            app.processEvents()
             time.sleep(args.settle)
 
     primaries = {"W": (255, 255, 255), "R": (255, 0, 0), "G": (0, 255, 0), "B": (0, 0, 255)}
@@ -510,7 +517,7 @@ def cmd_transmission(args):
         out = {}
         for name, rgb in primaries.items():
             show(rgb)
-            out[name] = s.measure(poll=(root.update if root else None))["xyz"][1]  # Y, cd/m^2
+            out[name] = s.measure(poll=(app.processEvents if root else None))["xyz"][1]  # Y, cd/m^2
         print(f"   {label}: " + "  ".join(f"{k}={v:.2f}" for k, v in out.items()))
         return out
 
@@ -530,7 +537,7 @@ def cmd_transmission(args):
             meta = _meta("emissive-transmission", s)
     finally:
         if root is not None:
-            root.destroy()
+            root.close()
 
     drift = max(abs(bare1[k] / max(bare0[k], 1e-12) - 1) for k in primaries)
     bare = {k: (bare0[k] + bare1[k]) / 2 for k in primaries}

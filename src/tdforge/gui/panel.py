@@ -14,11 +14,11 @@ from PySide6.QtWidgets import (QHBoxLayout, QMessageBox, QPushButton, QSplitter,
                                QWidget)
 
 from tdforge.gui.argform import argv as av
-from tdforge.gui.qt.form import CommandForm
-from tdforge.gui.qt.imageview import ImageView
-from tdforge.gui.qt.presetbar import PresetBar
-from tdforge.gui.qt.terminal import TerminalView
-from tdforge.gui.run.runner import Job, tool_command
+from tdforge.gui.form import CommandForm
+from tdforge.gui.imageview import ImageView
+from tdforge.gui.presetbar import PresetBar
+from tdforge.gui.terminal import TerminalView
+from tdforge.gui.runner import Job, tool_command
 
 PREVIEW_DESTS = ("preview", "gamut_preview", "rank_sheet", "sheet")
 

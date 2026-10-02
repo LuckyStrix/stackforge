@@ -1,5 +1,4 @@
 """argform: spec / argv logic (no display needed) and a drift guard over every tool's parser."""
-import os
 import unittest
 
 from tdforge.core import filamentdb
@@ -157,83 +156,15 @@ class ArgvTests(unittest.TestCase):
         self.assertEqual(av.command_line("p", ["a b", "c"]), "p 'a b' c")
 
 
-@unittest.skipUnless(os.environ.get("DISPLAY"), "needs a display")
-class FormSmoke(unittest.TestCase):
-    def test_forms_build_and_roundtrip(self):
-        import tkinter as tk
-        from tdforge.gui import theme
-        from tdforge.gui.argform.form import CommandForm
-        try:
-            root = tk.Tk()
-        except tk.TclError:
-            self.skipTest("no usable display")
-        self.addCleanup(root.destroy)
-        theme.apply_theme(root)
-        n = 0
-        for name, parser, spec in specs():
-            for path, sp in spec.walk():
-                if sp.subs:
-                    continue
-                form = CommandForm(root, spec, name, path)
-                form.update_idletasks()
-                self.assertEqual(set(form.entries), {f.dest for s in form.chain for f in s.fields
-                                                     if overrides.resolve_kind(name, " ".join(path), f) != "hide"})
-                n += 1
-        self.assertGreaterEqual(n, 24)
-
-    def test_exclusion_and_required(self):
-        import tkinter as tk
-        from tdforge.gui.argform.form import CommandForm
-        try:
-            root = tk.Tk()
-        except tk.TclError:
-            self.skipTest("no usable display")
-        self.addCleanup(root.destroy)
-        _, parser, spec = [s for s in specs() if s[0] == "topdeco"][0]
-        form = CommandForm(root, spec, "topdeco")
-        self.assertTrue(form._cmdline.get().startswith("topdeco"))
-        self.assertTrue(any("required" in e for e in form.validate()))
-        mk = CommandForm(root, [x for x in specs() if x[0] == "munki"][0][2], "munki", ("measure-wedge",))
-        self.assertTrue(mk._cmdline.get().startswith("munki measure-wedge"), mk._cmdline.get())
-        form.set_values({"model": "m.3mf", "image": "i.png", "output": "o.3mf",
-                         "palette": "ff0000,00ff00"})
-        self.assertEqual(form.validate(), [])
-        ns = parser.parse_args(form.argv())
-        self.assertEqual(ns.palette, "ff0000,00ff00")
-        self.assertEqual(form.set_values({"nonexistent": 1}), ["nonexistent"])
+class VisibleWhen(unittest.TestCase):
+    def test_every_table_entry_names_a_real_dest_and_controlling_choice(self):
+        by_tool = {name: spec for name, _parser, spec in specs()}
+        for (tool, dest), (ctrl, vals) in overrides.VISIBLE_WHEN.items():
+            have = {f.dest: f for f in by_tool[tool].fields}
+            self.assertIn(dest, have)
+            self.assertIn(ctrl, have)
+            self.assertTrue(vals <= set(have[ctrl].choices), (dest, vals))
 
 
 if __name__ == "__main__":
     unittest.main()
-
-
-@unittest.skipUnless(os.environ.get("DISPLAY"), "needs a display")
-class PatternVisibility(unittest.TestCase):
-    def test_pattern_shows_only_its_parameters(self):
-        import tkinter as tk
-        from tdforge.gui.argform.form import CommandForm
-        try:
-            root = tk.Tk()
-        except tk.TclError:
-            self.skipTest("no usable display")
-        self.addCleanup(root.destroy)
-        _, parser, spec = [s for s in specs() if s[0] == "surfacecolor"][0]
-        form = CommandForm(root, spec, "surfacecolor")
-        root.update()
-        def vis():
-            return {d for d, e in form.entries.items() if e.visible}
-        self.assertFalse(vis() & {"scale", "lat", "period", "expr"})
-        form.set_values({"pattern": "stripes", "period": 3.0, "scale": 9.0})
-        self.assertTrue({"axis", "period"} <= vis())
-        self.assertNotIn("scale", vis())
-        self.assertNotIn("scale", form.values())       # hidden fields are not sent
-        form.set_values({"pattern": "checker3d"})
-        self.assertIn("scale", vis())
-        self.assertNotIn("period", form.values())
-        # every table entry names a real dest, and a real controlling dest
-        have = {f.dest for f in spec.fields}
-        for (tool, dest), (ctrl, vals) in overrides.VISIBLE_WHEN.items():
-            self.assertIn(dest, have)
-            self.assertIn(ctrl, have)
-            ctrl_f = next(f for f in spec.fields if f.dest == ctrl)
-            self.assertTrue(vals <= set(ctrl_f.choices), (dest, vals))

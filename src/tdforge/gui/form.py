@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QFormLayout, QGroupBox, 
 from tdforge.gui.argform import argv as av
 from tdforge.gui.argform import overrides
 from tdforge.gui.argform.spec import FormSpec
-from tdforge.gui.qt import pickers, theme, widgets
+from tdforge.gui import pickers, theme, widgets
 
 
 class CollapsibleSection(QWidget):

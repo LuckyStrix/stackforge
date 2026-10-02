@@ -25,9 +25,9 @@ from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDoubleSpinBox, QFi
 
 from tdforge.core import tdcolor
 from tdforge.core.filamentdb import DB, DEFAULT_DB
-from tdforge.gui.qt import theme
-from tdforge.gui.qt.imageview import ImageView
-from tdforge.gui.tabs.plaque.job import Worker
+from tdforge.gui import theme
+from tdforge.gui.imageview import ImageView
+from tdforge.gui.worker import Worker
 from tdforge.tools import stackforge as sf
 
 APP = "stackforge"
@@ -775,7 +775,7 @@ class PlaqueArea(QTabWidget):
     def __init__(self, project=None, presets=None, host=None, image_path=None):
         super().__init__()
         from tdforge.gui.argform.spec import introspect
-        from tdforge.gui.qt.panel import ToolPanel
+        from tdforge.gui.panel import ToolPanel
         self.designer = PlaqueDesigner(project, presets, host, image_path)
         self.options = ToolPanel(introspect(sf.build_parser(), "stackforge"), "stackforge",
                                  project=project, presets=presets)

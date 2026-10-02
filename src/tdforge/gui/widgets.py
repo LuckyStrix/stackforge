@@ -93,7 +93,7 @@ def _dir(ed):
 def build(f: FieldSpec, kind: str, on_change, source=None) -> FieldWidget:
     """Build the widget for `kind` (overrides.KINDS; project kinds arrive as 'entry')."""
     if kind in ("filament_id", "filament_or_hex", "filament_ids", "hex_list", "color"):
-        from tdforge.gui.qt import pickers
+        from tdforge.gui import pickers
         src = source or pickers.FilamentSource()
         if kind == "filament_id":
             return pickers.filament_combo(f, on_change, src)

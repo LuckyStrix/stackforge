@@ -5,37 +5,39 @@ image* is surfacecolor. Which parameters a pattern uses is a table in argform.ov
 """
 from __future__ import annotations
 
-import tkinter as tk
-from tkinter import ttk
+from PySide6.QtWidgets import QButtonGroup, QHBoxLayout, QRadioButton, QStackedWidget, QVBoxLayout, QWidget
 
 from tdforge.gui.argform.spec import introspect
-from tdforge.gui.run.panel import ToolPanel
+from tdforge.gui import theme
+from tdforge.gui.panel import ToolPanel
 from tdforge.tools import surfacecolor, topdeco
 
-MODES = (("topdeco", "Project from above"), ("surfacecolor", "Pattern or wrapped image"))
-BUILDERS = {"topdeco": topdeco.build_parser, "surfacecolor": surfacecolor.build_parser}
+MODES = (("topdeco", "Project from above", topdeco.build_parser),
+         ("surfacecolor", "Pattern or wrapped image", surfacecolor.build_parser))
 
 
-class PaintTab(ttk.Frame):
+class PaintTab(QWidget):
     title = "Paint"
 
-    def __init__(self, master, project=None, presets=None):
-        super().__init__(master)
-        self.mode = tk.StringVar(value=MODES[0][0])
-        bar = ttk.Frame(self)
-        bar.pack(fill="x", padx=8, pady=(8, 0))
-        for key, label in MODES:
-            ttk.Radiobutton(bar, text=label, value=key, variable=self.mode,
-                            command=self._switch).pack(side="left", padx=(0, 12))
-        ttk.Label(bar, text="--expr is evaluated as Python: trusted input only",
-                  style="Hint.TLabel").pack(side="right")
-        self.panels = {key: ToolPanel(self, introspect(BUILDERS[key](), key), key,
-                                      project=project, presets=presets) for key, _ in MODES}
-        self._switch()
+    def __init__(self, project=None, presets=None, host=None):
+        super().__init__()
+        lay = QVBoxLayout(self)
+        bar = QHBoxLayout()
+        self.stack = QStackedWidget()
+        self.panels = {}
+        self.group = QButtonGroup(self)
+        for i, (key, label, builder) in enumerate(MODES):
+            rb = QRadioButton(label)
+            self.group.addButton(rb, i)
+            bar.addWidget(rb)
+            self.panels[key] = ToolPanel(introspect(builder(), key), key, project=project, presets=presets)
+            self.stack.addWidget(self.panels[key])
+        self.group.button(0).setChecked(True)
+        self.group.idToggled.connect(lambda i, on: on and self.stack.setCurrentIndex(i))
+        bar.addStretch(1)
+        bar.addWidget(theme.hint("--expr is evaluated as Python: trusted input only"))
+        lay.addLayout(bar)
+        lay.addWidget(self.stack, 1)
 
-    def _switch(self):
-        for key, panel in self.panels.items():
-            if key == self.mode.get():
-                panel.pack(fill="both", expand=True, padx=8, pady=8)
-            else:
-                panel.pack_forget()
+    def set_mode(self, key: str):
+        self.group.button([m[0] for m in MODES].index(key)).setChecked(True)

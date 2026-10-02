@@ -1,4 +1,4 @@
-"""Semantic widget kinds argparse cannot express. No tkinter.
+"""Semantic widget kinds argparse cannot express.
 
 `resolve_kind(tool, command, field)` returns one of KINDS. Order: explicit table, then
 filename heuristics, then the plain kind implied by argparse (entry / spin / combo / check /

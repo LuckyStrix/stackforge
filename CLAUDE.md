@@ -1,10 +1,9 @@
 # Working notes
 
 **The rule:** stackforge's colour maths (`tools/stackforge.py`, `core/tdcolor.py`) is pure numpy; all 3MF
-I/O goes through `core/td3mf.py`. The GUI is `tdforge-gui` (Qt, `gui/qt/`, theme in `gui/qt/theme.py`); `tdforge-gui-classic`
-(tk, the rest of `gui/`, theme `gui/theme.py`) survives only for the filament editor, which is not
-ported yet. Both wrap the CLIs. Forms are
-generated from each tool's `build_parser()` by `gui/argform` (spec/argv need no tkinter; the
+I/O goes through `core/td3mf.py`. The GUI is `tdforge-gui` (Qt, all of `gui/`; one module per tab in `gui/tabs/`, filament editor in
+`gui/filaments/`, shared theme in `gui/theme.py`) and wraps the CLIs. Forms are
+generated from each tool's `build_parser()` by `gui/argform` (spec, argv and overrides need no GUI toolkit; the
 semantic widget kinds and project bindings are in `argform/overrides.py`). A new flag needs no GUI
 change; `tests/test_argform.py` fails if an override names a flag that no longer exists.
 Code is the `tdforge` package in `src/tdforge/` (`core/`, `tools/`, `gui/`); `pip install -e ".[dev]"`, then `pytest`. `ruff check src tests` is

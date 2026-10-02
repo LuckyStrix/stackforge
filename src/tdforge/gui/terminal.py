@@ -10,8 +10,8 @@ from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QLineEdit, QPlainTextEdit,
                                QPushButton, QVBoxLayout, QWidget)
 
-from tdforge.gui.qt import theme
-from tdforge.gui.run.runner import Job, Screen
+from tdforge.gui import theme
+from tdforge.gui.runner import Job, Screen
 
 POLL_MS = 50
 

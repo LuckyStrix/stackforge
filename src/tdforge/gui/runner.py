@@ -1,4 +1,4 @@
-"""Run a CLI as a subprocess exactly as a user would. No tkinter.
+"""Run a CLI as a subprocess exactly as a user would.
 
 `python -u -m tdforge.tools.<tool> <argv>`: the GUI cannot diverge from the CLI, and
 SystemExit / ap.error come back as text plus an exit code. A reader thread feeds a queue

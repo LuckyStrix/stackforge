@@ -16,9 +16,9 @@ from tdforge.core.paths import packaged  # noqa: E402
 from tdforge.gui.argform import overrides  # noqa: E402
 from tdforge.gui.argform.spec import introspect  # noqa: E402
 from tdforge.gui.project import Project  # noqa: E402
-from tdforge.gui.qt import theme  # noqa: E402
-from tdforge.gui.qt.form import CommandForm  # noqa: E402
-from tdforge.gui.qt.panel import ToolPanel  # noqa: E402
+from tdforge.gui import theme  # noqa: E402
+from tdforge.gui.form import CommandForm  # noqa: E402
+from tdforge.gui.panel import ToolPanel  # noqa: E402
 from tdforge.gui.settings import Settings  # noqa: E402
 from tests.test_argform import TOOLS, specs  # noqa: E402
 from tests.test_template import make_template  # noqa: E402
@@ -119,8 +119,8 @@ class Panels(unittest.TestCase):
             self.assertIn("triangles", p.term.screen.text)
 
     def test_terminal_answers_input_prompts(self):
-        from tdforge.gui.qt.terminal import TerminalView
-        from tdforge.gui.run.runner import Job
+        from tdforge.gui.terminal import TerminalView
+        from tdforge.gui.runner import Job
         term = TerminalView()
         job = Job([sys.executable, "-u", "-c", "x = input('press Enter... '); print('got', repr(x))"])
         term.attach(job)
@@ -173,7 +173,7 @@ class Pickers(unittest.TestCase):
 
     def test_no_filament_id_is_typed_anywhere(self):
         """Every flag that names a filament or a colour list gets a picker, not a text box."""
-        from tdforge.gui.qt import pickers  # noqa: F401
+        from tdforge.gui import pickers  # noqa: F401
         want = {"filament_id", "filament_ids", "filament_or_hex", "hex_list", "color"}
         n = 0
         for name, parser, spec in specs():
@@ -200,7 +200,7 @@ class Pickers(unittest.TestCase):
         self.assertEqual(form.values()["filaments"], "polymaker-pla-pro-white,polymaker-pla-pro-red")
 
     def test_checklist_dialog_orders_and_selects(self):
-        from tdforge.gui.qt.pickers import FilamentChecklist, FilamentSource
+        from tdforge.gui.pickers import FilamentChecklist, FilamentSource
         src = FilamentSource(self.proj)
         dlg = FilamentChecklist(src.filaments(), ["polymaker-pla-pro-red", "polymaker-pla-pro-white"])
         self.assertEqual(dlg.chosen(), ["polymaker-pla-pro-red", "polymaker-pla-pro-white"])
@@ -240,7 +240,7 @@ class Pickers(unittest.TestCase):
 
 class Designer(unittest.TestCase):
     def setUp(self):
-        from tdforge.gui.qt.tabs.plaque import PlaqueDesigner
+        from tdforge.gui.tabs.plaque import PlaqueDesigner
         from tdforge.gui.settings import PresetStore
         self.d = tempfile.TemporaryDirectory()
         self.addCleanup(self.d.cleanup)
@@ -305,7 +305,7 @@ class Host(unittest.TestCase):
     def setUp(self):
         self.d = tempfile.TemporaryDirectory()
         self.addCleanup(self.d.cleanup)
-        from tdforge.gui.qt.app import HostWindow
+        from tdforge.gui.app import HostWindow
         self.win = HostWindow(Settings(os.path.join(self.d.name, "settings.json")))
         self.win.show()
         self.addCleanup(self.win.close)
@@ -341,7 +341,7 @@ class Host(unittest.TestCase):
         self.assertIsNone(other.job)
 
     def test_measure_hex_list_flows_to_calibrate_fit(self):
-        from tdforge.gui.qt.tabs.measure import HEX_LINE
+        from tdforge.gui.tabs.measure import HEX_LINE
         line = 'calibrate.py fit --filament <id> --base <hex or id> --measured "#AABBCC,#112233"'
         self.assertEqual(HEX_LINE.search(line).group(1), "#AABBCC,#112233")
         self.win.tabs["Calibrate"].set_measured("#AABBCC,#112233")

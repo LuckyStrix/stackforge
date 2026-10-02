@@ -1,4 +1,4 @@
-"""{dest: value} <-> argv. No tkinter.
+"""{dest: value} <-> argv.
 
 Values are typed Python values: str, int, float, bool, or a list for append / nargs fields.
 Flags equal to their default are left out so the shown command line stays short; required

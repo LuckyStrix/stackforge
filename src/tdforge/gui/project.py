@@ -2,7 +2,7 @@
 
 Layer height / first layer are derived from the template (td3mf.template_layer_settings)
 unless explicitly overridden, so no tab has its own layer-height box unless unlocked: the
-layer grid must match the slicer profile. No tkinter.
+layer grid must match the slicer profile.
 """
 from __future__ import annotations
 

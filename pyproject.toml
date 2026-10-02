@@ -9,8 +9,7 @@ description = "Full-colour multi-toolhead 3D printing: per-pixel filament stacks
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
-# The CLIs need only these. The Qt GUI is the `gui` extra; the classic tk GUI
-# (tdforge-gui-classic) needs no pip package but needs tkinter: apt install python3-tk
+# The CLIs need only these. The Qt GUI (tdforge-gui) is the `gui` extra.
 dependencies = ["numpy", "Pillow", "scipy"]
 
 [project.optional-dependencies]
@@ -27,8 +26,7 @@ polymaker = "tdforge.tools.polymaker:main"
 filamentdb = "tdforge.core.filamentdb:main"
 halftone-compare = "tdforge.tools.halftone_compare:main"
 make-fixture = "tdforge.tools.make_fixture:main"
-tdforge-gui = "tdforge.gui.qt.app:main"
-tdforge-gui-classic = "tdforge.gui.app:main"
+tdforge-gui = "tdforge.gui.app:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

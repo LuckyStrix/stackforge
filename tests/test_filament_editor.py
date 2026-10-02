@@ -1,0 +1,174 @@
+"""The Qt filament editor: field binding, dirty tracking, saving, and the optics helpers behind it."""
+import os
+import shutil
+import tempfile
+import unittest
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+import numpy as np  # noqa: E402
+from PySide6.QtWidgets import QApplication, QMessageBox  # noqa: E402
+
+from tdforge.core import optics  # noqa: E402
+from tdforge.core.filamentdb import DB  # noqa: E402
+from tdforge.core.paths import packaged  # noqa: E402
+from tdforge.gui import theme  # noqa: E402
+from tdforge.gui.filaments.calibrate import blocked, fit_lines  # noqa: E402
+from tdforge.gui.filaments.editor import FilamentEditor  # noqa: E402
+from tdforge.tools import calibrate  # noqa: E402
+
+app = QApplication.instance() or QApplication([])
+theme.apply(app)
+
+
+class Optics(unittest.TestCase):
+    def setUp(self):
+        self.fil = DB(packaged("filaments.json")).filaments["polymaker-pla-pro-red"]
+
+    def test_stack_starts_at_base_and_approaches_filament(self):
+        ramp = optics.stack_colors(self.fil, "#F4F5F0", 40, 0.08)
+        self.assertEqual(ramp.shape, (41, 3))
+        self.assertTrue(np.allclose(ramp[0], [0xF4, 0xF5, 0xF0], atol=1.5))
+        self.assertLess(np.abs(ramp[-1] - self.fil.rgb()).max(), 4)
+
+    def test_opaque_at_and_best_layers(self):
+        n = optics.opaque_at(self.fil, 0.08)
+        self.assertIsNotNone(n)
+        self.assertLess(self.fil.transmittance(n * 0.08).max(), 0.01)
+        best, de = optics.best_layers(self.fil, "#F4F5F0", 0.08)
+        self.assertGreater(best, 0)
+        self.assertGreater(de, 0)
+
+    def test_optics_lines_flag_estimates(self):
+        lines = optics.optics_lines(self.fil, 0.08)
+        self.assertEqual(lines[0][1], "head")
+        self.assertIn("warn", [k for _, k in lines])      # provenance is not 'measured'
+
+
+class Calibration(unittest.TestCase):
+    def test_single_low_contrast_wedge_is_blocked(self):
+        self.assertTrue(blocked(10, 1))
+        self.assertFalse(blocked(10, 2))
+        self.assertFalse(blocked(30, 1))
+
+    def test_fit_report_round_trip(self):
+        fil = DB(packaged("filaments.json")).filaments["polymaker-pla-pro-red"]
+        lh, steps = 0.08, 8
+        base = np.array([244.0, 245.0, 240.0])
+        n = np.arange(1, steps + 1)[:, None]
+        T = np.exp(-(n * lh) / 0.2)
+        from tdforge.core import tdcolor
+        lin = tdcolor.srgb_to_linear(base) * T + tdcolor.srgb_to_linear(fil.rgb()) * (1 - T)
+        meas = tdcolor.linear_to_srgb(lin)
+        fit = calibrate.fit_td([(meas, base)], lh, False, fil.rgb())
+        lines = fit_lines(fil, [(meas, base)], lh, False, fit)
+        text = "\n".join(t for t, _ in lines)
+        self.assertIn("fit dE", text)
+        self.assertAlmostEqual(float(np.ravel(fit[0])[0]), 0.2, delta=0.03)
+
+
+class Editor(unittest.TestCase):
+    def setUp(self):
+        self.d = tempfile.TemporaryDirectory()
+        self.addCleanup(self.d.cleanup)
+        self.path = os.path.join(self.d.name, "f.json")
+        shutil.copy(packaged("filaments.json"), self.path)
+        self.ed = FilamentEditor(self.path, catalog_path=packaged("polymaker_catalog.json"))
+        self.addCleanup(self.ed.deleteLater)
+
+    def test_edits_mark_dirty_and_reach_the_entry(self):
+        ed = self.ed
+        self.assertFalse(ed.dirty)
+        ed.e_name.setText("Renamed")
+        ed.e_color.setText("#123456")
+        ed.s_td.setValue(0.5)
+        self.assertTrue(ed.dirty)
+        fil = ed.fil()
+        self.assertEqual((fil.name, fil.color, fil.td), ("Renamed", "#123456", 0.5))
+
+    def test_tab_shows_unsaved_dot(self):
+        from tdforge.gui.tabs.filaments import FilamentsTab
+        from tdforge.gui.project import Project
+        from tdforge.gui.settings import Settings
+        proj = Project(Settings(os.path.join(self.d.name, "s.json")))
+        proj.settings.set("db", self.path)
+        tab = FilamentsTab(proj)
+        self.addCleanup(tab.deleteLater)
+        self.assertEqual(tab.nb.tabText(0), "Editor")
+        tab.ed.e_name.setText("x")
+        self.assertEqual(tab.nb.tabText(0), "Editor •")
+        self.assertTrue(tab.ed.save())
+        self.assertEqual(tab.nb.tabText(0), "Editor")
+
+    def test_selecting_loads_fields_without_dirtying(self):
+        ed = self.ed
+        other = sorted(ed.db.filaments)[3]
+        ed.select(other)
+        self.assertFalse(ed.dirty)
+        self.assertEqual(ed.e_id.text(), other)
+        self.assertEqual(ed.s_td.value(), ed.db.filaments[other].td)
+
+    def test_bad_colour_is_not_stored_and_blocks_save_if_it_gets_in(self):
+        ed = self.ed
+        before = ed.fil().color
+        ed.e_color.setText("#12")
+        self.assertEqual(ed.fil().color, before)
+        ed.fil().color = "nope"
+        self.assertTrue(ed.problems())
+
+    def test_per_channel_starts_from_scalar_td_and_clears(self):
+        ed = self.ed
+        ed.s_td.setValue(0.4)
+        ed.k_perch.setChecked(True)
+        self.assertEqual(ed.fil().td_rgb, [0.4, 0.4, 0.4])
+        ed.k_perch.setChecked(False)
+        self.assertIsNone(ed.fil().td_rgb)
+
+    def test_new_duplicate_rename_save_and_revert(self):
+        ed = self.ed
+        n = len(ed.db.filaments)
+        ed.new_filament()
+        ed.duplicate()
+        self.assertEqual(len(ed.db.filaments), n + 2)
+        ed.e_id.setText("My Teal")
+        ed._commit_id()
+        self.assertEqual(ed.current, "my-teal")
+        self.assertTrue(ed.save())
+        self.assertFalse(ed.dirty)
+        self.assertIn("my-teal", DB(self.path).filaments)
+        ed.fil().td = 9.0
+        ed._set_dirty(True)
+        old = QMessageBox.question
+        QMessageBox.question = staticmethod(lambda *a, **k: QMessageBox.Yes)
+        self.addCleanup(setattr, QMessageBox, "question", old)
+        ed.revert()
+        self.assertFalse(ed.dirty)
+        self.assertNotEqual(ed.db.filaments["my-teal"].td, 9.0)
+
+    def test_match_by_eye_applies_a_td_and_marks_matched(self):
+        ed = self.ed
+        ed.select("polymaker-pla-pro-red")
+        ed.match.refresh()
+        old = ed.fil().td
+        ed.match.apply(old * 1.5, 1.5)
+        self.assertEqual(ed.fil().provenance, "matched")
+        self.assertAlmostEqual(ed.fil().td, round(old * 1.5, 4))
+        self.assertTrue(ed.dirty)
+
+    def test_shared_layer_height_reaches_every_page(self):
+        ed = self.ed
+        ed.layer.set(0.12)
+        self.assertEqual(ed.layer.value, 0.12)
+        txt = ed.look.report.toPlainText()
+        self.assertIn("0.12", txt)
+
+    def test_every_page_paints(self):
+        ed = self.ed
+        ed.resize(1100, 700)
+        for name in ("details", "look", "match", "calibrate"):
+            ed.show_page(name)
+            self.assertFalse(ed.grab().isNull())
+
+
+if __name__ == "__main__":
+    unittest.main()

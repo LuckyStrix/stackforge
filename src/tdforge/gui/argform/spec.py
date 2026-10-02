@@ -1,4 +1,4 @@
-"""argparse parser -> FormSpec. No tkinter.
+"""argparse parser -> FormSpec.
 
 Walks the parser's private `_actions` / `_action_groups` / `_mutually_exclusive_groups`
 (stable since 3.2). Everything that touches those lives in `introspect`, so an argparse

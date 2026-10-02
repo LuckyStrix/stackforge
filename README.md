@@ -37,14 +37,11 @@ tdforge-gui [image.png] # or: python -m tdforge.gui.qt.app
 
 Start on the **Plaque** tab: open an image, tick the filaments you own (the list is your
 database), press **Generate**, then **Export 3MF**. Set your slicer project as the *Template*
-in the bar at the top and the layer height follows it. (`tdforge-gui-classic` is the old tk
-window, kept only for the filament editor, which the Qt GUI has not ported yet; it needs
-`python3-tk`.)
+in the bar at the top and the layer height follows it.
 
 `tdforge-gui` opens a single window over every tool here: Plaque (the stackforge designer, plus
-an *All options* form), Paint (topdeco / surfacecolor), Filaments (the filamentdb / polymaker
-forms; the full editor with details, look, match-by-eye and calibrate is still the classic
-window, one click away), Calibrate, Measure (munki, with a terminal) and Tools.
+an *All options* form), Paint (topdeco / surfacecolor), Filaments (the library editor, plus the
+filamentdb / polymaker forms), Calibrate, Measure (munki, with a terminal) and Tools.
 
 ![tdforge-gui](docs/tdforge_gui.png)
 
@@ -77,7 +74,7 @@ so nothing here tries to minimize them.
 | tool | what it does |
 |---|---|
 | `filamentdb` (`core/`) | filament colors + optical properties, grown over time |
-| `gui/tabs/filaments/` | tk desktop editor for that database, with the calibration loop built in (not yet ported to Qt) |
+| `gui/filaments/` | the library editor (details, look, match by eye, calibrate) |
 | `polymaker` (`tools/`) | look a Polymaker SKU up in their published hex/TD table |
 | `calibrate` (`tools/`) | step-wedge generator and td/color fitter |
 | `topdeco` (`tools/`) | project an image onto the top-visible surface of any 3MF |
@@ -86,18 +83,18 @@ so nothing here tries to minimize them.
 | `halftone_compare` (`tools/`) | score stackforge's dither modes by blurred dE |
 | `make_fixture` (`tools/`) | generate `fabric.3mf` and `badge.3mf` test models |
 | `stackforge` (`tools/`) | flat full-color plaques from per-pixel filament stacks |
-| `gui/qt/` | the Qt GUI (`tdforge-gui`): host window, generated forms, plaque designer, pickers |
-| `gui/tabs/plaque/` | tk plaque designer (classic GUI; superseded by the Qt one) |
+| `gui/` | the Qt GUI (`tdforge-gui`): host window (`app.py`), generated forms (`form.py`, `panel.py`), pickers, one module per tab in `tabs/`, plaque designer in `tabs/plaque.py` |
 | `data/` | shipped `filaments.json` and `polymaker_catalog.json`; a copy in the working directory wins |
 | `core/td3mf.py`, `core/tdcolor.py` | shared 3MF I/O and color math |
-| `gui/theme.py`, `gui/qt/theme.py` | tk theme (classic GUI) and Qt theme |
+| `gui/theme.py` | the dark theme and small layout helpers |
 | `gui/argform/` | form specs generated from each tool's `build_parser()`; no GUI toolkit needed |
+| `core/optics.py` | what layers of a filament look like over a base (previews, best layer count) |
 
 `surfacecolor.py` is built to the first three steps of `docs/plans/surfacecolor.md`
 (patterns, wrapped images, shell masking); the interactive painting window is not.
 
-Requires `numpy`, `Pillow`, `scipy`; `tdforge-gui` also needs `PySide6` (the `gui` extra) and the
-classic GUI needs `tkinter` (`python3-tk` on Debian/Ubuntu). `polymaker.py` is stdlib only.
+Requires `numpy`, `Pillow`, `scipy`; `tdforge-gui` also needs `PySide6` (the `gui` extra).
+`polymaker.py` is stdlib only.
 
 ---
 
@@ -152,7 +149,7 @@ That is what this is for.
 ![the editor](docs/filamentdb_gui.png)
 
 - **Library** down the left with swatches, live filter, and `est` on anything
-  unmeasured. New / Duplicate / Delete, and *Database ▸ Add starter set* for a
+  unmeasured. New / Duplicate / Delete, and *Starter set…* for a
   fresh brand and series.
 - **Details** — every field, with the colour settable by hex, by picker, or by
   clicking a photo of a printed swatch (it averages a 7×7 patch, because print
@@ -172,8 +169,8 @@ That is what this is for.
   it, type in the patches (or sample them from a photo of the wedge), fit, read
   the per-step residuals, and commit the result to the entry.
 
-Nothing touches disk until Save; the title carries a dot while there are
-unsaved edits, and Save refuses the whole file if any entry has an unparseable
+Nothing touches disk until Save; the Editor tab carries a dot while there
+are unsaved edits, and Save refuses the whole file if any entry has an unparseable
 colour or a non-positive td.
 
 ### It refuses the same bad fits the CLI does
@@ -571,9 +568,8 @@ by looking at renders instead of reading a table.
 - Export reports the load order (T1…T4) and the exact layer height to slice at,
   and asks first if the image, filaments or settings changed since Generate.
 - The base is always T1 in the GUI; use the CLI to put it on another toolhead.
-- *Database ▸ Edit filaments…* (classic GUI) opens the filament editor over the top and reloads
-  the library when it closes, keeping whatever was already ticked. In the Qt GUI the editor
-  is not ported yet; the Filaments tab has a button that opens the classic window.
+- Edits made on the Filaments tab are picked up here when you switch back (the list reloads,
+  keeping whatever was already ticked).
 
 ### Dithering
 

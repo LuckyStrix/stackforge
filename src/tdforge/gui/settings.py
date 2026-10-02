@@ -1,4 +1,4 @@
-"""Global settings and per-tool presets (JSON on disk). No tkinter.
+"""Global settings and per-tool presets (JSON on disk).
 
 Settings live in $XDG_CONFIG_HOME/tdforge/settings.json (default ~/.config/tdforge/). A
 missing or corrupt file falls back to defaults and is never fatal. Presets are one JSON per

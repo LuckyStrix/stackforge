@@ -15,8 +15,8 @@ from PySide6.QtWidgets import (QColorDialog, QComboBox, QDialog, QDialogButtonBo
 
 from tdforge.core import tdcolor
 from tdforge.core.filamentdb import DB, DEFAULT_DB
-from tdforge.gui.qt import theme
-from tdforge.gui.qt.widgets import FieldWidget
+from tdforge.gui import theme
+from tdforge.gui.widgets import FieldWidget
 
 
 def swatch_icon(hexcol, w=18, h=14) -> QIcon:

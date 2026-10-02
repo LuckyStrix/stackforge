@@ -1,5 +1,9 @@
 # Plan: one GUI for every command-line feature
 
+> **Status (2026-10-02):** built, then the GUI was rewritten in Qt and the tk implementation described
+> below was deleted. Paths such as `gui/tabs/*`, `gui/run/panel.py` and `argform/form.py` no longer
+> exist; the design (argform generation, subprocess runner, project bar) stands.
+
 Status: built through Step 6 on branch `unified-gui` (the side-note at the end is still not done). Goal: a single app, `tdforge-gui`, that exposes every CLI in this
 repo (stackforge, topdeco, surfacecolor, calibrate, munki, filamentdb, polymaker, halftone_compare,
 make_fixture) in one window, without hand-wiring each flag.

@@ -2,163 +2,142 @@
 from __future__ import annotations
 
 import sys
-import tkinter as tk
-from tkinter import ttk
 
-from tdforge.gui import theme
+from PySide6.QtCore import QByteArray, QLoggingCategory
+from PySide6.QtGui import QAction, QKeySequence, QShortcut
+from PySide6.QtWidgets import QApplication, QMainWindow, QTabWidget, QVBoxLayout, QWidget
+
 from tdforge.gui.project import Project
+from tdforge.gui import theme
+from tdforge.gui.panel import ToolPanel
 from tdforge.gui.projectbar import ProjectBar
-from tdforge.gui.run.panel import ToolPanel
 from tdforge.gui.settings import PresetStore, Settings
 
 APP = "tdforge"
 
 
-class HostApp(tk.Tk):
-    """Hosts tabs. A tab is a ttk.Frame with a `title` and, optionally:
-    shortcuts() -> {sequence: fn}, build_menu(root) -> tk.Menu, confirm_close() -> bool,
-    on_show().
-    """
+class HostWindow(QMainWindow):
+    """Hosts tabs. A tab is a QWidget with a `title` and, optionally, confirm_close() / on_show()."""
 
-    def __init__(self, image_path=None):
+    def __init__(self, settings: Settings | None = None, image_path=None):
         super().__init__()
-        self.settings = Settings()
+        self._image = image_path
+        self.settings = settings or Settings()
         self.project = Project(self.settings)
         self.presets = PresetStore()
-        self.title(APP)
-        self.geometry(self.settings.get("geometry") or "1500x950")
-        self.minsize(1180, 760)
-        self.configure(bg=theme.BG)
-        theme.apply_theme(self)
+        self.setWindowTitle(APP)
+        self.resize(1360, 880)
+        self.setMinimumSize(900, 600)
+        geo = self.settings.get("geometry")
+        if geo:
+            self.restoreGeometry(QByteArray.fromBase64(geo.encode()))
 
-        self.bar = ProjectBar(self, self.project)
-        self.bar.pack(fill="x")
-        self.nb = ttk.Notebook(self)
-        self.nb.pack(fill="both", expand=True)
-        self.tabs: dict[str, ttk.Frame] = {}
-        self._menus: dict = {}
+        central = QWidget()
+        lay = QVBoxLayout(central)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(0)
+        self.bar = ProjectBar(self.project)
+        lay.addWidget(self.bar)
+        self.nb = QTabWidget()
+        lay.addWidget(self.nb, 1)
+        self.setCentralWidget(central)
+        self.tabs: dict[str, QWidget] = {}
         self._bound: set = set()
-        self._db = self.project.get("db")
+        self._add_tabs()
 
-        self._add_tabs(image_path)
+        quit_ = QAction("Quit", self)
+        quit_.setShortcut(QKeySequence.Quit)
+        quit_.triggered.connect(self.close)
+        self.menuBar().addMenu("File").addAction(quit_)
+        QShortcut(QKeySequence("Ctrl+Return"), self, activated=lambda: self._for_visible_panels(ToolPanel.run))
+        QShortcut(QKeySequence("Ctrl+Enter"), self, activated=lambda: self._for_visible_panels(ToolPanel.run))
+        QShortcut(QKeySequence("Esc"), self, activated=lambda: self._for_visible_panels(ToolPanel.cancel))
+
+        self._db = self.project.get("db")
         self.project.subscribe(self._project_changed)
-        self.nb.bind("<<NotebookTabChanged>>", lambda e: self._tab_changed())
+        self.nb.currentChanged.connect(self._tab_changed)
         last = self.settings.get("last_tab")
         if last in self.tabs:
             self.show_tab(last)
-        else:
-            self._tab_changed()
-        self.bind("<Control-Return>", lambda e: self._for_visible_panels(ToolPanel.run))
-        self.bind("<Escape>", lambda e: self._for_visible_panels(ToolPanel.cancel))
-        self.bind("<<CloseRequest>>", lambda e: self._close())
-        self.bind("<Control-q>", lambda e: self._close())
-        self.protocol("WM_DELETE_WINDOW", self._close)
 
     # ---- tabs --------------------------------------------------------------------------
-    def _add_tabs(self, image_path):
+    def _add_tabs(self):
         from tdforge.gui.tabs.calibrate import CalibrateTab
-        from tdforge.gui.tabs.filaments.tab import FilamentsTab
+        from tdforge.gui.tabs.filaments import FilamentsTab
+        from tdforge.gui.tabs.plaque import PlaqueArea
         from tdforge.gui.tabs.measure import MeasureTab
         from tdforge.gui.tabs.paint import PaintTab
-        from tdforge.gui.tabs.plaque.area import PlaqueArea
         from tdforge.gui.tabs.tools import ToolsTab
-        p, pr = self.project, self.presets
-        self.add_tab(PlaqueArea(self.nb, image_path, p, pr, host=self))
-        self.add_tab(PaintTab(self.nb, p, pr))
-        self.add_tab(FilamentsTab(self.nb, p))
-        self.add_tab(CalibrateTab(self.nb, p, pr, host=self))
-        self.add_tab(MeasureTab(self.nb, p, pr, host=self))
-        self.add_tab(ToolsTab(self.nb, p, pr))
+        self.add_tab(PlaqueArea(self.project, self.presets, host=self, image_path=self._image))
+        for cls in (PaintTab, FilamentsTab, CalibrateTab, MeasureTab, ToolsTab):
+            self.add_tab(cls(self.project, self.presets, host=self))
 
     def add_tab(self, tab):
         self.tabs[tab.title] = tab
-        self.nb.add(tab, text=tab.title)
+        self.nb.addTab(tab, tab.title)
         for seq in getattr(tab, "shortcuts", lambda: {})():
             if seq not in self._bound:
                 self._bound.add(seq)
-                self.bind(seq, lambda e, s=seq: self._dispatch(s))
-
-    def show_tab(self, title: str):
-        self.nb.select(self.tabs[title])
-
-    def current(self):
-        sel = self.nb.select()
-        return self.nametowidget(sel) if sel else None
+                QShortcut(QKeySequence(seq), self, activated=lambda s=seq: self._dispatch(s))
 
     def _dispatch(self, seq):
-        tab = self.current()
-        fn = getattr(tab, "shortcuts", lambda: {})().get(seq)
+        fn = getattr(self.current(), "shortcuts", lambda: {})().get(seq)
         if fn:
             fn()
-            return "break"
 
-    def _for_visible_panels(self, fn):
-        """Ctrl+Enter runs / Esc cancels the form the user is looking at."""
-        def walk(w):
-            if isinstance(w, ToolPanel):
-                if w.winfo_viewable():
-                    fn(w)
-                return
-            for c in w.winfo_children():
-                walk(c)
-        tab = self.current()
-        if tab is not None:
-            walk(tab)
-        return "break"
+    def show_tab(self, title: str):
+        self.nb.setCurrentWidget(self.tabs[title])
 
-    def _tab_changed(self):
-        tab = self.current()
-        if tab is None:
-            return
-        if tab not in self._menus:
-            mk = getattr(tab, "build_menu", None)
-            self._menus[tab] = mk(self) if mk else self._default_menu()
-        self.config(menu=self._menus[tab])
-        self.set_title(None)
-        on_show = getattr(tab, "on_show", None)
+    def current(self):
+        return self.nb.currentWidget()
+
+    def _tab_changed(self, _i):
+        on_show = getattr(self.current(), "on_show", None)
         if on_show:
             on_show()
 
-    def _default_menu(self):
-        m = tk.Menu(self)
-        f = tk.Menu(m, tearoff=0)
-        f.add_command(label="Quit", accelerator="Ctrl+Q", command=self._close)
-        m.add_cascade(label="File", menu=f)
-        return m
+    def _for_visible_panels(self, fn):
+        """Ctrl+Enter runs / Esc cancels the form the user is looking at."""
+        tab = self.current()
+        for panel in (tab.findChildren(ToolPanel) if tab else []):
+            if panel.isVisible():
+                fn(panel)
 
-    def set_title(self, text):
-        self.title(text or APP)
-
-    # ---- project -----------------------------------------------------------------------
     def _project_changed(self):
         db = self.project.get("db")
         if db == self._db:
             return
         self._db = db
-        plaque, fil = self.tabs.get("Plaque"), self.tabs.get("Filaments")
-        if fil is not None:
-            fil.reload_db(db)
-        if plaque is not None:
-            plaque.set_db(db)
+        for t in self.tabs.values():
+            for hook in ("set_db", "reload_db"):
+                if hasattr(t, hook):
+                    getattr(t, hook)(db)
 
-    # ---- lifecycle ---------------------------------------------------------------------
-    def _close(self):
+    def closeEvent(self, ev):
         for tab in self.tabs.values():
             cc = getattr(tab, "confirm_close", None)
             if cc and not cc():
+                ev.ignore()
                 return
-        self.settings.set("geometry", self.geometry())
+        self.settings.set("geometry", bytes(self.saveGeometry().toBase64()).decode())
         cur = self.current()
         if cur is not None:
             self.settings.set("last_tab", cur.title)
-        self.destroy()
+        ev.accept()
 
 
 def main(argv=None):
-    argv = sys.argv[1:] if argv is None else argv
-    image = argv[0] if argv and not argv[0].startswith("-") else None
-    HostApp(image).mainloop()
+    # Qt's own file dialog asks the system icon theme for oversized SVGs and logs a harmless
+    # warning for each; hide just that category
+    QLoggingCategory.setFilterRules("qt.svg.draw=false")
+    app = QApplication.instance() or QApplication(sys.argv if argv is None else argv)
+    theme.apply(app)
+    args = sys.argv[1:] if argv is None else argv
+    image = next((a for a in args if not a.startswith("-")), None)
+    win = HostWindow(image_path=image)
+    win.show()
+    return app.exec()
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

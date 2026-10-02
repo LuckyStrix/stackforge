@@ -96,37 +96,6 @@ class PresetTests(unittest.TestCase):
                 st.clean("  ")
 
 
-@unittest.skipUnless(os.environ.get("DISPLAY"), "needs a display")
-class FormBinding(unittest.TestCase):
-    def test_project_fields_follow_bar_and_stay_out_of_presets(self):
-        import tkinter as tk
-        from tdforge.gui.argform.form import CommandForm
-        from tdforge.gui.argform.spec import introspect
-        from tdforge.tools import stackforge
-        try:
-            root = tk.Tk()
-        except tk.TclError:
-            self.skipTest("no usable display")
-        self.addCleanup(root.destroy)
-        with tempfile.TemporaryDirectory() as d:
-            proj = Project(Settings(os.path.join(d, "s.json")))
-            form = CommandForm(root, introspect(stackforge.build_parser(), "stackforge"),
-                               "stackforge", project=proj)
-            proj.subscribe(form.refresh_project)
-            self.assertIsNone(form.values().get("layer_height"))
-            t = os.path.join(d, "t.3mf")
-            make_template(t)
-            proj.set("template", t)
-            self.assertEqual(form.values()["layer_height"], proj.layers()[0])
-            self.assertEqual(form.values()["template"], t)
-            form.set_values({"width": 60.0})
-            pv = form.preset_values()
-            self.assertEqual(pv["width"], 60.0)
-            for k in ("template", "layer_height", "first_layer_height", "db"):
-                self.assertNotIn(k, pv)
-            # a preset naming a dest that no longer exists loads the rest
-            self.assertEqual(form.set_values({"width": 40.0, "gone": 1}), ["gone"])
-            self.assertEqual(form.values()["width"], 40.0)
 
 
 if __name__ == "__main__":

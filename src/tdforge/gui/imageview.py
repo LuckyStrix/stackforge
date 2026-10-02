@@ -6,7 +6,7 @@ from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QColor, QImage, QPainter, QPixmap
 from PySide6.QtWidgets import QSizePolicy, QWidget
 
-from tdforge.gui.qt import theme
+from tdforge.gui import theme
 
 
 def to_qimage(img) -> QImage:

@@ -4,7 +4,7 @@ import tempfile
 import time
 import unittest
 
-from tdforge.gui.run.runner import Job, Screen, tool_command
+from tdforge.gui.runner import Job, Screen, tool_command
 
 
 class RunnerTests(unittest.TestCase):
@@ -31,7 +31,7 @@ class RunnerTests(unittest.TestCase):
         self.assertNotEqual(job.returncode, 0)
 
     def test_cancel_escalates_to_kill(self):
-        import tdforge.gui.run.runner as r
+        import tdforge.gui.runner as r
         old, r.KILL_AFTER = r.KILL_AFTER, 0.3
         self.addCleanup(setattr, r, "KILL_AFTER", old)
         code = "import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); print('ready', flush=True); time.sleep(60)"
@@ -69,35 +69,6 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(job.returncode, 0)
 
 
-@unittest.skipUnless(os.environ.get("DISPLAY"), "needs a display")
-class PanelSmoke(unittest.TestCase):
-    def test_panel_runs_make_fixture(self):
-        import tkinter as tk
-        from tdforge.gui import theme
-        from tdforge.gui.argform.spec import introspect
-        from tdforge.gui.run.panel import ToolPanel
-        from tdforge.tools import make_fixture
-        try:
-            root = tk.Tk()
-        except tk.TclError:
-            self.skipTest("no usable display")
-        self.addCleanup(root.destroy)
-        theme.apply_theme(root)
-        with tempfile.TemporaryDirectory() as d:
-            p = ToolPanel(root, introspect(make_fixture.build_parser(), "make_fixture"), "make_fixture")
-            p.pack()
-            p.form.set_values({"out_dir": d})
-            p.run()
-            t0 = time.monotonic()
-            while p.job and not p.job.done and time.monotonic() - t0 < 30:
-                root.update()
-                time.sleep(0.02)
-            for _ in range(20):
-                root.update()
-                time.sleep(0.02)
-            self.assertEqual(p.job.returncode, 0)
-            self.assertTrue(os.path.exists(os.path.join(d, "fabric.3mf")))
-            self.assertIn("triangles", p.term.screen.text)
 
 
 class ScreenTests(unittest.TestCase):

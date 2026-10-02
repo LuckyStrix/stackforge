@@ -7,43 +7,50 @@ from __future__ import annotations
 
 import re
 import shutil
-from tkinter import ttk
 
-from tdforge.gui import theme
-from tdforge.gui.run.terminal import TerminalView
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QSplitter, QVBoxLayout, QWidget
+
+from tdforge.gui.terminal import TerminalView
 from tdforge.gui.tabs.common import ToolTabs
 from tdforge.tools import munki
 
 HEX_LINE = re.compile(r'--measured\s+"([^"]+)"')
 
 
-class MeasureTab(ttk.Frame):
+class MeasureTab(QWidget):
     title = "Measure"
 
-    def __init__(self, master, project=None, presets=None, host=None):
-        super().__init__(master)
+    def __init__(self, project=None, presets=None, host=None):
+        super().__init__()
         self.host = host
-        self._hexes: str | None = None
+        self._hexes = None
+        lay = QVBoxLayout(self)
         banner = self._banner()
         if banner:
-            ttk.Label(self, text=banner, foreground=theme.WARN, wraplength=900,
-                      justify="left").pack(fill="x", padx=8, pady=(8, 0))
-        paned = ttk.PanedWindow(self, orient="vertical")
-        paned.pack(fill="both", expand=True)
-        top = ttk.Frame(paned)
-        bottom = ttk.Frame(paned)
-        paned.add(top, weight=3)
-        paned.add(bottom, weight=2)
-        self.term = TerminalView(bottom)
-        self.term.pack(fill="both", expand=True)
-        row = ttk.Frame(bottom)
-        row.pack(fill="x", pady=(4, 0))
-        self.copy_btn = ttk.Button(row, text="Copy hex list to Calibrate ▸ fit", state="disabled",
-                                   command=self._to_calibrate)
-        self.copy_btn.pack(side="left")
-        self.tabs = ToolTabs.for_tool(top, "munki", munki.build_parser, project=project,
-                                      presets=presets, terminal=self.term, on_done=self._done)
-        self.tabs.pack(fill="both", expand=True)
+            w = QLabel(banner)
+            w.setObjectName("warn")
+            w.setWordWrap(True)
+            lay.addWidget(w)
+        split = QSplitter(Qt.Vertical)
+        lay.addWidget(split, 1)
+        self.term = TerminalView()
+        bottom = QWidget()
+        bl = QVBoxLayout(bottom)
+        bl.setContentsMargins(0, 0, 0, 0)
+        bl.addWidget(self.term, 1)
+        row = QHBoxLayout()
+        self.copy_btn = QPushButton("Copy hex list to Calibrate ▸ fit")
+        self.copy_btn.setEnabled(False)
+        self.copy_btn.clicked.connect(self._to_calibrate)
+        row.addWidget(self.copy_btn)
+        row.addStretch(1)
+        bl.addLayout(row)
+        self.tabs = ToolTabs.for_tool("munki", munki.build_parser, project=project, presets=presets,
+                                      terminal=self.term, on_done=self._done)
+        split.addWidget(self.tabs)
+        split.addWidget(bottom)
+        split.setSizes([380, 300])
 
     @staticmethod
     def _banner():
@@ -55,7 +62,7 @@ class MeasureTab(ttk.Frame):
     def _done(self, panel, job):
         m = HEX_LINE.search(self.term.screen.text) if job.returncode == 0 else None
         self._hexes = m.group(1) if m and panel.command == ("measure-wedge",) else None
-        self.copy_btn.config(state="normal" if self._hexes else "disabled")
+        self.copy_btn.setEnabled(bool(self._hexes))
 
     def _to_calibrate(self):
         cal = self.host.tabs.get("Calibrate") if self.host else None
