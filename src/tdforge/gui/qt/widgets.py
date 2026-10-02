@@ -29,6 +29,11 @@ class FieldWidget:
         for c in self._controls:
             c.setEnabled(on)
 
+    def is_enabled(self) -> bool:
+        return all(c.isEnabled() for c in self._controls)
+
+    refresh = None      # pickers that show database contents set this
+
     def readonly(self, on: bool):
         if self._ro is not None:
             self._ro.setReadOnly(on)
@@ -85,8 +90,20 @@ def _dir(ed):
         ed.setText(p)
 
 
-def build(f: FieldSpec, kind: str, on_change) -> FieldWidget:
+def build(f: FieldSpec, kind: str, on_change, source=None) -> FieldWidget:
     """Build the widget for `kind` (overrides.KINDS; project kinds arrive as 'entry')."""
+    if kind in ("filament_id", "filament_or_hex", "filament_ids", "hex_list", "color"):
+        from tdforge.gui.qt import pickers
+        src = source or pickers.FilamentSource()
+        if kind == "filament_id":
+            return pickers.filament_combo(f, on_change, src)
+        if kind == "filament_or_hex":
+            return pickers.filament_combo(f, on_change, src, allow_hex=True)
+        if kind == "filament_ids":
+            return pickers.filament_list(f, on_change, src)
+        if kind == "color":
+            return pickers.color_field(f, on_change)
+        return pickers.palette_field(f, on_change, src)
     if kind == "check":
         cb = QCheckBox()
         cb.setChecked(bool(f.default))

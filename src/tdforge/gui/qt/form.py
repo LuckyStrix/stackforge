@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QFormLayout, QGroupBox, 
 from tdforge.gui.argform import argv as av
 from tdforge.gui.argform import overrides
 from tdforge.gui.argform.spec import FormSpec
-from tdforge.gui.qt import theme, widgets
+from tdforge.gui.qt import pickers, theme, widgets
 
 
 class CollapsibleSection(QWidget):
@@ -47,7 +47,7 @@ class CollapsibleSection(QWidget):
 def _form_layout() -> QFormLayout:
     f = QFormLayout()
     f.setFieldGrowthPolicy(QFormLayout.ExpandingFieldsGrow)
-    f.setRowWrapPolicy(QFormLayout.DontWrapRows)
+    f.setRowWrapPolicy(QFormLayout.WrapLongRows)      # label above the field when it does not fit
     f.setLabelAlignment(Qt.AlignLeft | Qt.AlignTop)
     f.setVerticalSpacing(8)
     return f
@@ -77,6 +77,7 @@ class CommandForm(QWidget):
         super().__init__(parent)
         self.root_spec, self.tool, self.command = spec, tool, tuple(command)
         self.project, self.on_change = project, on_change
+        self.source = pickers.FilamentSource(project)
         self.entries: dict[str, _Entry] = {}
         self._busy = True
         chain, cur = [spec], spec
@@ -117,10 +118,12 @@ class CommandForm(QWidget):
                 kind = overrides.resolve_kind(self.tool, cmd, f)
                 if kind == "hide":
                     continue
-                group = overrides.group_for(self.tool, cmd, f)
+                group = ("From the project bar (change them at the top)"
+                         if overrides.is_project_kind(kind) else overrides.group_for(self.tool, cmd, f))
                 if group not in forms:
                     required = any(x.required for x in sp.fields
-                                   if overrides.group_for(self.tool, cmd, x) == group)
+                                   if overrides.group_for(self.tool, cmd, x) == group
+                                   and not overrides.project_key(x))
                     cs = CollapsibleSection(group, sp.groups.get(group, ""), collapsed=not required)
                     col.addWidget(cs)
                     forms[group] = cs.form
@@ -143,11 +146,11 @@ class CommandForm(QWidget):
         outer.addLayout(row)
 
     def _add_field(self, form, sp, f, kind):
-        w = widgets.build(f, kind, self._changed)
+        w = widgets.build(f, kind, self._changed, self.source)
         if f.default not in (None, [], False) and f.kind != "bool":
             w.set(f.default)
-        label = QLabel(f.flag + (" *" if f.required else ""))
-        label.setToolTip(f.help)
+        label = QLabel(overrides.label_for(f) + (" *" if f.required else ""))
+        label.setToolTip(f"{f.flag}\n{f.help}" if f.help else f.flag)
         cell = QWidget()
         cl = QVBoxLayout(cell)
         cl.setContentsMargins(0, 0, 0, 0)
@@ -161,7 +164,7 @@ class CommandForm(QWidget):
             ck.toggled.connect(lambda on, e=e: self._unlock(e, on))
             top.addWidget(ck)
         cl.addLayout(top)
-        hint = f.help + ("  (from project)" if overrides.is_project_kind(kind) else "")
+        hint = overrides.clean_help(f.help) + ("  (from project)" if overrides.is_project_kind(kind) else "")
         if hint:
             cl.addWidget(theme.hint(hint))
         form.addRow(label, cell)
@@ -177,6 +180,8 @@ class CommandForm(QWidget):
         """Re-read every project-bound field from the project (call when the bar changes)."""
         self._busy = True
         for e in self.entries.values():
+            if e.widget.refresh:            # filament pickers: the database may have changed
+                e.widget.refresh()
             if not e.project_key:
                 continue
             pv = self.project.get(e.project_key) if self.project else None
@@ -201,10 +206,18 @@ class CommandForm(QWidget):
         vals, errs = self.collect()
         missing = av.missing_required(self.leaf_view(), vals) if not errs else []
         self._status.setText("; ".join(errs) if errs else
-                             ("needs: " + ", ".join(missing) if missing else ""))
+                             ("Still needed: " + ", ".join(self._names(missing)) if missing else ""))
         self._cmdline.setText(av.command_line(self.prog, av.build_argv(self.root_spec, vals, self.command)))
+        self._cmdline.setCursorPosition(0)
         if self.on_change:
             self.on_change(self)
+
+    def _names(self, dests) -> list:
+        """Field labels for a list of dests ('a/b' = one of several)."""
+        def one(d):
+            e = self.entries.get(d)
+            return e.label.text().rstrip(" *") if e else d
+        return [" or ".join(one(x) for x in d.split("/")) for d in dests]
 
     def _apply_visibility(self):
         """Show a field only when the field that selects it has a matching value."""
@@ -266,7 +279,7 @@ class CommandForm(QWidget):
         vals, errs = self.collect()
         if errs:
             return errs
-        return [f"{m} is required" for m in av.missing_required(self.leaf_view(), vals)]
+        return [f"{m} is required" for m in self._names(av.missing_required(self.leaf_view(), vals))]
 
     def preset_values(self) -> dict:
         """values() minus project-bound fields that follow the project bar."""

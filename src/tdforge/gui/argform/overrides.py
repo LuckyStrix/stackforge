@@ -6,11 +6,13 @@ list / repeat), so an unlisted new flag always gets a sensible widget.
 """
 from __future__ import annotations
 
+import re
+
 from tdforge.gui.argform.spec import FieldSpec
 
 # semantic kinds (hand-built widgets live in gui/pickers)
 SEMANTIC = {"file_in", "file_out", "image", "model_3mf", "filament_ids", "filament_id",
-            "hex_list", "hide"}
+            "filament_or_hex", "hex_list", "color", "hide"}
 # plain kinds derived from argparse itself
 PLAIN = {"entry", "int", "float", "check", "combo", "list", "repeat"}
 PROJECT_PREFIX = "project:"
@@ -36,7 +38,9 @@ OVERRIDES: dict = {
     ("surfacecolor", "*", "palette"): "hex_list",
     ("surfacecolor", "*", "filaments"): "filament_ids",
     ("calibrate", "*", "filament"): "filament_id",
-    ("calibrate", "*", "base"): "filament_id",
+    ("calibrate", "wedge", "base"): "filament_id",
+    ("calibrate", "fit", "base"): "filament_or_hex",
+    ("calibrate", "fit", "base2"): "filament_or_hex",
     ("calibrate", "fit", "measured"): "hex_list",
     ("calibrate", "fit", "measured2"): "hex_list",
     ("calibrate", "fit", "from_image"): "image",
@@ -44,10 +48,14 @@ OVERRIDES: dict = {
     ("halftone_compare", "*", "image"): "image",
     ("halftone_compare", "*", "filaments"): "filament_ids",
     ("halftone_compare", "*", "base"): "filament_id",
-    ("munki", "verify-plaque", "predicted"): "file_in",
+    ("munki", "verify-plaque", "predicted"): "hex_list",
     ("filamentdb", "show", "id"): "filament_id",
     ("filamentdb", "set", "id"): "filament_id",
     ("filamentdb", "rm", "id"): "filament_id",
+    ("filamentdb", "import-hueforge", "id"): "filament_id",
+    ("filamentdb", "add", "color"): "color",
+    ("filamentdb", "set", "color"): "color",
+    ("polymaker", "guess-td", "filament"): "filament_ids",
     ("make_fixture", "*", "out_dir"): "file_out",
 }
 
@@ -73,6 +81,37 @@ PROJECT_BOUND = {
 
 _OUT_HINTS = ("output", "preview", "sheet")
 _IN_HINTS = ("template", "model")
+
+
+# dest -> label, where "Capitalised words" from the flag would read badly
+LABELS = {
+    "db": "Database", "id": "ID", "td": "td (mm)", "td_rgb": "Per-channel td (R G B)",
+    "output": "Output file", "preview": "Preview image", "gamut_preview": "Gamut preview image",
+    "rank_sheet": "Ranking sheet", "sheet": "Contact sheet", "model": "3MF model",
+    "image": "Image", "filaments": "Filaments", "palette": "Palette (colours)",
+    "base": "Base filament", "base2": "Second base", "template": "Template project",
+    "first_layer_height": "First layer height (mm)", "layer_height": "Layer height (mm)",
+    "resolution": "Resolution (mm)", "depth": "Depth (mm)", "width": "Width (mm)",
+    "height": "Height (mm)", "scale": "Cell size (mm)", "period": "Stripe period (mm)",
+    "lon_offset": "Rotation (degrees)", "expr": "Expression (trusted input only)",
+    "sku": "Polymaker SKU", "nospos": "No dial check (patched Argyll)",
+    "spotread_arg": "Extra spotread arguments", "measured_at": "Measured on (date)",
+    "from_image": "Photo of the wedge", "from_image2": "Photo of the second wedge",
+    "measured": "Measured colours (thinnest first)", "measured2": "Second wedge colours",
+    "per_channel": "Fit each colour channel", "write": "Save the fit to the database",
+}
+
+
+def label_for(f: FieldSpec) -> str:
+    """A readable field label; the raw flag is the tooltip."""
+    if f.dest in LABELS:
+        return LABELS[f.dest]
+    return f.dest.replace("_", " ").capitalize()
+
+
+def clean_help(text: str) -> str:
+    """Help text without argparse's "(default: ...)": the field already shows its default."""
+    return re.sub(r"\s*\(default: [^)]*\)", "", text).strip()
 
 
 def group_for(tool: str, command: str, f: FieldSpec) -> str:

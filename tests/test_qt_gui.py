@@ -37,7 +37,8 @@ def pump(cond, timeout=60):
 
 def run_panel(panel, timeout=120):
     panel.run()
-    pump(lambda: panel.job is not None and panel.job.done, timeout)
+    # done once the job exited AND the terminal has drained it (its timer stops then)
+    pump(lambda: panel.job is not None and panel.job.done and not panel.term._timer.isActive(), timeout)
     return panel
 
 
@@ -67,9 +68,9 @@ class Forms(unittest.TestCase):
         self.assertTrue(any("required" in e for e in form.validate()))
         form.set_values({"model": "m.3mf", "image": "i.png", "output": "o.3mf", "palette": "ff0000,00ff00"})
         self.assertEqual(form.validate(), [])
-        self.assertEqual(parser.parse_args(form.argv()).palette, "ff0000,00ff00")
+        self.assertEqual(parser.parse_args(form.argv()).palette.lower(), "#ff0000,#00ff00")
         # the other member of the exclusive set is switched off while one is chosen
-        self.assertFalse(form.entries["filaments"].widget.edit.isEnabled())
+        self.assertFalse(form.entries["filaments"].widget.is_enabled())
         self.assertEqual(form.set_values({"nonexistent": 1}), ["nonexistent"])
         mk = CommandForm([x for x in specs() if x[0] == "munki"][0][2], "munki", ("measure-wedge",))
         self.assertTrue(mk._cmdline.text().startswith("munki measure-wedge"))
@@ -154,6 +155,87 @@ class Panels(unittest.TestCase):
                 r = subprocess.run([sys.executable, *cli, "-o", cli_out], capture_output=True, text=True)
                 self.assertEqual(r.returncode, 0, r.stderr)
                 self.assertEqual(entries(gui_out), entries(cli_out), tool)
+
+
+class Pickers(unittest.TestCase):
+    """Filaments and colours are chosen by looking at them, never by typing an id."""
+
+    def setUp(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.d = tempfile.TemporaryDirectory()
+        self.addCleanup(self.d.cleanup)
+        self.proj = Project(Settings(os.path.join(self.d.name, "s.json")))
+        self.proj.settings.set("db", os.path.join(root, "filaments.json"))
+
+    def form(self, tool, builder, command=()):
+        from importlib import import_module  # noqa: F401
+        return CommandForm(introspect(builder(), tool), tool, command, project=self.proj)
+
+    def test_no_filament_id_is_typed_anywhere(self):
+        """Every flag that names a filament or a colour list gets a picker, not a text box."""
+        from tdforge.gui.qt import pickers  # noqa: F401
+        want = {"filament_id", "filament_ids", "filament_or_hex", "hex_list", "color"}
+        n = 0
+        for name, parser, spec in specs():
+            for path, sp in spec.walk():
+                for f in sp.fields:
+                    h = (f.help or "").lower()
+                    names_filament = ("filament id" in h or "ids from the filament" in h
+                                      or "database ids" in h or "filament ids" in h)
+                    kind = overrides.resolve_kind(name, " ".join(path), f)
+                    if names_filament:
+                        self.assertIn(kind, want, (name, path, f.dest, f.help))
+                        n += 1
+        self.assertGreater(n, 5)
+
+    def test_filament_combo_and_checklist_values(self):
+        from tdforge.tools import stackforge
+        form = self.form("stackforge", stackforge.build_parser)
+        base, fils = form.entries["base"].widget, form.entries["filaments"].widget
+        base.set("polymaker-pla-pro-white")
+        self.assertEqual(base.get(), "polymaker-pla-pro-white")
+        self.assertIn("White", base.widget.currentText())
+        fils.set("polymaker-pla-pro-white,polymaker-pla-pro-red")
+        self.assertEqual(fils.get(), "polymaker-pla-pro-white,polymaker-pla-pro-red")
+        self.assertEqual(form.values()["filaments"], "polymaker-pla-pro-white,polymaker-pla-pro-red")
+
+    def test_checklist_dialog_orders_and_selects(self):
+        from tdforge.gui.qt.pickers import FilamentChecklist, FilamentSource
+        src = FilamentSource(self.proj)
+        dlg = FilamentChecklist(src.filaments(), ["polymaker-pla-pro-red", "polymaker-pla-pro-white"])
+        self.assertEqual(dlg.chosen(), ["polymaker-pla-pro-red", "polymaker-pla-pro-white"])
+        dlg.list.setCurrentRow(1)
+        dlg._move(-1)
+        self.assertEqual(dlg.chosen()[0], "polymaker-pla-pro-white")
+
+    def test_palette_and_color_fields(self):
+        from tdforge.tools import topdeco
+        form = self.form("topdeco", topdeco.build_parser)
+        pal = form.entries["palette"].widget
+        pal.set("#ff0000 00ff00")
+        self.assertEqual(pal.get(), "#FF0000,#00FF00")
+        from tdforge.core import filamentdb
+        add = self.form("filamentdb", filamentdb.build_parser, ("add",))
+        c = add.entries["color"].widget
+        c.set("#336699")
+        self.assertEqual(c.get(), "#336699")
+
+    def test_calibrate_base_accepts_a_filament_or_a_colour(self):
+        from tdforge.tools import calibrate
+        fit = self.form("calibrate", calibrate.build_parser, ("fit",))
+        base = fit.entries["base"].widget
+        base.set("#E8E8EE")
+        self.assertEqual(base.get(), "#E8E8EE")
+        base.set("polymaker-pla-pro-white")
+        self.assertEqual(base.get(), "polymaker-pla-pro-white")
+
+    def test_labels_are_words_not_flags(self):
+        from tdforge.tools import surfacecolor
+        form = self.form("surfacecolor", surfacecolor.build_parser)
+        labels = {e.label.text() for e in form.entries.values()}
+        self.assertIn("Palette (colours)", labels)
+        self.assertFalse(any(t.startswith("--") for t in labels))
+        self.assertEqual(form.entries["scale"].label.toolTip().splitlines()[0], "--scale")
 
 
 class Designer(unittest.TestCase):

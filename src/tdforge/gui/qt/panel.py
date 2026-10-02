@@ -58,7 +58,7 @@ class ToolPanel(QWidget):
         row.addWidget(self.cancel_btn)
         row.addStretch(1)
         ll.addLayout(row)
-        left.setMinimumWidth(380)
+        left.setMinimumWidth(480)
         split.addWidget(left)
 
         self.view = None
@@ -71,7 +71,7 @@ class ToolPanel(QWidget):
                 right.addWidget(self.view)
                 right.setSizes([220, 380])
             split.addWidget(right)
-            split.setSizes([460, 700])
+            split.setSizes([560, 600])
         else:
             self.term = terminal
         self._form_changed()
