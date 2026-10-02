@@ -28,6 +28,21 @@ stackforge docs/stackforge_target.png --base polymaker-pla-pro-white \
 Then pass `--template your_export.3mf` for Flash Studio / Orca-family slicers (see *Caveats*).
 Always look at `--preview` before slicing. Run `python3 -m unittest discover -s tests` for the smoke tests.
 
+## One GUI for everything
+
+`tdforge-gui` opens a single window over every tool here: Plaque (the stackforge designer, plus
+an *All options* form), Paint (topdeco / surfacecolor), Filaments (the database editor and the
+filamentdb / polymaker commands), Calibrate, Measure (munki, with a terminal) and Tools.
+
+![tdforge-gui](docs/tdforge_gui.png)
+
+The forms are generated from each CLI's `argparse` definition, so a new flag appears with no
+GUI change, and every run is the CLI as a subprocess (`python -m tdforge.tools.<tool>`), so the
+GUI and the command line cannot diverge. Each form shows the equivalent shell command.
+The bar across the top holds the project: database, template, flavor, part type and the layer
+height / first layer, which are read from the template unless overridden. Settings and per-tool
+presets live in `~/.config/tdforge/`. Ctrl+Enter runs the visible form, Esc cancels it.
+
 ## Caveats up front
 
 - **Verified:** output loads as a project in Flash Studio 1.7.x with four parts on extruders 1-4.

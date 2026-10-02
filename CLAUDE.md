@@ -1,7 +1,10 @@
 # Working notes
 
 **The rule:** stackforge's colour maths (`tools/stackforge.py`, `core/tdcolor.py`) is pure numpy; all 3MF
-I/O goes through `core/td3mf.py`. The GUI (`gui/`, one app: `tdforge-gui`) wraps the CLIs and shares `gui/theme.py`.
+I/O goes through `core/td3mf.py`. The GUI (`gui/`, one app: `tdforge-gui`) wraps the CLIs and shares `gui/theme.py`. Its forms are
+generated from each tool's `build_parser()` by `gui/argform` (spec/argv need no tkinter; the
+semantic widget kinds and project bindings are in `argform/overrides.py`). A new flag needs no GUI
+change; `tests/test_argform.py` fails if an override names a flag that no longer exists.
 Code is the `tdforge` package in `src/tdforge/` (`core/`, `tools/`, `gui/`); `pip install -e .`.
 
 ## Load-bearing

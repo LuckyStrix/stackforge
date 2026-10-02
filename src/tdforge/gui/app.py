@@ -8,6 +8,7 @@ from tkinter import ttk
 from tdforge.gui import theme
 from tdforge.gui.project import Project
 from tdforge.gui.projectbar import ProjectBar
+from tdforge.gui.run.panel import ToolPanel
 from tdforge.gui.settings import PresetStore, Settings
 
 APP = "tdforge"
@@ -47,18 +48,27 @@ class HostApp(tk.Tk):
             self.show_tab(last)
         else:
             self._tab_changed()
+        self.bind("<Control-Return>", lambda e: self._for_visible_panels(ToolPanel.run))
+        self.bind("<Escape>", lambda e: self._for_visible_panels(ToolPanel.cancel))
         self.bind("<<CloseRequest>>", lambda e: self._close())
         self.bind("<Control-q>", lambda e: self._close())
         self.protocol("WM_DELETE_WINDOW", self._close)
 
     # ---- tabs --------------------------------------------------------------------------
     def _add_tabs(self, image_path):
+        from tdforge.gui.tabs.calibrate import CalibrateTab
         from tdforge.gui.tabs.filaments.tab import FilamentsTab
-        from tdforge.gui.tabs.plaque.tab import PlaqueTab
-        self.add_tab(PlaqueTab(self.nb, image_path, self.project.get("db"), host=self))
-        self.add_tab(FilamentsTab(self.nb, self.project))
+        from tdforge.gui.tabs.measure import MeasureTab
         from tdforge.gui.tabs.paint import PaintTab
-        self.add_tab(PaintTab(self.nb, self.project, self.presets))
+        from tdforge.gui.tabs.plaque.area import PlaqueArea
+        from tdforge.gui.tabs.tools import ToolsTab
+        p, pr = self.project, self.presets
+        self.add_tab(PlaqueArea(self.nb, image_path, p, pr, host=self))
+        self.add_tab(PaintTab(self.nb, p, pr))
+        self.add_tab(FilamentsTab(self.nb, p))
+        self.add_tab(CalibrateTab(self.nb, p, pr, host=self))
+        self.add_tab(MeasureTab(self.nb, p, pr, host=self))
+        self.add_tab(ToolsTab(self.nb, p, pr))
 
     def add_tab(self, tab):
         self.tabs[tab.title] = tab
@@ -81,6 +91,20 @@ class HostApp(tk.Tk):
         if fn:
             fn()
             return "break"
+
+    def _for_visible_panels(self, fn):
+        """Ctrl+Enter runs / Esc cancels the form the user is looking at."""
+        def walk(w):
+            if isinstance(w, ToolPanel):
+                if w.winfo_viewable():
+                    fn(w)
+                return
+            for c in w.winfo_children():
+                walk(c)
+        tab = self.current()
+        if tab is not None:
+            walk(tab)
+        return "break"
 
     def _tab_changed(self):
         tab = self.current()
@@ -115,8 +139,7 @@ class HostApp(tk.Tk):
         if fil is not None:
             fil.reload_db(db)
         if plaque is not None:
-            plaque.db_path = db
-            plaque._reload_filaments()
+            plaque.set_db(db)
 
     # ---- lifecycle ---------------------------------------------------------------------
     def _close(self):

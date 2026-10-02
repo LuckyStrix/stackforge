@@ -1,6 +1,6 @@
 # Plan: one GUI for every command-line feature
 
-Status: proposed, nothing built. Goal: a single app, `tdforge-gui`, that exposes every CLI in this
+Status: built through Step 6 on branch `unified-gui` (the side-note at the end is still not done). Goal: a single app, `tdforge-gui`, that exposes every CLI in this
 repo (stackforge, topdeco, surfacecolor, calibrate, munki, filamentdb, polymaker, halftone_compare,
 make_fixture) in one window, without hand-wiring each flag.
 

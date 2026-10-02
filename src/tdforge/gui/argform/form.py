@@ -46,7 +46,7 @@ class CommandForm(ttk.Frame):
             chain.append(cur)
         self.chain = chain
         self.leaf = chain[-1]
-        self.prog = self.leaf.prog
+        self.prog = tool.replace("_", "-")     # the console script; subcommands are in argv
         self._build()
         self._busy = False
         self.refresh_project()
@@ -67,13 +67,15 @@ class CommandForm(ttk.Frame):
                 kind = overrides.resolve_kind(self.tool, cmd, f)
                 if kind == "hide":
                     continue
-                if f.group not in sections:
-                    required = any(x.required for x in sp.fields if x.group == f.group)
-                    cs = theme.CollapsibleSection(body, f.group, sp.groups.get(f.group, ""),
+                group = overrides.group_for(self.tool, cmd, f)
+                if group not in sections:
+                    required = any(x.required for x in sp.fields
+                                   if overrides.group_for(self.tool, cmd, x) == group)
+                    cs = theme.CollapsibleSection(body, group, sp.groups.get(group, ""),
                                                   collapsed=not required)
                     cs.pack(fill="x")
-                    sections[f.group] = cs.body
-                sec = sections[f.group]
+                    sections[group] = cs.body
+                sec = sections[group]
                 label = f.flag + (" *" if f.required else "")
                 w = widgets.build(sec, f, kind, self._changed)
                 if f.default not in (None, [], False) and f.kind != "bool":

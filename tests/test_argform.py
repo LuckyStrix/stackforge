@@ -192,7 +192,10 @@ class FormSmoke(unittest.TestCase):
         self.addCleanup(root.destroy)
         _, parser, spec = [s for s in specs() if s[0] == "topdeco"][0]
         form = CommandForm(root, spec, "topdeco")
+        self.assertTrue(form._cmdline.get().startswith("topdeco"))
         self.assertTrue(any("required" in e for e in form.validate()))
+        mk = CommandForm(root, [x for x in specs() if x[0] == "munki"][0][2], "munki", ("measure-wedge",))
+        self.assertTrue(mk._cmdline.get().startswith("munki measure-wedge"), mk._cmdline.get())
         form.set_values({"model": "m.3mf", "image": "i.png", "output": "o.3mf",
                          "palette": "ff0000,00ff00"})
         self.assertEqual(form.validate(), [])

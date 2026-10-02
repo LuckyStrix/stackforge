@@ -18,6 +18,7 @@ class TerminalView(ttk.Frame):
     def __init__(self, master, on_finish=None):
         super().__init__(master)
         self.on_finish = on_finish
+        self._on_finish = on_finish
         self.job: Job | None = None
         self.screen = Screen()
         self._status = tk.StringVar(value="idle")
@@ -36,8 +37,9 @@ class TerminalView(ttk.Frame):
         self.text.pack(side="top", fill="both", expand=True)
 
     # ---- job lifecycle -----------------------------------------------------------------
-    def attach(self, job: Job):
+    def attach(self, job: Job, on_finish=None):
         self.job = job
+        self._on_finish = on_finish or self.on_finish
         self.screen = Screen()
         self._render()
         self.entry.focus_set()      # "press Enter after placing the chip" is one keystroke
@@ -80,8 +82,8 @@ class TerminalView(ttk.Frame):
                 self._render()
             state = "cancelled" if job.cancelled else f"exit {job.returncode}"
             self._status.set(f"{state} · {job.elapsed:.1f}s")
-            if self.on_finish:
-                self.on_finish(job)
+            if self._on_finish:
+                self._on_finish(job)
             return
         self._status.set(f"running · {job.elapsed:.0f}s")
         self.after(POLL_MS, self._poll)

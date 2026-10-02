@@ -16,6 +16,12 @@ PLAIN = {"entry", "int", "float", "check", "combo", "list", "repeat"}
 PROJECT_PREFIX = "project:"
 KINDS = SEMANTIC | PLAIN
 
+# (tool, command path or "*", dest) -> section title, for flags argparse does not group
+GROUPS: dict = {
+    ("munki", "*", "nospos"): "Instrument",
+    ("munki", "*", "spotread_arg"): "Instrument",
+}
+
 # (tool, command path "a b" or "*", dest) -> kind
 OVERRIDES: dict = {
     ("stackforge", "*", "image"): "image",
@@ -67,6 +73,13 @@ PROJECT_BOUND = {
 
 _OUT_HINTS = ("output", "preview", "sheet")
 _IN_HINTS = ("template", "model")
+
+
+def group_for(tool: str, command: str, f: FieldSpec) -> str:
+    for key in ((tool, command, f.dest), (tool, "*", f.dest)):
+        if key in GROUPS:
+            return GROUPS[key]
+    return f.group
 
 
 def project_key(field: FieldSpec):

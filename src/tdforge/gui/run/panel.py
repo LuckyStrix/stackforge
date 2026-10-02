@@ -17,14 +17,16 @@ from tdforge.gui.run.runner import tool_command, Job
 from tdforge.gui.presetbar import PresetBar
 from tdforge.gui.run.terminal import TerminalView
 
-PREVIEW_DESTS = ("preview", "gamut_preview", "rank_sheet")
+PREVIEW_DESTS = ("preview", "gamut_preview", "rank_sheet", "sheet")
 
 
 class ToolPanel(ttk.Frame):
     def __init__(self, master, spec, tool: str, command: tuple = (), project=None,
-                 cwd: str | None = None, presets=None):
+                 cwd: str | None = None, presets=None,
+                 terminal=None, on_done=None):
         super().__init__(master)
         self.tool, self.command, self.cwd = tool, tuple(command), cwd
+        self.on_done = on_done
         self.job: Job | None = None
         self._tmpdir: str | None = None
         self._preview_path: str | None = None
@@ -34,7 +36,8 @@ class ToolPanel(ttk.Frame):
         left = ttk.Frame(paned)
         right = ttk.Frame(paned)
         paned.add(left, weight=1)
-        paned.add(right, weight=2)
+        if terminal is None:
+            paned.add(right, weight=2)
 
         self.form = CommandForm(left, spec, tool, self.command, project, on_change=self._form_changed)
         self.form.pack(fill="both", expand=True)
@@ -50,14 +53,14 @@ class ToolPanel(ttk.Frame):
         self.cancel_btn = ttk.Button(btns, text="Cancel", command=self.cancel, state="disabled")
         self.cancel_btn.pack(side="left", padx=(6, 0))
 
-        self.term = TerminalView(right, on_finish=self._finished)
-        self.term.pack(fill="both", expand=True)
+        self.shared_terminal = terminal is not None
+        self.term = terminal or TerminalView(right)
+        if terminal is None:
+            self.term.pack(fill="both", expand=True)
         self.view: theme.ImageView | None = None
-        if any(d in self.form.entries for d in PREVIEW_DESTS):
+        if terminal is None and any(d in self.form.entries for d in PREVIEW_DESTS):
             self.view = theme.ImageView(right, "no preview yet")
             self.view.pack(fill="both", expand=True, pady=(6, 0))
-        self.bind_all("<Control-Return>", lambda e: self.run())
-        self.bind_all("<Escape>", lambda e: self.cancel())
         self._form_changed()
 
     def _form_changed(self, *_):
@@ -89,7 +92,7 @@ class ToolPanel(ttk.Frame):
             return
         argv = self._argv()
         self.job = Job(tool_command(self.tool, argv), cwd=self.cwd)
-        self.term.attach(self.job)
+        self.term.attach(self.job, on_finish=self._finished)
         self.run_btn.config(state="disabled")
         self.cancel_btn.config(state="normal")
 
@@ -101,6 +104,8 @@ class ToolPanel(ttk.Frame):
     def _finished(self, job: Job):
         self.cancel_btn.config(state="disabled")
         self._form_changed()
+        if self.on_done:
+            self.on_done(self, job)
         if self.view and job.returncode == 0 and self._preview_path and os.path.exists(self._preview_path):
             from PIL import Image
             self.view.set_image(Image.open(self._preview_path).convert("RGB"))
