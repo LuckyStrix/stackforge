@@ -30,6 +30,16 @@ Always look at `--preview` before slicing. Run `python3 -m unittest discover -s 
 
 ## One GUI for everything
 
+```sh
+pip install -e .        # once; installs PySide6 too
+tdforge-gui [image.png] # or: python -m tdforge.gui.qt.app
+```
+
+Start on the **Plaque** tab: open an image, tick the filaments you own (the list is your
+database), press **Generate**, then **Export 3MF**. Set your slicer project as the *Template*
+in the bar at the top and the layer height follows it. (`tdforge-gui-classic` is the old tk
+window, kept until the filament editor is ported.)
+
 `tdforge-gui` opens a single window over every tool here: Plaque (the stackforge designer, plus
 an *All options* form), Paint (topdeco / surfacecolor), Filaments (the database editor and the
 filamentdb / polymaker commands), Calibrate, Measure (munki, with a terminal) and Tools.

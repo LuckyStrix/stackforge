@@ -156,6 +156,69 @@ class Panels(unittest.TestCase):
                 self.assertEqual(entries(gui_out), entries(cli_out), tool)
 
 
+class Designer(unittest.TestCase):
+    def setUp(self):
+        from tdforge.gui.qt.tabs.plaque import PlaqueDesigner
+        from tdforge.gui.settings import PresetStore
+        self.d = tempfile.TemporaryDirectory()
+        self.addCleanup(self.d.cleanup)
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.proj = Project(Settings(os.path.join(self.d.name, "s.json")))
+        self.proj.settings.set("db", os.path.join(root, "filaments.json"))
+        self.des = PlaqueDesigner(self.proj, PresetStore(os.path.join(self.d.name, "presets")),
+                                  image_path=os.path.join(root, "docs", "stackforge_target.png"))
+        self.des.show()
+        self.addCleanup(self.des.close)
+
+    def test_filament_checklist_defaults_and_controls(self):
+        d = self.des
+        self.assertEqual(d.list.count(), len(d.db.filaments))
+        self.assertEqual({f.name for f in d.selected()}, {"White", "Black", "Blue", "Red"})
+        self.assertEqual(d.base.currentText(), "polymaker-pla-pro-white")
+        d._set_all(False)
+        self.assertEqual(d.selected(), [])
+        d.filter.setText("teal")
+        d._set_all(True)                      # only the visible rows
+        self.assertEqual([f.name for f in d.selected()], ["Teal"])
+        d.filter.setText("")
+        d._select_measured()
+        self.assertTrue(all(f.provenance == "measured" for f in d.selected()))
+
+    def test_generate_goes_stale_exports_and_presets_roundtrip(self):
+        from unittest import mock
+        from PySide6.QtWidgets import QFileDialog, QMessageBox
+        d = self.des
+        d.s_width.setValue(40)
+        d.s_maxl.setValue(6)
+        d._generate()
+        pump(lambda: d.result is not None, 90)
+        self.assertIsNotNone(d.result)
+        self.assertTrue(d.btn_export.isEnabled())
+        out = os.path.join(self.d.name, "plaque.3mf")
+        with mock.patch.object(QFileDialog, "getSaveFileName", return_value=(out, "")), \
+                mock.patch.object(QMessageBox, "information"):
+            d._export()
+        self.assertTrue(os.path.exists(out))
+        self.assertEqual(zipfile.ZipFile(out).testzip(), None)
+        d._preset_values()
+        with mock.patch("PySide6.QtWidgets.QInputDialog.getText", return_value=("mine", True)):
+            d._save_preset()
+        d.s_width.setValue(90)                # changing an input marks the result stale
+        self.assertIsNone(d.result)
+        self.assertIn("out of date", d.views.tabText(1))
+        self.assertFalse(d.btn_export.isEnabled())
+        d.preset_combo.setCurrentText("mine")
+        d._apply_preset()
+        self.assertEqual(d.s_width.value(), 40)
+
+    def test_layers_come_from_the_project_bar(self):
+        t = os.path.join(self.d.name, "t.3mf")
+        make_template(t)
+        self.proj.set("template", t)
+        a = self.des.config_ns()
+        self.assertEqual((a.layer_height, a.first_layer_height), self.proj.layers())
+
+
 class Host(unittest.TestCase):
     def setUp(self):
         self.d = tempfile.TemporaryDirectory()

@@ -19,8 +19,9 @@ APP = "tdforge"
 class HostWindow(QMainWindow):
     """Hosts tabs. A tab is a QWidget with a `title` and, optionally, confirm_close() / on_show()."""
 
-    def __init__(self, settings: Settings | None = None):
+    def __init__(self, settings: Settings | None = None, image_path=None):
         super().__init__()
+        self._image = image_path
         self.settings = settings or Settings()
         self.project = Project(self.settings)
         self.presets = PresetStore()
@@ -41,6 +42,7 @@ class HostWindow(QMainWindow):
         lay.addWidget(self.nb, 1)
         self.setCentralWidget(central)
         self.tabs: dict[str, QWidget] = {}
+        self._bound: set = set()
         self._add_tabs()
 
         quit_ = QAction("Quit", self)
@@ -61,16 +63,27 @@ class HostWindow(QMainWindow):
     # ---- tabs --------------------------------------------------------------------------
     def _add_tabs(self):
         from tdforge.gui.qt.tabs.calibrate import CalibrateTab
-        from tdforge.gui.qt.tabs.legacy import FilamentsTab, PlaqueTab
+        from tdforge.gui.qt.tabs.legacy import FilamentsTab
+        from tdforge.gui.qt.tabs.plaque import PlaqueArea
         from tdforge.gui.qt.tabs.measure import MeasureTab
         from tdforge.gui.qt.tabs.paint import PaintTab
         from tdforge.gui.qt.tabs.tools import ToolsTab
-        for cls in (PlaqueTab, PaintTab, FilamentsTab, CalibrateTab, MeasureTab, ToolsTab):
+        self.add_tab(PlaqueArea(self.project, self.presets, host=self, image_path=self._image))
+        for cls in (PaintTab, FilamentsTab, CalibrateTab, MeasureTab, ToolsTab):
             self.add_tab(cls(self.project, self.presets, host=self))
 
     def add_tab(self, tab):
         self.tabs[tab.title] = tab
         self.nb.addTab(tab, tab.title)
+        for seq in getattr(tab, "shortcuts", lambda: {})():
+            if seq not in self._bound:
+                self._bound.add(seq)
+                QShortcut(QKeySequence(seq), self, activated=lambda s=seq: self._dispatch(s))
+
+    def _dispatch(self, seq):
+        fn = getattr(self.current(), "shortcuts", lambda: {})().get(seq)
+        if fn:
+            fn()
 
     def show_tab(self, title: str):
         self.nb.setCurrentWidget(self.tabs[title])
@@ -116,7 +129,9 @@ class HostWindow(QMainWindow):
 def main(argv=None):
     app = QApplication.instance() or QApplication(sys.argv if argv is None else argv)
     theme.apply(app)
-    win = HostWindow()
+    args = sys.argv[1:] if argv is None else argv
+    image = next((a for a in args if not a.startswith("-")), None)
+    win = HostWindow(image_path=image)
     win.show()
     return app.exec()
 

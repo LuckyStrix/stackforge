@@ -1,7 +1,7 @@
-"""Plaque and Filaments tabs while the hand-built views are being ported.
+"""Filaments tab while the filament editor is being ported.
 
-Both show the generated forms; the original tk windows (designer, filament editor) are one
-button away in the classic GUI, which runs as its own process.
+It shows the generated filamentdb / polymaker forms; the original tk editor is one button
+away in the classic GUI, which runs as its own process.
 """
 from __future__ import annotations
 
@@ -11,11 +11,9 @@ import sys
 from PySide6.QtWidgets import QHBoxLayout, QPushButton, QTabWidget, QVBoxLayout, QWidget
 
 from tdforge.core import filamentdb
-from tdforge.gui.argform.spec import introspect
 from tdforge.gui.qt import theme
-from tdforge.gui.qt.panel import ToolPanel
 from tdforge.gui.qt.tabs.common import ToolTabs
-from tdforge.tools import polymaker, stackforge
+from tdforge.tools import polymaker
 
 WRITES = {("filamentdb", c) for c in ("add", "set", "rm", "seed", "import-sku", "import-hueforge")} | {
     ("polymaker", ("import",))}
@@ -35,21 +33,6 @@ def _classic_row(what: str) -> QWidget:
     b.clicked.connect(open_classic)
     row.addWidget(b)
     return w
-
-
-class PlaqueTab(QWidget):
-    title = "Plaque"
-
-    def __init__(self, project=None, presets=None, host=None):
-        super().__init__()
-        lay = QVBoxLayout(self)
-        lay.addWidget(_classic_row("plaque designer (live preview, ranking viewer)"))
-        self.options = ToolPanel(introspect(stackforge.build_parser(), "stackforge"), "stackforge",
-                                 project=project, presets=presets)
-        lay.addWidget(self.options, 1)
-
-    def set_db(self, path):
-        pass
 
 
 class FilamentsTab(QWidget):
