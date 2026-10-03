@@ -77,8 +77,8 @@ so nothing here tries to minimize them.
 | `gui/filaments/` | the library editor (details, look, match by eye, calibrate) |
 | `polymaker` (`tools/`) | look a Polymaker SKU up in their published hex/TD table |
 | `calibrate` (`tools/`) | step-wedge generator and td/color fitter |
-| `topdeco` (`tools/`) | project an image onto the top-visible surface of any 3MF |
-| `surfacecolor` (`tools/`) | colour any 3MF from a pattern or a wrapped image, anywhere on its surface |
+| `topdeco` (`tools/`) | project an image onto the top-visible surface of any 3MF or GLB |
+| `surfacecolor` (`tools/`) | colour a 3MF or GLB anywhere on its surface: the GLB's own colours, a wrapped image, or a pattern |
 | `munki` (`tools/`) | measure wedges, plaques and chip transmission with a ColorMunki / ArgyllCMS |
 | `halftone_compare` (`tools/`) | score stackforge's dither modes by blurred dE |
 | `make_fixture` (`tools/`) | generate `fabric.3mf` and `badge.3mf` test models |
@@ -736,6 +736,26 @@ same thing — short stacks pad downward with base filament by design.
 
 ## surfacecolor.py
 
+**Realistic colour from a GLB.** Give it a `.glb`/`.gltf` and it reads the model's own colours
+(base-colour texture with its UVs, vertex colours, material colour), quantises them to your
+filaments with an ordered dither, and writes a printable 3MF:
+
+```sh
+surfacecolor model.glb -o out.3mf --filaments white,black,blue,red --template my_profile.3mf
+surfacecolor model.glb -o out.3mf --palette "#e2dedb,#0c0e0c,#003287,#e20010" --scale-to 60
+```
+
+glTF is Y-up metres; it is rotated to Z-up and scaled to millimetres (`--scale-to MM` sets the
+largest dimension instead), put on z=0 and centred on the bed from `--template`. Compressed
+files (Draco, meshopt, KTX2) are refused with a message; re-export without compression.
+`--dither off` gives plain nearest-filament; the run prints a mean dE (simulated, not
+measured). Dithering is made of one-voxel features, so keep `--resolution` at 0.6 mm or more
+(the default 0.8 is fine). The result is only as good as your palette: a texture with green in it
+needs a green-ish filament. `make-fixture` writes `globe.glb` to try this on. The Paint tab's
+*Realistic colour* mode is this path.
+
+Everything below also applies to GLB input; the decorative patterns need no colour data.
+
 Colours an existing 3D model anywhere on its surface without UVs: it voxelises
 the model on the slicer's layer grid, evaluates a pattern at every voxel within
 `--depth` mm of the surface, and emits boxes as per-extruder modifier volumes.
@@ -750,8 +770,9 @@ surfacecolor vase.3mf -o out.3mf --filaments white,black \
     --pattern expr --expr "sin(z/3 + theta*4) > 0"
 ```
 
-Patterns: `checker3d`, `checker-sphere`, `stripes`, `gradient`, `expr`,
-`image-spherical`, `image-cylindrical`, `image-planar`. Pass `--template` so the
+Patterns: `texture` (the GLB's own colours, the default for a GLB), `image-spherical`,
+`image-cylindrical`, `image-planar` (wrap an `--image`), and the decorative `checker3d`,
+`checker-sphere`, `stripes`, `gradient`, `expr`. Pass `--template` so the
 layer grid comes from your profile (same reason as stackforge: boxes on the wrong
 grid drop out on alternate layers).
 

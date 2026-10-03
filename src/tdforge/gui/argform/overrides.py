@@ -70,6 +70,8 @@ VISIBLE_WHEN: dict = {
     ("surfacecolor", "image"): ("pattern", {"image-planar", "image-cylindrical", "image-spherical"}),
     ("surfacecolor", "lon_offset"): ("pattern", {"image-cylindrical", "image-spherical"}),
     ("surfacecolor", "expr"): ("pattern", {"expr"}),
+    ("surfacecolor", "dither"): ("pattern", {"texture", "image-planar", "image-cylindrical", "image-spherical"}),
+    ("surfacecolor", "dither_strength"): ("pattern", {"texture", "image-planar", "image-cylindrical", "image-spherical"}),
 }
 
 # dest -> project binding key; filled from the project bar, excluded from presets
@@ -87,13 +89,14 @@ _IN_HINTS = ("template", "model")
 LABELS = {
     "db": "Database", "id": "ID", "td": "td (mm)", "td_rgb": "Per-channel td (R G B)",
     "output": "Output file", "preview": "Preview image", "gamut_preview": "Gamut preview image",
-    "rank_sheet": "Ranking sheet", "sheet": "Contact sheet", "model": "3MF model",
+    "rank_sheet": "Ranking sheet", "sheet": "Contact sheet", "model": "3D model (3MF or GLB)",
     "image": "Image", "filaments": "Filaments", "palette": "Palette (colours)",
     "base": "Base filament", "base2": "Second base", "template": "Template project",
     "first_layer_height": "First layer height (mm)", "layer_height": "Layer height (mm)",
     "resolution": "Resolution (mm)", "depth": "Depth (mm)", "width": "Width (mm)",
     "height": "Height (mm)", "scale": "Cell size (mm)", "period": "Stripe period (mm)",
-    "lon_offset": "Rotation (degrees)", "expr": "Expression (trusted input only)",
+    "lon_offset": "Rotation (degrees)", "scale_to": "Scale to size (mm, GLB)",
+    "dither": "Dither", "dither_strength": "Dither strength", "expr": "Expression (trusted input only)",
     "sku": "Polymaker SKU", "nospos": "No dial check (patched Argyll)",
     "spotread_arg": "Extra spotread arguments", "measured_at": "Measured on (date)",
     "from_image": "Photo of the wedge", "from_image2": "Photo of the second wedge",

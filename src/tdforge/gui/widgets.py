@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QHBoxLayout, Q
 from tdforge.gui.argform.spec import FieldSpec
 
 IMAGE_FILTER = "Images (*.png *.jpg *.jpeg *.bmp *.gif *.webp);;All files (*)"
-MODEL_FILTER = "3MF (*.3mf);;All files (*)"
+MODEL_FILTER = "3D models (*.3mf *.glb *.gltf);;3MF (*.3mf);;GLB / glTF (*.glb *.gltf);;All files (*)"
 
 
 class FieldWidget:

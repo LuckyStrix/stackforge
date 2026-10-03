@@ -37,11 +37,18 @@ from tdforge.core import td3mf
 from tdforge.core.filamentdb import DEFAULT_DB
 from tdforge.core import tdcolor
 
+MAX_VOXELS = 60_000_000   # same ceiling topdeco applies to its raster
+MIN_FEATURE_MM = 0.6      # narrowest region that gets plastic at a 0.4 mm nozzle (see CLAUDE.md)
 EPS_JITTER = 1.7e-7   # pixel centres are nudged off exact triangle edges (see voxelize)
 
 # --------------------------------------------------------------------------
 # voxelisation on the slicer's layer grid
 # --------------------------------------------------------------------------
+
+
+def td3mf_is_glb(path):
+    from tdforge.core import glb
+    return glb.is_glb_path(path)
 
 
 def layer_edges(z_max, first, lh):
@@ -70,7 +77,9 @@ def voxelize(item, bounds, res, edges):
     ny = max(1, int(math.ceil((y1 - y0) / res)))
     nz = len(edges) - 1
     mids = (edges[:-1] + edges[1:]) / 2
-    toggles = np.zeros((nz + 1, ny, nx), dtype=np.int16)
+    if len(item.tris) == 0:
+        return np.zeros((nz, ny, nx), dtype=bool)
+    toggles = np.zeros((nz + 1, ny, nx), dtype=np.int32)
 
     px = x0 + (np.arange(nx) + 0.5) * res + EPS_JITTER
     py = y0 + (np.arange(ny) + 0.5) * res + EPS_JITTER * 1.3
@@ -124,8 +133,9 @@ def shell_mask(occ, res, lh, depth):
 class Coords:
     """Flat arrays of voxel-centre coordinates, plus derived polar ones."""
 
-    def __init__(self, x, y, z, size):
+    def __init__(self, x, y, z, size, item=None, res=1.0, origin=(0.0, 0.0), cells=None):
         self.x, self.y, self.z, self.size = x, y, z, np.asarray(size, float)
+        self.item, self.res, (self.x0, self.y0), self.cells = item, res, origin, cells
         c = self.size / 2
         dx, dy, dz = x - c[0], y - c[1], z - c[2]
         self.r = np.sqrt(dx**2 + dy**2 + dz**2)
@@ -169,6 +179,27 @@ def _nearest_filament(rgb, palette):
     return out
 
 
+def _pick(rgb_srgb, cd, a, palette):
+    """Palette index for sampled sRGB colours: dithered if --dither is on, else nearest in Lab."""
+    mode = _dither_mode(a)
+    if mode == "off":
+        return _nearest_filament(rgb_srgb, palette)
+    return _pick_linear(tdcolor.srgb_to_linear(np.asarray(rgb_srgb, dtype=np.float64)), cd, a, palette)
+
+
+def _pick_linear(target_lin, cd, a, palette):
+    pal_lin = tdcolor.srgb_to_linear(palette)
+    strength = 0.0 if _dither_mode(a) == "off" else getattr(a, "dither_strength", 1.0)
+    idx, blend = tdcolor.quantize_dither(target_lin, pal_lin, cd.cells, strength)
+    de = np.linalg.norm(tdcolor.linear_to_lab(blend) - tdcolor.linear_to_lab(target_lin), axis=-1)
+    a.colour_report = getattr(a, "colour_report", []) + [(de.sum(), len(de))]
+    return idx
+
+
+def _dither_mode(a):
+    return getattr(a, "dither", None) or ("ordered" if getattr(a, "pattern", None) == "texture" else "off")
+
+
 def _sample(img, u, v):
     """Nearest-pixel lookup; u, v in [0,1], v=0 at the image top."""
     h, w = img.shape[:2]
@@ -187,14 +218,14 @@ def p_image_spherical(cd, a, n, palette):
     """Equirectangular map (Earth/Mars/Moon style): u from azimuth, v from elevation."""
     u = ((cd.theta + math.pi) / (2 * math.pi) + a.lon_offset / 360.0) % 1.0
     v = 0.5 - cd.phi / math.pi
-    return _nearest_filament(_sample(_load(a), u, v), palette)
+    return _pick(_sample(_load(a), u, v), cd, a, palette)
 
 
 def p_image_cylindrical(cd, a, n, palette):
     """Wrap around the vertical axis; v runs down the model's height."""
     u = ((cd.theta + math.pi) / (2 * math.pi) + a.lon_offset / 360.0) % 1.0
     v = 1.0 - cd.z / max(cd.size[2], 1e-9)
-    return _nearest_filament(_sample(_load(a), u, v), palette)
+    return _pick(_sample(_load(a), u, v), cd, a, palette)
 
 
 def p_image_planar(cd, a, n, palette):
@@ -204,7 +235,31 @@ def p_image_planar(cd, a, n, palette):
     co = [cd.x, cd.y, cd.z]
     u = co[o[0]] / max(cd.size[o[0]], 1e-9)
     v = 1.0 - co[o[1]] / max(cd.size[o[1]], 1e-9)
-    return _nearest_filament(_sample(_load(a), np.clip(u, 0, 1), np.clip(v, 0, 1)), palette)
+    return _pick(_sample(_load(a), np.clip(u, 0, 1), np.clip(v, 0, 1)), cd, a, palette)
+
+
+def p_texture(cd, a, n, palette):
+    """The model's own colours (GLB texture, vertex colours, material factors).
+
+    Each voxel takes the mean colour of its nearest surface samples; the surface is
+    sampled about twice per voxel so a texture finer than the voxels is averaged, not
+    aliased.
+    """
+    from scipy.spatial import cKDTree
+    from tdforge.core import glb
+    if cd.item is None or cd.item.appearance is None:
+        raise SystemExit("--pattern texture needs a GLB/glTF model (this input has no colours); "
+                         "for a 3MF use an image-* pattern with --image")
+    pts, cols = glb.surface_samples(cd.item, cd.res / 2)
+    tree = cKDTree(pts)
+    world = np.stack([cd.x0 + cd.x, cd.y0 + cd.y, cd.z], axis=1)
+    k = min(4, len(pts))
+    dist, nn = tree.query(world, k=k, workers=-1)
+    if k == 1:
+        dist, nn = dist[:, None], nn[:, None]
+    w = 1.0 / (dist + cd.res * 0.25)
+    target = (cols[nn] * w[..., None]).sum(1) / w.sum(1)[:, None]
+    return _pick_linear(target, cd, a, palette)
 
 
 _EXPR_NAMES = {k: getattr(np, k) for k in (
@@ -283,14 +338,16 @@ PATTERNS = {
     "image-spherical": p_image_spherical,
     "image-cylindrical": p_image_cylindrical,
     "image-planar": p_image_planar,
+    "texture": p_texture,
 }
 IMAGE_PATTERNS = {"image-spherical", "image-cylindrical", "image-planar"}
+COLOUR_PATTERNS = IMAGE_PATTERNS | {"texture"}      # patterns that need a palette, not just a count
 
 
 def evaluate(pattern, cd, args, palette):
     n = len(palette)
     fn = PATTERNS[pattern]
-    idx = fn(cd, args, n, palette) if pattern in IMAGE_PATTERNS else fn(cd, args, n)
+    idx = fn(cd, args, n, palette) if pattern in COLOUR_PATTERNS else fn(cd, args, n)
     return np.asarray(idx).astype(int) % n
 
 
@@ -299,7 +356,7 @@ def evaluate(pattern, cd, args, palette):
 # --------------------------------------------------------------------------
 
 
-def label_grid(occ, shell, bounds, res, edges, pattern, args, palette):
+def label_grid(occ, shell, bounds, res, edges, pattern, args, palette, item=None):
     """(nz,ny,nx) int labels; -1 where there is nothing to colour."""
     x0, y0, x1, y1 = bounds
     nz, ny, nx = occ.shape
@@ -308,7 +365,8 @@ def label_grid(occ, shell, bounds, res, edges, pattern, args, palette):
     if len(zs) == 0:
         return lab
     mids = (edges[:-1] + edges[1:]) / 2
-    cd = Coords(xs * res + res / 2, ys * res + res / 2, mids[zs], args.size)
+    cd = Coords(xs * res + res / 2, ys * res + res / 2, mids[zs], args.size, item=item,
+                res=res, origin=(x0, y0), cells=np.stack([xs, ys, zs], axis=1))
     lab[zs, ys, xs] = evaluate(pattern, cd, args, palette)
     return lab
 
@@ -383,7 +441,7 @@ def save_preview(path, lab, palette):
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0],
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    ap.add_argument("model")
+    ap.add_argument("model", help="a 3MF, or a GLB/glTF (its own colours are used by --pattern texture)")
     ap.add_argument("-o", "--output", required=True)
     src = ap.add_mutually_exclusive_group(required=True)
     src.add_argument("--palette", help="filament colours in extruder order, comma-separated hex")
@@ -392,7 +450,18 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--base-extruder", type=int, default=1,
                     help="extruder the object already prints in; voxels given this colour "
                          "emit no modifier")
-    ap.add_argument("--pattern", choices=sorted(PATTERNS), required=True)
+    ap.add_argument("--pattern", choices=["texture"] + sorted(set(PATTERNS) - {"texture"}),
+                    help="texture = the model's own colours (GLB); image-* wrap an --image; the "
+                         "rest are decorative. Default: texture for a GLB, required for a 3MF")
+    ap.add_argument("--dither", choices=["off", "ordered"], default=None,
+                    help="mix the two nearest filaments across neighbouring voxels so the area "
+                         "average matches the colour. Default: ordered for texture, else off. "
+                         "Needs --resolution >= 0.6 to print")
+    ap.add_argument("--dither-strength", type=float, default=1.0,
+                    help="0 = none, 1 = full mix between the two nearest filaments")
+    ap.add_argument("--scale-to", type=float, default=None,
+                    help="GLB only: scale so the largest dimension is this many mm "
+                         "(default: the file is in metres)")
     ap.add_argument("--scale", type=float, default=5.0, help="checker3d cell size, mm")
     ap.add_argument("--lat", type=int, default=8, help="checker-sphere latitude bands")
     ap.add_argument("--lon", type=int, default=16, help="checker-sphere longitude bands")
@@ -434,16 +503,40 @@ def main(argv=None):
     if not 1 <= args.base_extruder <= len(palette):
         raise SystemExit(f"--base-extruder must be within 1..{len(palette)}")
 
+    for flag, val in (("--resolution", args.resolution), ("--layer-height", args.layer_height),
+                      ("--first-layer-height", args.first_layer_height),
+                      ("--scale-to", args.scale_to)):
+        if val is not None and not val > 0:
+            raise SystemExit(f"{flag} must be positive (got {val})")
+    if args.depth < 0 or not math.isfinite(args.depth):
+        raise SystemExit(f"--depth must be 0 or more (got {args.depth})")
+    if not 0 <= args.dither_strength <= 1:
+        raise SystemExit("--dither-strength must be between 0 and 1")
+    glb_input = td3mf_is_glb(args.model)
+    if args.pattern is None:
+        if not glb_input:
+            raise SystemExit("--pattern is required for a 3MF (a GLB defaults to texture)")
+        args.pattern = "texture"
+
     t_lh, t_flh = td3mf.template_layer_settings(args.template) if args.template else (None, None)
     args.layer_height = args.layer_height or t_lh or 0.2
     args.first_layer_height = args.first_layer_height or t_flh or args.layer_height
     if t_lh:
         print(f"layer grid {t_flh or t_lh} mm first, then {t_lh} mm (from template)")
-    if args.pattern in IMAGE_PATTERNS and len(palette) < 2:
-        raise SystemExit("image patterns need at least two filaments")
+    if args.pattern in COLOUR_PATTERNS and len(palette) < 2:
+        raise SystemExit("image and texture patterns need at least two filaments")
+    if args.pattern in IMAGE_PATTERNS and not args.image:
+        raise SystemExit(f"--pattern {args.pattern} needs --image")
+    if args.pattern == "texture" and not glb_input:
+        raise SystemExit("--pattern texture needs a GLB/glTF model; a 3MF has no colours to read")
+    if _dither_mode(args) != "off" and args.dither_strength > 0 \
+            and args.resolution < MIN_FEATURE_MM - 1e-9:
+        print(f"  ! dither at --resolution {args.resolution} mm: one-voxel features are narrower "
+              f"than a nozzle and mostly do not print. Use {MIN_FEATURE_MM} or more.")
 
     print(f"reading {args.model}")
-    items = td3mf.read_3mf(args.model)
+    bed = td3mf.template_bed_size(args.template) if args.template else None
+    items = td3mf.read_model(args.model, scale_to=args.scale_to, bed=bed)
     allv = np.vstack([i.verts for i in items])
     lo, hi = allv.min(0), allv.max(0)
     bounds = (lo[0], lo[1], hi[0], hi[1])
@@ -460,6 +553,9 @@ def main(argv=None):
     nx = int(math.ceil((hi[0] - lo[0]) / args.resolution))
     ny = int(math.ceil((hi[1] - lo[1]) / args.resolution))
     print(f"  grid {nx} x {ny} x {nz} voxels ({nx * ny * nz / 1e6:.1f} M)")
+    if nx * ny * nz > MAX_VOXELS:
+        raise SystemExit(f"{nx * ny * nz / 1e6:.0f} M voxels is too many (limit "
+                         f"{MAX_VOXELS // 1_000_000} M); raise --resolution or lower the model size")
 
     t0 = time.time()
     decals = {}
@@ -471,7 +567,7 @@ def main(argv=None):
             print(f"  ! item {i} ({item.name}) voxelised to nothing; is the mesh empty or degenerate?")
             continue
         shell = shell_mask(occ, args.resolution, args.layer_height, args.depth)
-        lab = label_grid(occ, shell, bounds, args.resolution, edges, args.pattern, args, palette)
+        lab = label_grid(occ, shell, bounds, args.resolution, edges, args.pattern, args, palette, item)
         parts = emit_boxes(lab, bounds, args.resolution, edges, args.base_extruder - 1)
         decals[i] = parts
         total_boxes += sum(len(t) // 12 for _, _, t in parts)
@@ -480,6 +576,11 @@ def main(argv=None):
         print(f"  item {i}: {occ.sum() / 1e3:.0f} k solid voxels, "
               f"{shell.sum() / 1e3:.0f} k coloured ({time.time() - t0:.1f}s)")
 
+    rep = getattr(args, "colour_report", [])
+    if rep:
+        de = sum(r[0] for r in rep) / max(1, sum(r[1] for r in rep))
+        print(f"  mean colour error {de:.1f} dE (target vs the area-average of the printed mix; "
+              f"simulated, not measured)")
     tot = max(1, seen_labels.sum())
     for f, c in enumerate(seen_labels):
         tag = "  (base extruder: no modifier)" if f == args.base_extruder - 1 else ""

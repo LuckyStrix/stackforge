@@ -41,6 +41,12 @@ clean and CI runs both. PySide6 is the `gui` extra; the CLIs need only numpy/Pil
   untouched on failure); the catalogue is cached in `polymaker_catalog.json`.
 - **surfacecolor voxelisation uses a winding number from above, not parity.** Overlapping open
   shells (the badge fixture) flip parity and leave a hollow; `tests/test_surfacecolor.py` covers it.
+- **GLB input is unverified on a print.** `core/glb.py` (hand-written reader, numpy + Pillow) keeps UVs,
+  textures and vertex colours on `Item.appearance`; `surfacecolor --pattern texture` samples the surface
+  densely into a KD-tree and dithers (`tdcolor.quantize_dither`, 3D R3 ordered dither, simulated gains only).
+  Y-up metres -> Z-up mm is `(x,-z,y)` (a rotation: do not mirror, winding must stay outward). glTF
+  vertex colours and `baseColorFactor` are linear; textures are sRGB. Slice-checked (all four tools used),
+  never printed.
 - **surfacecolor `--expr` goes through an AST whitelist** (`compile_expr`) before `eval`: no
   attributes, subscripts, lambdas, strings. Add a function by adding it to `_EXPR_NAMES`.
 - **Dither gains are simulated.** Blurred dE improves most with shallow stacks, but the slicer

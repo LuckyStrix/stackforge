@@ -215,10 +215,24 @@ class Catalog:
                 f"this tool understands ({CACHE_VERSION})")
         self.fetched_at = raw.get("fetched_at", "")
         self.source = raw.get("source", URL)
-        for e in raw.get("products", []):
-            self.products[e["sku"].upper()] = Product(
-                sku=e["sku"], product=e.get("product", ""), name=e.get("name", ""),
-                hexes=e.get("hexes", []), td=e.get("td"))
+        for i, e in enumerate(raw.get("products", [])):
+            sku = e.get("sku") if isinstance(e, dict) else None
+            if not isinstance(sku, str) or not sku:
+                print(f"  ! {self.path}: product #{i} has no sku; skipped", file=sys.stderr)
+                continue
+            td = e.get("td")
+            if td is not None:
+                try:
+                    td = float(td)
+                except (TypeError, ValueError):
+                    td = None
+                if td is None or not td > 0:
+                    print(f"  ! {self.path}: {sku} has a bad td ({e.get('td')!r}); ignored",
+                          file=sys.stderr)
+                    td = None
+            self.products[sku.upper()] = Product(
+                sku=sku, product=e.get("product", ""), name=e.get("name", ""),
+                hexes=e.get("hexes", []), td=td)
 
     def save(self):
         payload = {
@@ -597,6 +611,9 @@ def cmd_guess_td(args):
         if f.provenance == "measured" and not args.overwrite_measured:
             print(f"{f.id[:30]:30} {f.color:9} {f.td:8.4f} {'—':>9}  measured, left alone")
             continue
+        if f.provenance == "vendor" and not args.overwrite_vendor:
+            print(f"{f.id[:30]:30} {f.color:9} {f.td:8.4f} {'—':>9}  vendor td, left alone")
+            continue
         est = cat.estimate_td(f.color, f.finish)
         name, hx, de, td = est.nearest
         print(f"{f.id[:30]:30} {f.color:9} {f.td:8.4f} {est.td:9.4f}  "
@@ -644,6 +661,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--all", action="store_true", help="every entry in the database")
     p.add_argument("--db", default=DEFAULT_DB)
     p.add_argument("--overwrite-measured", action="store_true")
+    p.add_argument("--overwrite-vendor", action="store_true",
+                   help="also replace published (vendor) TDs with a colour-based estimate")
     p.add_argument("--write", action="store_true")
     p.set_defaults(fn=cmd_guess_td)
 

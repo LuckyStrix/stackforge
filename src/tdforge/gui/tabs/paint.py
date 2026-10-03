@@ -1,7 +1,10 @@
-"""Paint tab: colour an existing 3MF. Two modes over the generated forms.
+"""Paint tab: colour an existing 3D model. Three modes over the generated forms.
 
-*Project from above* is topdeco (an image on the top-visible surface); *Pattern or wrapped
-image* is surfacecolor. Which parameters a pattern uses is a table in argform.overrides.
+*Realistic colour* is surfacecolor with the model's own colours (GLB texture) or a wrapped
+image, dithered onto your filaments. *Project from above* is topdeco (an image on the
+top-visible surface). *Decorative pattern* is the rest of surfacecolor (checkers, stripes,
+expressions): it makes no attempt to look like anything. Which parameters a pattern uses is
+a table in argform.overrides.
 """
 from __future__ import annotations
 
@@ -12,8 +15,30 @@ from tdforge.gui import theme
 from tdforge.gui.panel import ToolPanel
 from tdforge.tools import surfacecolor, topdeco
 
-MODES = (("topdeco", "Project from above", topdeco.build_parser),
-         ("surfacecolor", "Pattern or wrapped image", surfacecolor.build_parser))
+REALISTIC = ("texture", "image-spherical", "image-cylindrical", "image-planar")
+
+
+def _surface_parser(realistic: bool):
+    """surfacecolor's parser with --pattern narrowed to the choices for this mode."""
+    def build():
+        ap = surfacecolor.build_parser()
+        act = next(a for a in ap._actions if a.dest == "pattern")
+        if realistic:
+            act.choices, act.default = list(REALISTIC), "texture"
+        else:
+            act.choices = [c for c in act.choices if c not in REALISTIC]
+            act.required = True
+        return ap
+    return build
+
+
+MODES = (("surfacecolor", "Realistic colour", _surface_parser(True)),
+         ("topdeco", "Project image from above", topdeco.build_parser),
+         ("decorative", "Decorative pattern", _surface_parser(False)))
+
+HINTS = {"surfacecolor": "GLB: uses the model's own texture or vertex colours, dithered onto your filaments",
+         "topdeco": "paints one image onto whatever faces up; ignores the model's own colours",
+         "decorative": "checkers, stripes and expressions; not meant to look like anything"}
 
 
 class PaintTab(QWidget):
@@ -28,9 +53,11 @@ class PaintTab(QWidget):
         self.group = QButtonGroup(self)
         for i, (key, label, builder) in enumerate(MODES):
             rb = QRadioButton(label)
+            rb.setToolTip(HINTS[key])
             self.group.addButton(rb, i)
             bar.addWidget(rb)
-            self.panels[key] = ToolPanel(introspect(builder(), key), key, project=project, presets=presets)
+            tool = "topdeco" if key == "topdeco" else "surfacecolor"
+            self.panels[key] = ToolPanel(introspect(builder(), tool), tool, project=project, presets=presets)
             self.stack.addWidget(self.panels[key])
         self.group.button(0).setChecked(True)
         self.group.idToggled.connect(lambda i, on: on and self.stack.setCurrentIndex(i))

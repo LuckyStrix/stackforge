@@ -250,6 +250,62 @@ def quantize(img, palette, mask, mode):
     return out
 
 
+_R3 = np.array([0.8191725133961645, 0.6710436067037893, 0.5497004779019703])   # 1/plastic^k
+
+
+def dither_threshold(ix, iy, iz):
+    """Ordered-dither threshold in [0,1) for integer voxel indices (R3 low-discrepancy lattice).
+
+    Stateless and well spread in all three axes, so neighbouring voxels and neighbouring
+    layers both see different thresholds without any error having to be carried between them.
+    """
+    return (np.asarray(ix) * _R3[0] + np.asarray(iy) * _R3[1] + np.asarray(iz) * _R3[2]) % 1.0
+
+
+def quantize_dither(target_lin, pal_lin, pos=None, strength=1.0, chunk=40_000):
+    """Choose a palette index per sample, spatially mixing the two best colours.
+
+    target_lin (N,3) and pal_lin (P,3) are linear RGB 0..1. `pos` is (N,3) integer voxel
+    indices (needed when strength > 0). For each target the best *pair* of palette colours
+    is found (the pair whose blend, by projection, is closest in Lab); the second colour is
+    chosen where the blend fraction exceeds the voxel's dither threshold, so the printed
+    area average approaches the target. strength=0 is plain nearest-colour in Lab.
+
+    Returns (index (N,), blend (N,3) linear): the blend is what the spatial mix averages to.
+    """
+    target_lin = np.asarray(target_lin, dtype=np.float64)
+    pal_lin = np.asarray(pal_lin, dtype=np.float64)
+    P = len(pal_lin)
+    pal_lab = linear_to_lab(pal_lin)
+    idx = np.zeros(len(target_lin), dtype=np.int32)
+    blend = np.zeros_like(target_lin)
+    ia, ib = np.triu_indices(P, 1)
+    chunk = max(2000, min(chunk, 4_000_000 // max(1, len(ia))))
+    for s in range(0, len(target_lin), chunk):
+        tg = target_lin[s:s + chunk]
+        tg_lab = linear_to_lab(tg)
+        if strength <= 0 or P < 2:
+            d = ((tg_lab[:, None, :] - pal_lab[None]) ** 2).sum(-1)
+            k = d.argmin(-1)
+            idx[s:s + chunk], blend[s:s + chunk] = k, pal_lin[k]
+            continue
+        a, b = pal_lin[ia], pal_lin[ib]                       # (M,3)
+        ab = b - a
+        denom = np.maximum((ab ** 2).sum(-1), 1e-12)
+        t = np.clip(((tg[:, None, :] - a[None]) * ab[None]).sum(-1) / denom[None], 0, 1)
+        mix = a[None] + t[..., None] * ab[None]               # (n,M,3)
+        err = ((linear_to_lab(mix) - tg_lab[:, None, :]) ** 2).sum(-1)
+        best = err.argmin(-1)
+        rows = np.arange(len(tg))
+        tb = t[rows, best]
+        thr = dither_threshold(*(pos[s:s + chunk].T))
+        thr = 0.5 + (thr - 0.5) * strength
+        pick_b = tb > thr
+        idx[s:s + chunk] = np.where(pick_b, ib[best], ia[best])
+        blend[s:s + chunk] = mix[rows, best]
+    return idx, blend
+
+
 def open_image(path, background=(255, 255, 255)) -> Image.Image:
     """Load as RGB the way a viewer shows it.
 
@@ -257,7 +313,10 @@ def open_image(path, background=(255, 255, 255)) -> Image.Image:
     the tag prints them rotated. Transparent pixels are composited over
     `background` rather than keeping whatever colour the encoder left in them.
     """
-    im = ImageOps.exif_transpose(Image.open(path))
+    try:
+        im = ImageOps.exif_transpose(Image.open(path))
+    except FileNotFoundError:
+        raise SystemExit(f"{path}: no such image file") from None
     if im.mode in ("I;16", "I;16B", "I;16L", "I", "F"):
         # 16-bit / float greyscale: convert("RGB") clips at 255 instead of
         # scaling, which turns every photo into pure black and white.

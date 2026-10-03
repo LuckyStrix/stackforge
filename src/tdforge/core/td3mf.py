@@ -51,6 +51,7 @@ class Item:
     name: str
     verts: np.ndarray
     tris: np.ndarray
+    appearance: object = None     # glb.Appearance when the model carries colour, else None
 
 
 def parse_transform(text: str | None) -> np.ndarray:
@@ -77,8 +78,18 @@ def _norm_path(p: str, base: str = "") -> str:
     return p.lstrip("/")
 
 
+def read_model(path: str, scale_to=None, bed=None) -> list[Item]:
+    """Load a 3MF or a glTF/GLB. GLB items carry `appearance` (UVs, textures, colours)."""
+    from tdforge.core import glb
+    if glb.is_glb_path(path):
+        return [glb.read_glb(path, scale_to=scale_to, bed=bed)]
+    return read_3mf(path)
+
+
 def read_3mf(path: str) -> list[Item]:
     """Load every build item as a world-space mesh."""
+    if not os.path.exists(path):
+        raise SystemExit(f"{path}: no such file")
     with zipfile.ZipFile(path) as zf:
         names = zf.namelist()
         model_paths = [n for n in names if n.lower().endswith(".model")]
@@ -385,17 +396,17 @@ def _patch_settings(raw: bytes, colors=None, layer_height=None,
     except (ValueError, UnicodeDecodeError):
         return raw
 
-    if layer_height:
+    if layer_height is not None:
         lo = _first_num(settings.get("min_layer_height"))
         hi = _first_num(settings.get("max_layer_height"))
-        if lo and layer_height < lo - 1e-9:
+        if lo is not None and layer_height < lo - 1e-9:
             print(f"  ! layer height {layer_height} is below the profile's "
                   f"minimum {lo}; the slicer may refuse it")
-        if hi and layer_height > hi + 1e-9:
+        if hi is not None and layer_height > hi + 1e-9:
             print(f"  ! layer height {layer_height} is above the profile's "
                   f"maximum {hi}; the slicer may refuse it")
         settings["layer_height"] = _fmt_setting(layer_height)
-    if first_layer_height:
+    if first_layer_height is not None:
         settings["initial_layer_print_height"] = _fmt_setting(first_layer_height)
 
     if solid:

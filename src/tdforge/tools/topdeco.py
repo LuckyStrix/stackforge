@@ -147,7 +147,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="Project an image onto the top-visible surfaces of a 3MF.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    ap.add_argument("model", help="input .3mf")
+    ap.add_argument("model", help="input .3mf, or a .glb/.gltf (geometry only; its colours are ignored here)")
     ap.add_argument("image", help="image to project")
     ap.add_argument("-o", "--output", required=True)
     src = ap.add_mutually_exclusive_group()
@@ -176,6 +176,9 @@ def build_parser() -> argparse.ArgumentParser:
                     help="a project .3mf exported from your slicer; its printer, "
                          "filament and print settings are carried over verbatim so "
                          "the output opens as a project rather than bare geometry")
+    ap.add_argument("--scale-to", type=float, default=None,
+                    help="GLB only: scale so the largest dimension is this many mm "
+                         "(default: the file is in metres)")
     ap.add_argument("--preview", help="write a PNG of what will be painted")
     return ap
 
@@ -213,7 +216,7 @@ def main(argv=None):
                   f"not a surface. Reduce --depth, or raise top_shell_layers.")
 
     print(f"reading {args.model}")
-    items = td3mf.read_3mf(args.model)
+    items = td3mf.read_model(args.model, scale_to=args.scale_to)
     allv = np.vstack([i.verts for i in items])
     print(f"  {len(items)} build item(s), {sum(len(i.tris) for i in items)} triangles")
 
