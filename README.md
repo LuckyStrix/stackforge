@@ -22,10 +22,13 @@ image ──► gamut search ──► per-pixel stack ──► 3MF (modifier v
 pip install -e .   # the command-line tools; add ".[gui]" for the Qt GUI
 stackforge-plaque docs/plaque_target.png --base polymaker-pla-pro-white \
     --filaments polymaker-pla-pro-white,polymaker-pla-pro-blue,polymaker-pla-pro-red,polymaker-pla-pro-yellow \
-    --width 60 --base-layers 27 --preview sim.png -o plaque.3mf
+    --width 60 --base-layers 27 --template your_project.3mf --preview sim.png -o plaque.3mf
 ```
 
-Then pass `--template your_export.3mf` for Flash Studio / Orca-family slicers (see *Caveats*).
+`--template` is your slicer's own project, exported as a `.3mf`: it sets the layer grid and lets
+Flash Studio / Orca-family slicers open the output as a project. Orca output (the default
+`--flavor`) is refused without it unless you give `--layer-height` yourself (see *Caveats*).
+`--base-layers 27` makes the white base opaque; see *The base has to actually be opaque*.
 Always look at `--preview` before slicing. Run `pip install -e ".[dev]" && pytest` for the tests (`python3 -m unittest discover -s tests` also works).
 
 ## One GUI for everything

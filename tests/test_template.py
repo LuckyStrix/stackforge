@@ -120,9 +120,36 @@ class BadInput(unittest.TestCase):
                 threemf.read_3mf(p)
             self.assertIn("not valid XML", str(cm.exception))
 
-    def test_bad_transform_is_reported(self):
+    def test_malformed_rels_is_reported(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "broken.3mf")
+            with zipfile.ZipFile(p, "w") as z:
+                z.writestr("3D/3dmodel.model", "<model/>")
+                z.writestr("_rels/.rels", "<Relationships>")
+            with self.assertRaises(SystemExit) as cm:
+                threemf.read_3mf(p)
+            self.assertIn("_rels/.rels is not valid XML", str(cm.exception))
+
+    def test_transforms(self):
+        self.assertTrue(np.array_equal(threemf.parse_transform(None), threemf.IDENTITY))
+        m = threemf.parse_transform("1 0 0 0 1 0 0 0 1 5 6 7")
+        self.assertEqual(list(m[3, :3]), [5, 6, 7])
+        for bad in ("1 0 0 junk", "1 0 0", "1 " * 13):
+            with self.assertRaises(SystemExit):
+                threemf.parse_transform(bad)
+
+    def test_layer_grid_requirement(self):
+        threemf.require_layer_grid("orca", None, 0.12)           # an explicit grid is enough
+        threemf.require_layer_grid("orca", "t.3mf", None)        # the template supplies it
+        threemf.require_layer_grid("prusa", None, None)          # prusa carries no profile
         with self.assertRaises(SystemExit):
-            threemf.parse_transform("1 0 0 junk")
+            threemf.require_layer_grid("orca", None, None)
+
+    def test_empty_palette_is_refused(self):
+        from stackforge.core import colormath
+        with self.assertRaises(ValueError):
+            colormath.quantize(np.zeros((2, 2, 3), np.uint8), np.zeros((0, 3)),
+                               np.ones((2, 2), bool), "none")
 
 
 class Escaping(unittest.TestCase):

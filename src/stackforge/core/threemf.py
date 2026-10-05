@@ -101,7 +101,11 @@ def read_3mf(path: str) -> list[Item]:
 
         root_path = None
         if "_rels/.rels" in names:
-            for rel in ET.fromstring(zf.read("_rels/.rels")).iter(
+            try:
+                rels = ET.fromstring(zf.read("_rels/.rels"))
+            except ET.ParseError as e:
+                raise SystemExit(f"{path}: _rels/.rels is not valid XML ({e})")
+            for rel in rels.iter(
                 f"{{{RELS_NS}}}Relationship"
             ):
                 if rel.get("Type") == MODEL_REL:

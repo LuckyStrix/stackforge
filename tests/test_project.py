@@ -89,6 +89,10 @@ class ProjectTests(unittest.TestCase):
         self.p.set("flavor", "prusa")
         self.assertIsNone(self.p.warning())
         self.p.set("flavor", "orca")
+        self.p.set("layer_height", "0.12")
+        self.p.set("layer_override", True)
+        self.assertIsNone(self.p.warning())                # an overridden grid is enough
+        self.p.set("layer_override", False)
         self.p.set("template", "/no/such.3mf")
         self.assertIn("not found", self.p.warning())
         t = os.path.join(self.d.name, "a.3mf")
