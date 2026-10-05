@@ -1,17 +1,17 @@
 # Measuring with a ColorMunki (or any ArgyllCMS spectro)
 
-`munki.py` is written from spotread's documented output and a fake-spotread test; **it has not been
+`stackforge-measure` is written from spotread's documented output and a fake-spotread test; **it has not been
 run against the instrument yet.** Treat every section below as a checklist for the first run.
 
 ## Setup
 1. `sudo apt install argyll` (spotread 2.3.1 was used). The ColorMunki needs the udev rule from
    Argyll's `libusb` install, or root.
 2. The dial: if your unit's dial position reports stale, `spotread` may print an all-zero XYZ at
-   the calibration position instead of complaining. `munki.py` refuses zero readings (`DeadReading`).
+   the calibration position instead of complaining. `stackforge-measure` refuses zero readings (`DeadReading`).
    **Fix: the patched Argyll.** `~/.local/bin/argyll-nospos` runs an ArgyllCMS 2.3.1 build with the
    dial-position check compiled out (same commands and prompts; its own calibration cache in
-   `~/.cache/argyll-nospos`). Use `munki.py --nospos ...` (or `argyll-nospos python3 munki.py ...`).
-   Nothing then checks the dial, so on that build `munki.py`:
+   `~/.cache/argyll-nospos`). Use `stackforge-measure --nospos ...` (or `argyll-nospos stackforge-measure ...`).
+   Nothing then checks the dial, so on that build `stackforge-measure`:
    - says when to turn the dial back to measuring after calibration (spotread no longer insists);
    - asks for one reading of plain white paper and stops unless Y is 70-110 (a calibration taken
      off the calibration tile rescales every later reading);
@@ -23,7 +23,7 @@ run against the instrument yet.** Treat every section below as a checklist for t
    then the measure position, and re-run. (The same workaround is documented in the calibration-suite repo.)
 
 ## Reflectance (wedges and plaques)
-`munki.py measure-wedge --steps 12 -o wedge.json` runs `spotread -s -i D50 -Q 1931_2` (reflective is
+`stackforge-measure measure-wedge --steps 12 -o wedge.json` runs `spotread -s -i D50 -Q 1931_2` (reflective is
 the default). It prints the `calibrate.py fit --measured ...` line to run next; do this over white
 *and* black bases so td and colour separate.
 
@@ -43,7 +43,7 @@ absorbed into the fitted colour; note it against the filament and do not compare
 
 ## Transmission with a laptop screen as the backlight
 Print `calibrate.py chips --filament <id> -o chips.3mf`, then caliper each chip.
-`munki.py transmission --thickness 0.25,0.33,...` shows white/R/G/B patches full screen, reads the
+`stackforge-measure transmission --thickness 0.25,0.33,...` shows white/R/G/B patches full screen, reads the
 bare screen, then each chip, then the bare screen again (drift check).
 `T = through-chip / bare` per channel, `td = -thickness / ln T`.
 
@@ -58,7 +58,7 @@ a sample is unverified.
 
 ## Tests
 `python3 -m unittest discover -s tests` runs the fake-spotread and maths tests. With the meter
-connected: `STACKFORGE_MUNKI=1 python3 -m unittest tests.test_munki`.
+connected: `STACKFORGE_MUNKI=1 python3 -m unittest tests.test_measure`.
 
 ## ColorMunki facts and where they came from
 Looked up 2026-09-30. Re-check a source before relying on a number for anything expensive.

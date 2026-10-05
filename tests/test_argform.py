@@ -1,16 +1,16 @@
 """argform: spec / argv logic (no display needed) and a drift guard over every tool's parser."""
 import unittest
 
-from tdforge.core import filamentdb
-from tdforge.gui.argform import argv as av
-from tdforge.gui.argform import overrides
-from tdforge.gui.argform.spec import introspect
-from tdforge.tools import (calibrate, halftone_compare, make_fixture, munki, polymaker,
-                           stackforge, surfacecolor, topdeco)
+from stackforge.core import filamentdb
+from stackforge.gui.argform import argv as av
+from stackforge.gui.argform import overrides
+from stackforge.gui.argform.spec import introspect
+from stackforge.tools import (calibrate, dither_compare, make_samples, measure, polymaker,
+                           plaque, paint, top_paint)
 
-TOOLS = {"stackforge": stackforge, "topdeco": topdeco, "surfacecolor": surfacecolor,
-         "calibrate": calibrate, "munki": munki, "polymaker": polymaker,
-         "halftone_compare": halftone_compare, "make_fixture": make_fixture,
+TOOLS = {"plaque": plaque, "top_paint": top_paint, "paint": paint,
+         "calibrate": calibrate, "measure": measure, "polymaker": polymaker,
+         "dither_compare": dither_compare, "make_samples": make_samples,
          "filamentdb": filamentdb}
 
 
@@ -30,15 +30,15 @@ class SpecTests(unittest.TestCase):
         self.assertEqual(set(cal.subs), {"wedge", "chips", "fit"})
 
     def test_help_unescaped(self):
-        _, _, sf = [s for s in specs() if s[0] == "stackforge"][0]
+        _, _, sf = [s for s in specs() if s[0] == "plaque"][0]
         f = next(f for f in sf.fields if f.dest == "rank_by")
         self.assertIn("5%", f.help)
         self.assertNotIn("%%", f.help)
 
     def test_exclusive_groups(self):
-        _, _, tp = [s for s in specs() if s[0] == "topdeco"][0]
+        _, _, tp = [s for s in specs() if s[0] == "top_paint"][0]
         self.assertIn(["palette", "filaments"], tp.exclusive)
-        _, _, sc = [s for s in specs() if s[0] == "surfacecolor"][0]
+        _, _, sc = [s for s in specs() if s[0] == "paint"][0]
         self.assertEqual(sc.exclusive_required, [True])
         self.assertEqual(av.missing_required(sc, {"model": "m", "output": "o", "pattern": "stripes"}),
                          ["palette/filaments"])
@@ -125,7 +125,7 @@ class DriftTests(unittest.TestCase):
 
 class ArgvTests(unittest.TestCase):
     def test_coerce(self):
-        _, _, sf = [s for s in specs() if s[0] == "stackforge"][0]
+        _, _, sf = [s for s in specs() if s[0] == "plaque"][0]
         w = next(f for f in sf.fields if f.dest == "width")
         self.assertEqual(av.coerce(w, "60"), 60.0)
         self.assertIsNone(av.coerce(w, ""))
@@ -136,7 +136,7 @@ class ArgvTests(unittest.TestCase):
             av.coerce(d, "nope")
 
     def test_defaults_omitted_changes_emitted(self):
-        _, parser, sf = [s for s in specs() if s[0] == "stackforge"][0]
+        _, parser, sf = [s for s in specs() if s[0] == "plaque"][0]
         base = {"image": "a.png", "filaments": "x,y"}
         self.assertEqual(av.build_argv(sf, base), ["--filaments", "x,y", "a.png"])
         argv = av.build_argv(sf, {**base, "width": 60.0, "rank": True})
@@ -144,7 +144,7 @@ class ArgvTests(unittest.TestCase):
         self.assertEqual((ns.width, ns.rank), (60.0, True))
 
     def test_append_and_subcommand(self):
-        _, parser, mk = [s for s in specs() if s[0] == "munki"][0]
+        _, parser, mk = [s for s in specs() if s[0] == "measure"][0]
         argv = av.build_argv(mk, {"nospos": True, "spotread_arg": ["-x", "-y"]}, ("measure-wedge",))
         self.assertIn("--nospos", argv)
         self.assertIn("measure-wedge", argv)

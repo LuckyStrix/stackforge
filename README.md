@@ -6,21 +6,21 @@ with one global filament order, stackforge gives **every pixel its own filament 
 prints the plaque at constant thickness. The question it answers: *given these spools and this
 image, which stacks reproduce each pixel, and which four spools should I load?*
 
-![target, ranked loadouts, simulated result](docs/stackforge_rank.png)
+![target, ranked loadouts, simulated result](docs/plaque_rank.png)
 
 ```
 image ──► gamut search ──► per-pixel stack ──► 3MF (modifier volumes per layer) ──► slicer
             ▲                                          ▲
    filamentdb (colour + td per filament)        --template (your slicer's own 3MF)
             ▲
-   calibrate.py (print wedges, fit td)
+   stackforge-calibrate (print wedges, fit td)
 ```
 
 ## Quick start
 
 ```sh
 pip install -e .   # the command-line tools; add ".[gui]" for the Qt GUI
-stackforge docs/stackforge_target.png --base polymaker-pla-pro-white \
+stackforge-plaque docs/plaque_target.png --base polymaker-pla-pro-white \
     --filaments polymaker-pla-pro-white,polymaker-pla-pro-blue,polymaker-pla-pro-red,polymaker-pla-pro-yellow \
     --width 60 --base-layers 27 --preview sim.png -o plaque.3mf
 ```
@@ -32,73 +32,73 @@ Always look at `--preview` before slicing. Run `pip install -e ".[dev]" && pytes
 
 ```sh
 pip install -e ".[gui]"   # once; adds PySide6
-tdforge-gui [image.png] # or: python -m tdforge.gui.qt.app
+stackforge [image.png] # or: python -m stackforge.gui.app
 ```
 
 Start on the **Plaque** tab: open an image, tick the filaments you own (the list is your
 database), press **Generate**, then **Export 3MF**. Set your slicer project as the *Template*
 in the bar at the top and the layer height follows it.
 
-`tdforge-gui` opens a single window over every tool here: Plaque (the stackforge designer, plus
-an *All options* form), Paint (topdeco / surfacecolor), Filaments (the library editor, plus the
-filamentdb / polymaker forms), Calibrate, Measure (munki, with a terminal) and Tools.
+`stackforge` opens a single window over every tool here: Plaque (the plaque designer, plus
+an *All options* form), Paint (stackforge-top-paint / stackforge-paint), Filaments (the library editor, plus the
+stackforge-filaments / polymaker forms), Calibrate, Measure (with a terminal) and Tools.
 
-![tdforge-gui](docs/tdforge_gui.png)
+![stackforge](docs/stackforge_gui.png)
 
 The forms are generated from each CLI's `argparse` definition, so a new flag appears with no
-GUI change, and every run is the CLI as a subprocess (`python -m tdforge.tools.<tool>`), so the
+GUI change, and every run is the CLI as a subprocess (`python -m stackforge.tools.<tool>`), so the
 GUI and the command line cannot diverge. Each form shows the equivalent shell command.
 The bar across the top holds the project: database, template, flavor, part type and the layer
 height / first layer, which are read from the template unless overridden. Settings and per-tool
-presets live in `~/.config/tdforge/`. Ctrl+Enter runs the visible form, Esc cancels it.
+presets live in `~/.config/stackforge/`. Ctrl+Enter runs the visible form, Esc cancels it.
 
 ## Caveats up front
 
 - **Verified:** output loads as a project in Flash Studio 1.7.x with four parts on extruders 1-4.
 - **Verified (headless slice, 2026-09-30):** Flash Studio honours extruder overrides on *modifier*
   volumes. `tests/test_slice.py` re-checks this on every test run where Flash Studio is installed
-  (skip it with `TDFORGE_SKIP_SLICER=1`; locations via `FLASHSTUDIO_RUN` / `FLASHSTUDIO_TEMPLATE`).
+  (skip it with `STACKFORGE_SKIP_SLICER=1`; locations via `FLASHSTUDIO_RUN` / `FLASHSTUDIO_TEMPLATE`).
   If colours are wrong in your slicer, try `--part-type part`.
 - The optical model is single-pass alpha-over with per-filament `td`; accuracy depends on
-  calibrated `td` values (`calibrate.py`). Shipped `filaments.json` (in `src/tdforge/data/`) values are mostly estimates.
+  calibrated `td` values (`stackforge-calibrate`). Shipped `filaments.json` (in `src/stackforge/data/`) values are mostly estimates.
 - The base must be opaque (`--base-layers`); stackforge warns when it is not.
 - Slice at exactly the `--layer-height` you generated with.
 
 ## Repository layout
 
-Everything lives in the `tdforge` package under `src/tdforge/` (`core/` libraries, `tools/` CLIs,
+Everything lives in the `stackforge` package under `src/stackforge/` (`core/` libraries, `tools/` CLIs,
 `gui/`); `pip install -e .` puts one console script per tool on PATH, and
-`python -m tdforge.tools.<tool>` also works. The rest of this repo is the toolchain stackforge stands on. Tool changes are assumed cheap,
+`python -m stackforge.tools.<tool>` also works. The rest of this repo is the toolchain stackforge stands on. Tool changes are assumed cheap,
 so nothing here tries to minimize them.
 
 | tool | what it does |
 |---|---|
-| `filamentdb` (`core/`) | filament colors + optical properties, grown over time |
+| `stackforge-filaments` (`core/filamentdb.py`) | filament colors + optical properties, grown over time |
 | `gui/filaments/` | the library editor (details, look, match by eye, calibrate) |
-| `polymaker` (`tools/`) | look a Polymaker SKU up in their published hex/TD table |
-| `calibrate` (`tools/`) | step-wedge generator and td/color fitter |
-| `topdeco` (`tools/`) | project an image onto the top-visible surface of any 3MF or GLB |
-| `surfacecolor` (`tools/`) | colour a 3MF or GLB anywhere on its surface: the GLB's own colours, a wrapped image, or a pattern |
-| `munki` (`tools/`) | measure wedges, plaques and chip transmission with a ColorMunki / ArgyllCMS |
-| `halftone_compare` (`tools/`) | score stackforge's dither modes by blurred dE |
-| `make_fixture` (`tools/`) | generate `fabric.3mf` and `badge.3mf` test models |
-| `stackforge` (`tools/`) | flat full-color plaques from per-pixel filament stacks |
-| `gui/` | the Qt GUI (`tdforge-gui`): host window (`app.py`), generated forms (`form.py`, `panel.py`), pickers, one module per tab in `tabs/`, plaque designer in `tabs/plaque.py` |
+| `stackforge-polymaker` (`tools/polymaker.py`) | look a Polymaker SKU up in their published hex/TD table |
+| `stackforge-calibrate` (`tools/calibrate.py`) | step-wedge generator and td/color fitter |
+| `stackforge-top-paint` (`tools/top_paint.py`) | project an image onto the top-visible surface of any 3MF or GLB |
+| `stackforge-paint` (`tools/paint.py`) | colour a 3MF or GLB anywhere on its surface: the GLB's own colours, a wrapped image, or a pattern |
+| `stackforge-measure` (`tools/measure.py`) | measure wedges, plaques and chip transmission with a ColorMunki / ArgyllCMS |
+| `stackforge-dither-compare` (`tools/dither_compare.py`) | score the plaque's dither modes by blurred dE |
+| `stackforge-make-samples` (`tools/make_samples.py`) | generate `fabric.3mf`, `badge.3mf` and `globe.glb` sample models |
+| `stackforge-plaque` (`tools/plaque.py`) | flat full-color plaques from per-pixel filament stacks |
+| `gui/` | the Qt GUI (`stackforge`): host window (`app.py`), generated forms (`form.py`, `panel.py`), pickers, one module per tab in `tabs/`, plaque designer in `tabs/plaque.py` |
 | `data/` | shipped `filaments.json` and `polymaker_catalog.json`; a copy in the working directory wins |
-| `core/td3mf.py`, `core/tdcolor.py` | shared 3MF I/O and color math |
+| `core/threemf.py`, `core/colormath.py` | shared 3MF I/O and color math |
 | `gui/theme.py` | the dark theme and small layout helpers |
 | `gui/argform/` | form specs generated from each tool's `build_parser()`; no GUI toolkit needed |
 | `core/optics.py` | what layers of a filament look like over a base (previews, best layer count) |
 
-`surfacecolor.py` is built to the first three steps of `docs/plans/surfacecolor.md`
+`stackforge-paint` is built to the first three steps of `docs/plans/surfacecolor.md`
 (patterns, wrapped images, shell masking); the interactive painting window is not.
 
-Requires `numpy`, `Pillow`, `scipy`; `tdforge-gui` also needs `PySide6` (the `gui` extra).
-`polymaker.py` is stdlib only.
+Requires `numpy`, `Pillow`, `scipy`; `stackforge` also needs `PySide6` (the `gui` extra).
+`stackforge-polymaker` is stdlib only.
 
 ---
 
-## filamentdb.py
+## stackforge-filaments
 
 One plain JSON file (`./filaments.json` if present, else the copy shipped in the package; or `$FILAMENT_DB`) so it
 diffs cleanly in git and you can hand-edit it. Every entry records where its
@@ -109,12 +109,12 @@ eye, good to ~±15%) → `vendor` (published by the manufacturer) → `estimated
 (a guess). Only the first is trusted without a warning.
 
 ```sh
-filamentdb seed                 # starter Polymaker PLA Pro set
-filamentdb list
-filamentdb add --name Teal --color "#00757F" --td 0.13
-filamentdb show teal --layer-height 0.08
-filamentdb set teal --td 0.128 --provenance measured
-filamentdb import-sku CA02001    # colour + TD from Polymaker
+stackforge-filaments seed                 # starter Polymaker PLA Pro set
+stackforge-filaments list
+stackforge-filaments add --name Teal --color "#00757F" --td 0.13
+stackforge-filaments show teal --layer-height 0.08
+stackforge-filaments set teal --td 0.128 --provenance measured
+stackforge-filaments import-sku CA02001    # colour + TD from Polymaker
 ```
 
 ### Transmission distance
@@ -135,10 +135,10 @@ saturated darks become unreachable.
 
 ---
 
-## Filaments tab (tdforge-gui)
+## Filaments tab (stackforge)
 
 ```sh
-tdforge-gui   # then the Filaments tab
+stackforge   # then the Filaments tab
 ```
 
 The database is the weakest link in everything else here — stackforge's colour
@@ -157,7 +157,7 @@ That is what this is for.
   finish's starter td, but never over a measured entry. A HueForge TD box
   converts rather than letting the wrong scale in, and a **Polymaker SKU** box
   fills the whole entry from their published table — see
-  [polymaker.py](#polymakerpy).
+  [stackforge-polymaker](#stackforge-polymaker).
 - **Look** — the payoff. N layers of the selected filament composited over
   white *and* over black with the same optical model stackforge uses, plus the
   transmittance table and the depth at which it goes opaque. A td that is wrong
@@ -190,7 +190,7 @@ colour `#227788` comes back as 0.2997 / `#237788`.
 
 ---
 
-## polymaker.py
+## stackforge-polymaker
 
 Polymaker publish a HEX code and a TD for most of their catalogue:
 [wiki.polymaker.com › Hex Codes and Transmission Distances][poly]. This scrapes
@@ -202,12 +202,12 @@ database does.
 [poly]: https://wiki.polymaker.com/polymaker-products/more-about-our-products/hex-codes-and-transmission-distances
 
 ```sh
-polymaker refresh              # re-scrape (needs network; retries, and leaves the cache alone on failure)
-polymaker lookup CA02001
-polymaker search silk blue
-polymaker import CA02001 --write
+stackforge-polymaker refresh              # re-scrape (needs network; retries, and leaves the cache alone on failure)
+stackforge-polymaker lookup CA02001
+stackforge-polymaker search silk blue
+stackforge-polymaker import CA02001 --write
 
-filamentdb import-sku CA02001  # same thing, from the db tool
+stackforge-filaments import-sku CA02001  # same thing, from the db tool
 ```
 
 ```
@@ -244,7 +244,7 @@ So a lot of imports fill in the colour and leave the td a finish-based guess.
 Those entries stay `provenance: estimated` and say why in their notes — calling
 them `vendor` would be a lie about the number that matters most. Only a SKU with
 both becomes `vendor`. Nothing here ever writes `measured`; that is what
-`calibrate.py` is for.
+`stackforge-calibrate` is for.
 
 Dual-colour filaments are refused outright, with their two hex codes in the
 error, because the optical model assumes one bulk colour per filament. SKUs with
@@ -272,8 +272,8 @@ blue. *Refresh from wiki* re-scrapes on a worker thread.
 Most SKUs have no published TD, so `guess-td` learns one from the 384 that do:
 
 ```sh
-polymaker guess-td --all           # dry run over the database
-polymaker guess-td teal --write
+stackforge-polymaker guess-td --all           # dry run over the database
+stackforge-polymaker guess-td teal --write
 ```
 
 It fits log(TD) against L\*a\*b\* within a finish group, and **picks between that
@@ -327,7 +327,7 @@ cached JSON keeps working in the meantime.
 
 ---
 
-## calibrate.py
+## stackforge-calibrate
 
 Turns estimated entries into measured ones. Every step below is also available
 inside the Filaments tab, which is usually the easier way to run it — same
@@ -335,10 +335,10 @@ maths, same refusals, but you can see the residuals per step.
 
 ```sh
 # 1. print this
-calibrate wedge --filament teal --base white -o wedge_teal.3mf
+stackforge-calibrate wedge --filament teal --base white -o wedge_teal.3mf
 
 # 2. read the patches, then fit
-calibrate fit --filament teal --base "#F4F5F0" \
+stackforge-calibrate fit --filament teal --base "#F4F5F0" \
     --measured "#BAC8C7,#8CA8AB,..." --write
 ```
 
@@ -358,7 +358,7 @@ A second wedge over a contrasting base breaks the degeneracy, because both
 must be explained by one color and one td. Same data, joint fit: **0.9003**.
 
 ```sh
-calibrate fit --filament natural \
+stackforge-calibrate fit --filament natural \
     --base  "#F4F5F0" --measured  "..." \
     --base2 "#1A1A1C" --measured2 "..." --write
 ```
@@ -420,7 +420,7 @@ over a shared base, each on its own extruder — so a four-head machine
 calibrates three filaments per print:
 
 ```sh
-calibrate wedge --filament black,blue,red --base white \
+stackforge-calibrate wedge --filament black,blue,red --base white \
     -o wedge.3mf --steps 8 --base-layers 27
 ```
 
@@ -438,7 +438,7 @@ residual on clean measurements, that's the signal to switch.
 
 ---
 
-## topdeco.py
+## stackforge-top-paint
 
 Renders a top-down z-buffer, samples an image across the footprint, quantizes
 to your filaments, and emits one modifier volume per filament hugging the
@@ -450,7 +450,7 @@ this works on arbitrary geometry — a flat chainmail sheet, a domed badge, and 
 terrain tile all get the image laid over their real top surface.
 
 ```sh
-topdeco fabric.3mf logo.png -o out.3mf \
+stackforge-top-paint fabric.3mf logo.png -o out.3mf \
     --filaments white,black,blue,red --depth 0.6 --preview prev.png
 ```
 
@@ -470,7 +470,7 @@ tile resolution. 159 mm sheet at 0.4 mm runs in about half a second.
 
 ---
 
-## stackforge.py
+## stackforge-plaque
 
 HueForge builds a **height map**: one global filament order for the whole
 print, with a pixel's color decided purely by stack height there. That exists
@@ -482,7 +482,7 @@ encoded in vertical composition, so there's no surface topography to catch
 raking light.
 
 ```sh
-stackforge photo.jpg -o plaque.3mf \
+stackforge-plaque photo.jpg -o plaque.3mf \
     --filaments white,black,blue,red,yellow --base white \
     --width 150 --layer-height 0.08 --max-layers 16 \
     --preview sim.png --gamut-preview check.png
@@ -513,7 +513,7 @@ fits, so you can see which loadout suits the image before committing to a
 print. Ranking turns on automatically; `-o` is not needed.
 
 ```sh
-stackforge photo.jpg --base white \
+stackforge-plaque photo.jpg --base white \
     --filaments white,black,blue,red,yellow,teal,orange,magenta \
     --slots 4 --top 5 --rank-sheet combos.png
 ```
@@ -542,14 +542,14 @@ slots there are `C(N-1, S-1)` combinations — 8 filaments and 4 slots gives
 a few badly-wrong regions bother you more than a slight overall shift.
 `--no-rank` skips it and uses the base plus the first `--slots`-1 others as listed.
 
-As a sanity check: on `docs/stackforge_target.png` (a full hue sweep) the
+As a sanity check: on `docs/plaque_target.png` (a full hue sweep) the
 ranker's top two are white + blue + red + yellow and white + blue + yellow +
 magenta — subtractive-ish primaries, found without being told about them.
 
 ### GUI
 
 ```sh
-tdforge-gui [image.jpg]   # the Plaque tab
+stackforge [image.jpg]   # the Plaque tab
 ```
 
 Every CLI option, plus the things a GUI is genuinely better at: seeing the
@@ -574,7 +574,7 @@ by looking at renders instead of reading a table.
 ### Dithering
 
 `--dither blue` (blue-noise screen), `ordered` (Bayer) and `floyd` all try to buy accuracy by
-mixing two stacks per pixel side by side. `halftone_compare.py` scores them on dE after a
+mixing two stacks per pixel side by side. `stackforge-dither-compare` scores them on dE after a
 Gaussian blur that stands in for the eye, since per-pixel dE punishes any dither unfairly.
 
 ![target and each dither mode, 2 layers](docs/halftone_2layers.png)
@@ -599,7 +599,7 @@ does not extrude features one 0.4 mm pixel wide (see *Slicing*). Dithered plaque
 - **Dither only shallow stacks.** With 12+ layers the gamut is already dense
   (~215k colours for 5 filaments at 16 layers) and blue/ordered gain little;
   see *Dithering*, including why the slicer undoes it. It *does* matter in
-  `topdeco`, where the palette is flat.
+  `stackforge-top-paint`, where the palette is flat.
 - **Residual error is gamut, not solver.** Feeding a rendered result back in
   gives mean dE 0.1. If `--gamut-preview` shows red regions, those colors are
   genuinely unreachable with that filament set — add a filament, don't tweak
@@ -616,12 +616,12 @@ profiles make only the top shell solid — the Creator 5 profile is
 15%` — so on a 16-layer stack roughly eleven layers would print as sparse grid
 and the colour maths would not describe the object at all.
 
-`stackforge` therefore bakes `sparse_infill_density: 100%` into the output
+`stackforge-plaque` therefore bakes `sparse_infill_density: 100%` into the output
 profile, and pins `infill_combination: 0` so neighbouring colour layers are
 never merged into one extrusion. `--no-force-solid` opts out if your profile is
 already fully solid.
 
-`topdeco` does not change infill (it paints someone else's model), but it warns
+`stackforge-top-paint` does not change infill (it paints someone else's model), but it warns
 when `--depth` reaches below the profile's solid top shell, where paint would
 land on a lattice rather than a surface.
 
@@ -631,14 +631,14 @@ The gamut starts from "the base is an opaque backing", and with a realistic td
 that is not free. White is far more transmissive than it looks: the shipped
 Polymaker PLA Pro White (`td` 0.467 mm, estimated) passes **42%** through the
 default 5 base layers (0.40 mm), and the print picks up whatever is underneath;
-stackforge asks for 27 (2.16 mm). Black at `td` 0.022 is opaque in 2 layers.
+stackforge-plaque asks for 27 (2.16 mm). Black at `td` 0.022 is opaque in 2 layers.
 
-What `td` means matters here. `calibrate.py` fits it to *reflected* light,
-which crosses each layer twice, so it is an effective value; `munki.py
-measure-transmission` measures single-pass `td`, which for a clear absorber is
+What `td` means matters here. `stackforge-calibrate` fits it to *reflected* light,
+which crosses each layer twice, so it is an effective value; `stackforge-measure
+transmission` measures single-pass `td`, which for a clear absorber is
 about twice as large. stackforge uses the reflectance kind.
 
-`stackforge` now warns when the base passes more than 1% and tells you the
+`stackforge-plaque` now warns when the base passes more than 1% and tells you the
 layer count that would fix it; the GUI's estimate panel shows the same. The old
 flat `td` 0.13 put white at 4.6% through 5 layers, which is why this never came
 up before.
@@ -730,19 +730,19 @@ same thing — short stacks pad downward with base filament by design.
 
 - `--part-type part` gives real overlapping solids instead of modifiers.
 - Output 3MFs are regenerated clean: transforms are baked to world space and
-  slicer settings in the *input model* (topdeco/surfacecolor) are **not**
+  slicer settings in the *input model* (stackforge-top-paint / stackforge-paint) are **not**
   carried over; `--template` supplies the profile.
 - Always check `--preview` before slicing. It costs nothing.
 
-## surfacecolor.py
+## stackforge-paint
 
 **Realistic colour from a GLB.** Give it a `.glb`/`.gltf` and it reads the model's own colours
 (base-colour texture with its UVs, vertex colours, material colour), quantises them to your
 filaments with an ordered dither, and writes a printable 3MF:
 
 ```sh
-surfacecolor model.glb -o out.3mf --filaments white,black,blue,red --template my_profile.3mf
-surfacecolor model.glb -o out.3mf --palette "#e2dedb,#0c0e0c,#003287,#e20010" --scale-to 60
+stackforge-paint model.glb -o out.3mf --filaments white,black,blue,red --template my_profile.3mf
+stackforge-paint model.glb -o out.3mf --palette "#e2dedb,#0c0e0c,#003287,#e20010" --scale-to 60
 ```
 
 glTF is Y-up metres; it is rotated to Z-up and scaled to millimetres (`--scale-to MM` sets the
@@ -751,7 +751,7 @@ files (Draco, meshopt, KTX2) are refused with a message; re-export without compr
 `--dither off` gives plain nearest-filament; the run prints a mean dE (simulated, not
 measured). Dithering is made of one-voxel features, so keep `--resolution` at 0.6 mm or more
 (the default 0.8 is fine). The result is only as good as your palette: a texture with green in it
-needs a green-ish filament. `make-fixture` writes `globe.glb` to try this on. The Paint tab's
+needs a green-ish filament. `stackforge-make-samples` writes `globe.glb` to try this on. The Paint tab's
 *Realistic colour* mode is this path.
 
 Everything below also applies to GLB input; the decorative patterns need no colour data.
@@ -762,11 +762,11 @@ the model on the slicer's layer grid, evaluates a pattern at every voxel within
 The slicer does the intersection, so the mesh is never touched.
 
 ```sh
-surfacecolor badge.3mf -o out.3mf --filaments white,black \
+stackforge-paint badge.3mf -o out.3mf --filaments white,black \
     --pattern checker3d --scale 6 --preview preview.png
-surfacecolor globe.3mf -o mars.3mf --filaments white,red,orange,black \
+stackforge-paint globe.3mf -o mars.3mf --filaments white,red,orange,black \
     --pattern image-spherical --image mars_equirect.jpg
-surfacecolor vase.3mf -o out.3mf --filaments white,black \
+stackforge-paint vase.3mf -o out.3mf --filaments white,black \
     --pattern expr --expr "sin(z/3 + theta*4) > 0"
 ```
 
@@ -792,25 +792,25 @@ grid drop out on alternate layers).
   box counts down.
 - No painting window and no dithering yet.
 
-## munki.py
+## stackforge-measure
 
 Measures printed wedges and plaques with a ColorMunki (or any ArgyllCMS spectro) and feeds
-`calibrate.py`. Reflectance wedges and plaque checks use `spotread`'s normal reflective mode;
+`stackforge-calibrate`. Reflectance wedges and plaque checks use `spotread`'s normal reflective mode;
 transmission uses a calibrated laptop screen as the backlight and standalone chips from
-`calibrate.py chips`. **Not yet run on real hardware.** A ColorMunki with a stale dial report can
-use `--nospos` (patched ArgyllCMS via `argyll-nospos`, dial check off; munki.py adds its own
+`stackforge-calibrate chips`. **Not yet run on real hardware.** A ColorMunki with a stale dial report can
+use `--nospos` (patched ArgyllCMS via `argyll-nospos`, dial check off; stackforge-measure adds its own
 checks). Setup, the power-cycle fallback, and first-run checklist: `docs/measuring.md`.
 
 ```sh
-munki measure-wedge --steps 12 -o wedge.json
-calibrate chips --filament teal -o chips.3mf
-munki transmission --thickness 0.25,0.33,0.41,0.49
+stackforge-measure measure-wedge --steps 12 -o wedge.json
+stackforge-calibrate chips --filament teal -o chips.3mf
+stackforge-measure transmission --thickness 0.25,0.33,0.41,0.49
 ```
 
-## make_fixture.py
+## stackforge-make-samples
 
-Generates `fabric.3mf` (40×40 tile chainmail) and `badge.3mf` (dome on a
-plinth) for testing without real files.
+Generates `fabric.3mf` (40×40 tile chainmail), `badge.3mf` (dome on a
+plinth) and `globe.glb` (a textured globe) for trying things without real files.
 
 ## Development
 

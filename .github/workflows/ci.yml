@@ -8,7 +8,7 @@ jobs:
         python: ["3.10", "3.12"]
     env:
       QT_QPA_PLATFORM: offscreen
-      TDFORGE_SKIP_SLICER: "1"   # no Flash Studio on the runner
+      STACKFORGE_SKIP_SLICER: "1"   # no Flash Studio on the runner
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

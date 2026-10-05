@@ -4,19 +4,19 @@ import tempfile
 import time
 import unittest
 
-from tdforge.gui.runner import Job, Screen, tool_command
+from stackforge.gui.runner import Job, Screen, tool_command
 
 
 class RunnerTests(unittest.TestCase):
-    def test_make_fixture_runs_like_the_cli(self):
+    def test_make_samples_runs_like_the_cli(self):
         with tempfile.TemporaryDirectory() as d:
-            job = Job(tool_command("make_fixture", ["--out-dir", d]))
+            job = Job(tool_command("make_samples", ["--out-dir", d]))
             self.assertEqual(job.wait(60), 0)
             self.assertTrue(os.path.exists(os.path.join(d, "badge.3mf")))
             self.assertIn("triangles", job.drain())
 
     def test_argparse_error_comes_back_as_text_and_exit_code(self):
-        job = Job(tool_command("stackforge", ["--nope"]))
+        job = Job(tool_command("plaque", ["--nope"]))
         self.assertEqual(job.wait(60), 2)
         self.assertIn("error:", job.drain())
 
@@ -31,7 +31,7 @@ class RunnerTests(unittest.TestCase):
         self.assertNotEqual(job.returncode, 0)
 
     def test_cancel_escalates_to_kill(self):
-        import tdforge.gui.runner as r
+        import stackforge.gui.runner as r
         old, r.KILL_AFTER = r.KILL_AFTER, 0.3
         self.addCleanup(setattr, r, "KILL_AFTER", old)
         code = "import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); print('ready', flush=True); time.sleep(60)"
@@ -46,7 +46,7 @@ class RunnerTests(unittest.TestCase):
         self.assertLess(job.elapsed, 8)
 
     def test_input_prompts(self):
-        """The munki shape: print a prompt, wait for Enter, carry on."""
+        """The measure shape: print a prompt, wait for Enter, carry on."""
         code = ("x = input('place chip, press Enter... ')\n"
                 "print('got', repr(x))\n"
                 "y = input('again? ')\n"

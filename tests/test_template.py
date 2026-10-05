@@ -1,13 +1,13 @@
-"""stackforge against a synthetic Flash Studio-style --template: layer grid, patched settings."""
+"""plaque against a synthetic Flash Studio-style --template: layer grid, patched settings."""
 import contextlib, io, json, os, re, tempfile, unittest, zipfile
 
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-from tdforge.tools import stackforge as sf
-from tdforge.core import td3mf
-from tdforge.core.paths import packaged
+from stackforge.tools import plaque
+from stackforge.core import threemf
+from stackforge.core.paths import packaged
 
 FILS = ",".join(f"polymaker-pla-pro-{c}" for c in ("white", "black", "blue", "red"))
 LH, FLH = 0.12, 0.2
@@ -31,7 +31,7 @@ def make_template(path, slots=4):
 def run_main(*argv):
     out = io.StringIO()
     with contextlib.redirect_stdout(out):
-        sf.main([os.path.join(ROOT, "docs", "stackforge_target.png"), "--db",
+        plaque.main([os.path.join(ROOT, "docs", "plaque_target.png"), "--db",
                  packaged("filaments.json"), *argv])
     return out.getvalue()
 
@@ -74,7 +74,7 @@ class Template(unittest.TestCase):
         cols = ["#E2DEDB", "#0C0E0C", "#003287", "#E20010"]
         self.assertEqual([c.upper() for c in prof["filament_colour"]], cols)
         self.assertEqual([c.upper() for c in prof["filament_multi_colour"]], cols)
-        self.assertLessEqual(float(prof["wipe_tower_y"][0]), 256 - td3mf.PRIME_TOWER_DEPTH)
+        self.assertLessEqual(float(prof["wipe_tower_y"][0]), 256 - threemf.PRIME_TOWER_DEPTH)
 
         for key, val in (("layer_height", "0.12"), ("sparse_infill_density", "100%")):
             self.assertIn(f'<metadata key="{key}" value="{val}"/>', cfg)
@@ -104,15 +104,35 @@ class Template(unittest.TestCase):
             run_main("--filaments", FILS, "-o", os.path.join(self.d, "nope", "o.3mf"))
         self.assertIn("directory does not exist", str(cm.exception))
 
+    def test_orca_output_without_grid_is_refused(self):
+        with self.assertRaises(SystemExit) as cm:
+            run_main("--filaments", FILS, "-o", os.path.join(self.d, "o.3mf"))
+        self.assertIn("--template is needed", str(cm.exception))
+
+
+class BadInput(unittest.TestCase):
+    def test_malformed_model_part_is_reported(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "broken.3mf")
+            with zipfile.ZipFile(p, "w") as z:
+                z.writestr("3D/3dmodel.model", "<model><unclosed>")
+            with self.assertRaises(SystemExit) as cm:
+                threemf.read_3mf(p)
+            self.assertIn("not valid XML", str(cm.exception))
+
+    def test_bad_transform_is_reported(self):
+        with self.assertRaises(SystemExit):
+            threemf.parse_transform("1 0 0 junk")
+
 
 class Escaping(unittest.TestCase):
     def test_names_with_xml_characters(self):
-        v = td3mf.box_verts(0, 0, 0, 1, 1, 1)
-        item = td3mf.Item('Nuts & Bolts "v2" <x>', v, td3mf.BOX_TRIS.copy())
+        v = threemf.box_verts(0, 0, 0, 1, 1, 1)
+        item = threemf.Item('Nuts & Bolts "v2" <x>', v, threemf.BOX_TRIS.copy())
         with tempfile.TemporaryDirectory() as d:
             for flavor in ("orca", "prusa"):
                 p = os.path.join(d, f"{flavor}.3mf")
-                td3mf.get_writer(flavor)(p, [item], {0: []}, 1)
+                threemf.get_writer(flavor)(p, [item], {0: []}, 1)
                 with zipfile.ZipFile(p) as z:
                     for n in z.namelist():
                         if n.endswith((".model", ".config")):

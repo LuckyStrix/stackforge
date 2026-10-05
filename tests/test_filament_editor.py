@@ -9,13 +9,13 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import numpy as np  # noqa: E402
 from PySide6.QtWidgets import QApplication, QMessageBox  # noqa: E402
 
-from tdforge.core import optics  # noqa: E402
-from tdforge.core.filamentdb import DB  # noqa: E402
-from tdforge.core.paths import packaged  # noqa: E402
-from tdforge.gui import theme  # noqa: E402
-from tdforge.gui.filaments.calibrate import blocked, fit_lines  # noqa: E402
-from tdforge.gui.filaments.editor import FilamentEditor  # noqa: E402
-from tdforge.tools import calibrate  # noqa: E402
+from stackforge.core import optics  # noqa: E402
+from stackforge.core.filamentdb import DB  # noqa: E402
+from stackforge.core.paths import packaged  # noqa: E402
+from stackforge.gui import theme  # noqa: E402
+from stackforge.gui.filaments.calibrate import blocked, fit_lines  # noqa: E402
+from stackforge.gui.filaments.editor import FilamentEditor  # noqa: E402
+from stackforge.tools import calibrate  # noqa: E402
 
 app = QApplication.instance() or QApplication([])
 theme.apply(app)
@@ -57,9 +57,9 @@ class Calibration(unittest.TestCase):
         base = np.array([244.0, 245.0, 240.0])
         n = np.arange(1, steps + 1)[:, None]
         T = np.exp(-(n * lh) / 0.2)
-        from tdforge.core import tdcolor
-        lin = tdcolor.srgb_to_linear(base) * T + tdcolor.srgb_to_linear(fil.rgb()) * (1 - T)
-        meas = tdcolor.linear_to_srgb(lin)
+        from stackforge.core import colormath
+        lin = colormath.srgb_to_linear(base) * T + colormath.srgb_to_linear(fil.rgb()) * (1 - T)
+        meas = colormath.linear_to_srgb(lin)
         fit = calibrate.fit_td([(meas, base)], lh, False, fil.rgb())
         lines = fit_lines(fil, [(meas, base)], lh, False, fit)
         text = "\n".join(t for t, _ in lines)
@@ -87,9 +87,9 @@ class Editor(unittest.TestCase):
         self.assertEqual((fil.name, fil.color, fil.td), ("Renamed", "#123456", 0.5))
 
     def test_tab_shows_unsaved_dot(self):
-        from tdforge.gui.tabs.filaments import FilamentsTab
-        from tdforge.gui.project import Project
-        from tdforge.gui.settings import Settings
+        from stackforge.gui.tabs.filaments import FilamentsTab
+        from stackforge.gui.project import Project
+        from stackforge.gui.settings import Settings
         proj = Project(Settings(os.path.join(self.d.name, "s.json")))
         proj.settings.set("db", self.path)
         tab = FilamentsTab(proj)

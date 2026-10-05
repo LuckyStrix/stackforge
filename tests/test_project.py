@@ -3,8 +3,8 @@ import os
 import tempfile
 import unittest
 
-from tdforge.gui.project import Project
-from tdforge.gui.settings import PresetStore, Settings
+from stackforge.gui.project import Project
+from stackforge.gui.settings import PresetStore, Settings
 from tests.test_template import make_template
 
 
@@ -13,6 +13,19 @@ class SettingsTests(unittest.TestCase):
         self.d = tempfile.TemporaryDirectory()
         self.addCleanup(self.d.cleanup)
         self.path = os.path.join(self.d.name, "sub", "settings.json")
+
+    def test_old_tdforge_config_is_carried_over(self):
+        from unittest import mock
+        from stackforge.gui.settings import config_dir
+        old = os.path.join(self.d.name, "tdforge")
+        os.makedirs(os.path.join(old, "presets", "stackforge"))
+        with open(os.path.join(old, "settings.json"), "w") as fh:
+            json.dump({"template": "/t.3mf"}, fh)
+        with mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": self.d.name}):
+            new = config_dir()
+        self.assertEqual(Settings(os.path.join(new, "settings.json")).get("template"), "/t.3mf")
+        self.assertTrue(os.path.isdir(os.path.join(new, "presets", "plaque")))
+        self.assertTrue(os.path.isdir(old))
 
     def test_roundtrip_and_defaults(self):
         s = Settings(self.path)
@@ -72,7 +85,10 @@ class ProjectTests(unittest.TestCase):
         self.assertTrue(os.path.isabs(self.p.get("db")))
 
     def test_warnings(self):
+        self.assertIn("no template", self.p.warning())     # orca with no grid to go on
+        self.p.set("flavor", "prusa")
         self.assertIsNone(self.p.warning())
+        self.p.set("flavor", "orca")
         self.p.set("template", "/no/such.3mf")
         self.assertIn("not found", self.p.warning())
         t = os.path.join(self.d.name, "a.3mf")

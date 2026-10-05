@@ -11,8 +11,8 @@ import unittest
 import numpy as np
 from PIL import Image
 
-from tdforge.core import glb, td3mf, tdcolor
-from tdforge.tools import surfacecolor as sc
+from stackforge.core import glb, threemf, colormath
+from stackforge.tools import paint as sc
 
 PALETTE = np.array([[255, 0, 0], [0, 0, 255], [255, 255, 255], [0, 0, 0]], float)
 
@@ -175,9 +175,9 @@ class Reader(unittest.TestCase):
 
     def test_missing_file(self):
         with self.assertRaises(SystemExit):
-            td3mf.read_model("/nonexistent/model.glb")
+            threemf.read_model("/nonexistent/model.glb")
         with self.assertRaises(SystemExit):
-            td3mf.read_3mf("/nonexistent/model.3mf")
+            threemf.read_3mf("/nonexistent/model.3mf")
 
 
 class Colour(unittest.TestCase):
@@ -218,38 +218,38 @@ class Colour(unittest.TestCase):
         v, t = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0.0]]), np.array([[0, 1, 2]])
         a = argparse.Namespace(dither=None, dither_strength=1.0, pattern="texture")
         cd = sc.Coords(np.zeros(1), np.zeros(1), np.zeros(1), (1, 1, 1),
-                       item=td3mf.Item("t", v, t), res=1.0)
+                       item=threemf.Item("t", v, t), res=1.0)
         with self.assertRaises(SystemExit):
             sc.p_texture(cd, a, 4, PALETTE)
 
 
 class Dither(unittest.TestCase):
     def test_mid_grey_mixes_black_and_white(self):
-        pal = tdcolor.srgb_to_linear(np.array([[0, 0, 0], [255, 255, 255]], float))
+        pal = colormath.srgb_to_linear(np.array([[0, 0, 0], [255, 255, 255]], float))
         target = np.full((20000, 3), 0.5)                                 # half-way in linear light
         ii = np.indices((40, 40, 13)).reshape(3, -1).T[:20000]
-        idx, blend = tdcolor.quantize_dither(target, pal, ii)
+        idx, blend = colormath.quantize_dither(target, pal, ii)
         frac = idx.mean()
         self.assertAlmostEqual(float(frac), 0.5, delta=0.03)
         np.testing.assert_allclose(blend, 0.5, atol=1e-6)
 
     def test_strength_zero_is_nearest(self):
-        pal = tdcolor.srgb_to_linear(PALETTE)
-        tg = tdcolor.srgb_to_linear(np.array([[250, 10, 10], [10, 10, 240]], float))
-        idx, _ = tdcolor.quantize_dither(tg, pal, np.zeros((2, 3), int), strength=0)
+        pal = colormath.srgb_to_linear(PALETTE)
+        tg = colormath.srgb_to_linear(np.array([[250, 10, 10], [10, 10, 240]], float))
+        idx, _ = colormath.quantize_dither(tg, pal, np.zeros((2, 3), int), strength=0)
         self.assertEqual(list(idx), [0, 1])
 
     def test_exact_palette_colour_is_never_dithered(self):
-        pal = tdcolor.srgb_to_linear(PALETTE)
+        pal = colormath.srgb_to_linear(PALETTE)
         tg = np.tile(pal[2], (500, 1))
         ii = np.indices((10, 10, 5)).reshape(3, -1).T
-        idx, _ = tdcolor.quantize_dither(tg, pal, ii)
+        idx, _ = colormath.quantize_dither(tg, pal, ii)
         self.assertTrue((idx == 2).all())
 
 
 class Fixes(unittest.TestCase):
     def test_voxelize_empty_mesh(self):
-        item = td3mf.Item("e", np.zeros((3, 3)), np.zeros((0, 3), dtype=np.int64))
+        item = threemf.Item("e", np.zeros((3, 3)), np.zeros((0, 3), dtype=np.int64))
         occ = sc.voxelize(item, (0, 0, 1, 1), 0.5, sc.layer_edges(1.0, 0.2, 0.2))
         self.assertFalse(occ.any())
 
@@ -258,7 +258,7 @@ class Fixes(unittest.TestCase):
         # 40k coincident faces over one column used to wrap an int16 accumulator to zero
         v = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0.0]])
         t = np.array([[0, 1, 2], [1, 3, 2]] * 20000)
-        item = td3mf.Item("x", v, t)
+        item = threemf.Item("x", v, t)
         edges = np.array([0.0, -1.0])
         occ = sc.voxelize(item, (0, 0, 1, 1), 0.5, edges)
         self.assertEqual(occ.shape[0], 1)
@@ -271,12 +271,12 @@ class Fixes(unittest.TestCase):
 
     def test_settings_zero_is_not_ignored(self):
         raw = b'{"layer_height": "0.2", "min_layer_height": "0.0", "max_layer_height": "0.5"}'
-        out = json.loads(td3mf._patch_settings(raw, layer_height=0.0, first_layer_height=0.0))
+        out = json.loads(threemf._patch_settings(raw, layer_height=0.0, first_layer_height=0.0))
         self.assertEqual(float(out["layer_height"]), 0.0)
         self.assertEqual(float(out["initial_layer_print_height"]), 0.0)
 
     def test_catalog_load_skips_bad_entries(self):
-        from tdforge.tools.polymaker import Catalog
+        from stackforge.tools.polymaker import Catalog
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "cat.json")
             with open(path, "w") as fh:
@@ -294,7 +294,7 @@ class Fixes(unittest.TestCase):
 
     def test_missing_image_is_a_clean_error(self):
         with self.assertRaises(SystemExit):
-            tdcolor.open_image("/nonexistent/pic.png")
+            colormath.open_image("/nonexistent/pic.png")
 
 
 if __name__ == "__main__":
