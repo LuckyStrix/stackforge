@@ -431,6 +431,12 @@ Mind `--base-layers`: the patches are only measuring the filament if the base
 underneath them is opaque, and white needs ~27 layers to get there. The command
 warns when it does not.
 
+A step is too small to hold a hand-held instrument against, so give it a gap:
+`--gap 8` leaves 8 mm between steps and thins the base there to a hinge (`--hinge-layers`,
+default 4). Each step keeps the full `--base-layers` pad, so opacity is unchanged, and you can flex
+one step flat onto the aperture while the wedge stays one piece. Mind the plate width: 12 steps
+at 14 mm + 8 mm gaps is 256 mm.
+
 ### Per-channel td
 
 Pigmented filaments often need it — a red that passes red but blocks green and

@@ -42,22 +42,46 @@ from stackforge.core.filamentdb import DEFAULT_DB, DB
 # --------------------------------------------------------------------------
 
 
-def build_wedge(steps, layer_h, base_layers, step_w, step_d, gap, rows=1, row_gap=4.0):
+def build_wedge(steps, layer_h, base_layers, step_w, step_d, gap, rows=1, row_gap=4.0,
+                hinge_layers=None):
     """A staircase: step i carries i+1 layers of the test filament.
 
     `rows` puts several test filaments on one plate, one staircase each, over a
     shared base. On an independent-toolhead machine that is free -- the base
     takes one head and each test filament takes another, so a four-head printer
     calibrates three filaments per print instead of one.
+
+    `hinge_layers` (needs `gap` > 0) thins the base between the steps to that many
+    layers, so each step can be flexed flat against an instrument aperture while the
+    wedge stays one piece. The pad under each step keeps the full `base_layers`,
+    which is all the measurement sees, so opacity is unaffected.
     """
+    if hinge_layers is not None:
+        if gap <= 0:
+            raise ValueError("a hinge needs a gap between the steps (--gap > 0)")
+        if not 1 <= hinge_layers < base_layers:
+            raise ValueError(f"hinge layers must be 1..{base_layers - 1} "
+                             f"(thinner than the {base_layers} base layers)")
     base_h = base_layers * layer_h
     total_w = steps * step_w + (steps - 1) * gap
     total_d = rows * step_d + (rows - 1) * row_gap
-    plate = threemf.Item(
-        "wedge_base",
-        threemf.box_verts(0, 0, 0, total_w, total_d, base_h),
-        threemf.BOX_TRIS.copy(),
-    )
+    if hinge_layers is None:
+        plate = threemf.Item(
+            "wedge_base",
+            threemf.box_verts(0, 0, 0, total_w, total_d, base_h),
+            threemf.BOX_TRIS.copy(),
+        )
+    else:
+        hinge_h = hinge_layers * layer_h
+        pb = threemf.BoxBuilder()
+        pb.add(0, 0, 0, total_w, total_d, hinge_h)
+        for r in range(rows):
+            y0 = r * (step_d + row_gap)
+            for i in range(steps):
+                x0 = i * (step_w + gap)
+                pb.add(x0, y0, hinge_h, x0 + step_w, y0 + step_d, base_h)
+        verts, tris = pb.mesh()
+        plate = threemf.Item("wedge_base", verts, tris)
     decals = []
     for r in range(rows):
         bb = threemf.BoxBuilder()
@@ -107,9 +131,13 @@ def cmd_wedge(args):
     db = DB(args.db)
     fils = db.resolve(args.filament)
     base = db.get(args.base)
+    hinge = args.hinge_layers
+    if hinge is None and args.gap > 0:
+        hinge = min(4, args.base_layers - 1)
     plate, decals, w, base_h = build_wedge(
         args.steps, args.layer_height, args.base_layers,
         args.step_width, args.step_depth, args.gap, rows=len(fils),
+        hinge_layers=hinge,
     )
     threemf.get_writer(args.flavor)(args.output, [plate], {0: decals}, 1, "part",
                                   colors=[base.color] + [f.color for f in fils])
@@ -117,6 +145,9 @@ def cmd_wedge(args):
     print(f"wedge: {args.steps} steps, 1..{args.steps} layers, "
           f"{len(fils)} filament{'s' if len(fils) > 1 else ''}")
     print(f"  over {args.base_layers} base layers of {base.label()}")
+    if hinge is not None:
+        print(f"  {args.gap:g} mm gaps joined by a {hinge}-layer hinge "
+              f"({hinge * args.layer_height:.2f} mm): flex a step flat onto the aperture")
     print(f"  {w:.1f} x {depth:.1f} mm, "
           f"{base_h:.2f}..{base_h + args.steps*args.layer_height:.2f} mm tall")
     print(f"wrote {args.output}")
@@ -341,7 +372,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--step-width", type=float, default=14.0,
                    help="mm; a ColorMunki samples an ~8 mm circle, so leave >= 3 mm each side")
     p.add_argument("--step-depth", type=float, default=14.0)
-    p.add_argument("--gap", type=float, default=0.0)
+    p.add_argument("--gap", type=float, default=0.0,
+                   help="mm between steps; with a gap the base between them becomes a thin "
+                        "hinge so one step at a time can be flexed flat onto the instrument "
+                        "(try 8)")
+    p.add_argument("--hinge-layers", type=int, default=None,
+                   help="base layers left in the gap (default 4 when --gap > 0; the pads "
+                        "under the steps keep --base-layers)")
     p.add_argument("--flavor", choices=["orca", "prusa"], default="orca")
     p.set_defaults(fn=cmd_wedge)
 

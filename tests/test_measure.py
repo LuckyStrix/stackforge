@@ -187,6 +187,27 @@ class Calibrate(unittest.TestCase):
         for ext, v, t in decals:
             self.assertAlmostEqual(v[:, 2].max(), 0.5 + 4 * 0.1)   # deepest step = 4 layers
 
+    def test_hinged_wedge_thins_only_the_gaps(self):
+        plate, decals, w, base_h = calibrate.build_wedge(3, 0.1, 8, 10.0, 14.0, 6.0, hinge_layers=3)
+        self.assertAlmostEqual(base_h, 0.8)
+        self.assertAlmostEqual(w, 3 * 10.0 + 2 * 6.0)
+        v = plate.verts
+        self.assertAlmostEqual(v[:, 2].max(), 0.8)
+        # the gap between step 1 and step 2 (x 10..16) is only the hinge tall
+        gap_pts = v[(v[:, 0] > 10.0) & (v[:, 0] < 16.0)]
+        self.assertEqual(len(gap_pts), 0)          # no vertex strictly inside the gap
+        strip = v[v[:, 2] <= 0.3 + 1e-9]
+        self.assertAlmostEqual(strip[:, 0].max(), w)
+        # steps still start at the full base height
+        for ext, dv, t in decals:
+            self.assertAlmostEqual(dv[:, 2].min(), 0.8)
+
+    def test_hinge_needs_a_gap_and_fewer_layers_than_the_base(self):
+        with self.assertRaises(ValueError):
+            calibrate.build_wedge(3, 0.1, 8, 10.0, 14.0, 0.0, hinge_layers=3)
+        with self.assertRaises(ValueError):
+            calibrate.build_wedge(3, 0.1, 8, 10.0, 14.0, 6.0, hinge_layers=8)
+
     def test_chips_are_standalone_and_stepped(self):
         chips = calibrate.build_chips(3, 0.08, 20.0, 20.0, 2.0)
         tops = [c.verts[:, 2].max() for c in chips]

@@ -146,6 +146,8 @@ class CalibratePage(QWidget):
         self.baselayers = spin(2, 30, 1, 8)
         self.stepw = spin(4, 40, 1, 10, 0)
         self.stepd = spin(4, 60, 1, 14, 0)
+        self.gap = spin(0, 30, 1, 0, 0)
+        self.hinge = spin(1, 29, 1, 4)
         self.flavor = QComboBox()
         self.flavor.addItems(["orca", "prusa"])
         w.addRow("Base filament", self.wbase)
@@ -156,6 +158,12 @@ class CalibratePage(QWidget):
         w.addRow("Base layers", self.baselayers)
         w.addRow("Step width (mm)", self.stepw)
         w.addRow("Step depth (mm)", self.stepd)
+        w.addRow("Gap between steps (mm)", self.gap)
+        w.addRow("Hinge layers", self.hinge)
+        w.addRow("", theme.hint("With a gap, the base between steps thins to the hinge layers so each "
+                                "step flexes flat onto the instrument (try 8 mm). Gap 0 = one solid wedge."))
+        self.gap.valueChanged.connect(lambda v: self.hinge.setEnabled(v > 0))
+        self.hinge.setEnabled(False)
         w.addRow("Slicer flavour", self.flavor)
         b = QPushButton("Write wedge 3MF…")
         b.clicked.connect(self.write_wedge)
@@ -221,7 +229,9 @@ class CalibratePage(QWidget):
         steps, lh = self.steps.value(), self.ed.layer.value
         bl, sw, sd = self.baselayers.value(), self.stepw.value(), self.stepd.value()
         try:
-            plate, decals, w, base_h = calibrate.build_wedge(steps, lh, bl, sw, sd, 0.0)
+            gap = self.gap.value()
+            plate, decals, w, base_h = calibrate.build_wedge(
+                steps, lh, bl, sw, sd, gap, hinge_layers=self.hinge.value() if gap > 0 else None)
             threemf.get_writer(self.flavor.currentText())(p, [plate], {0: decals}, 1, "part")
         except Exception as exc:
             QMessageBox.critical(self, APP, f"Could not write the wedge:\n{exc}")
