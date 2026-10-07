@@ -43,7 +43,7 @@ from stackforge.core.filamentdb import DEFAULT_DB, DB
 
 
 def build_wedge(steps, layer_h, base_layers, step_w, step_d, gap, rows=1, row_gap=4.0,
-                hinge_layers=None):
+                hinge_layers=None, first_layer_h=None):
     """A staircase: step i carries i+1 layers of the test filament.
 
     `rows` puts several test filaments on one plate, one staircase each, over a
@@ -55,14 +55,20 @@ def build_wedge(steps, layer_h, base_layers, step_w, step_d, gap, rows=1, row_ga
     layers, so each step can be flexed flat against an instrument aperture while the
     wedge stays one piece. The pad under each step keeps the full `base_layers`,
     which is all the measurement sees, so opacity is unaffected.
+
+    `first_layer_h` (default `layer_h`) is the slicer's first layer. Layer tops sit at
+    `first + k*layer`, so the base is `first + (base_layers-1)*layer` tall and each
+    step adds whole layers on top; a base that ignored a thicker first layer would
+    put every step edge on a layer mid-plane, where the slicer rounds it at random.
     """
+    first_layer_h = layer_h if first_layer_h is None else first_layer_h
     if hinge_layers is not None:
         if gap <= 0:
             raise ValueError("a hinge needs a gap between the steps (--gap > 0)")
         if not 1 <= hinge_layers < base_layers:
             raise ValueError(f"hinge layers must be 1..{base_layers - 1} "
                              f"(thinner than the {base_layers} base layers)")
-    base_h = base_layers * layer_h
+    base_h = first_layer_h + (base_layers - 1) * layer_h
     total_w = steps * step_w + (steps - 1) * gap
     total_d = rows * step_d + (rows - 1) * row_gap
     if hinge_layers is None:
@@ -72,7 +78,7 @@ def build_wedge(steps, layer_h, base_layers, step_w, step_d, gap, rows=1, row_ga
             threemf.BOX_TRIS.copy(),
         )
     else:
-        hinge_h = hinge_layers * layer_h
+        hinge_h = first_layer_h + (hinge_layers - 1) * layer_h
         pb = threemf.BoxBuilder()
         pb.add(0, 0, 0, total_w, total_d, hinge_h)
         for r in range(rows):
@@ -95,39 +101,71 @@ def build_wedge(steps, layer_h, base_layers, step_w, step_d, gap, rows=1, row_ga
     return plate, decals, total_w, base_h
 
 
-def build_chips(steps, layer_h, step_w, step_d, gap):
+def build_chips(steps, layer_h, step_w, step_d, gap, first_layer_h=None):
     """Standalone chips of 1..N layers, no base: light has to get through them.
+    Chip n is `first + (n-1)*layer` tall (the slicer's grid), not `n*layer`.
 
     The reflectance wedge sits on an opaque base, which blocks the backlight, so
     transmission measurements (stackforge-measure transmission) need the filament alone.
     """
+    first_layer_h = layer_h if first_layer_h is None else first_layer_h
     return [
         threemf.Item(f"chip_{i + 1}",
                    threemf.box_verts(i * (step_w + gap), 0, 0,
-                                   i * (step_w + gap) + step_w, step_d, (i + 1) * layer_h),
+                                   i * (step_w + gap) + step_w, step_d,
+                                   first_layer_h + i * layer_h),
                    threemf.BOX_TRIS.copy())
         for i in range(steps)
     ]
 
 
+def resolve_grid(args):
+    """Fill args.layer_height / first_layer_height from --template (the profile that
+    will slice the file), else the explicit flags; refuse to guess for orca."""
+    threemf.require_layer_grid(args.flavor, args.template, args.layer_height)
+    if args.template:
+        threemf.check_template(args.template)
+    t_lh, t_flh = threemf.template_layer_settings(args.template) if args.template else (None, None)
+    if args.layer_height is None:
+        args.layer_height = t_lh or 0.08
+        if t_lh:
+            print(f"layer height {t_lh} mm (from template)")
+    elif t_lh and abs(t_lh - args.layer_height) > 1e-9:
+        print(f"  - overriding the template's {t_lh} mm layer height with {args.layer_height} mm")
+    if args.first_layer_height is None:
+        args.first_layer_height = t_flh or args.layer_height
+        if t_flh:
+            print(f"first layer {t_flh} mm (from template)")
+
+
+def _grid_note(args):
+    return (f"Slice at layer height EXACTLY {args.layer_height} mm with first layer "
+            f"{args.first_layer_height} mm, or the step edges fall between layers.")
+
+
 def cmd_chips(args):
+    resolve_grid(args)
     db = DB(args.db)
     fil = db.resolve(args.filament)
     if len(fil) != 1:
         raise SystemExit("chips: give exactly one --filament")
     fil = fil[0]
     items = build_chips(args.steps, args.layer_height, args.step_width,
-                        args.step_depth, args.gap)
-    threemf.get_writer(args.flavor)(args.output, items, {}, 1, "part", colors=[fil.color])
+                        args.step_depth, args.gap, args.first_layer_height)
+    threemf.get_writer(args.flavor)(args.output, items, {}, 1, "part", template=args.template,
+                                    colors=[fil.color], layer_height=args.layer_height,
+                                    first_layer_height=args.first_layer_height)
     print(f"chips: {args.steps} standalone steps, 1..{args.steps} layers of {fil.label()}, "
           f"{args.step_width:.0f} x {args.step_depth:.0f} mm each")
     print(f"wrote {args.output}")
-    print(f"Slice at layer height EXACTLY {args.layer_height} mm, and remember the first "
-          f"layer may be thicker: the thickness to give stackforge-measure is what you measure "
-          f"with calipers, not steps x layer height.")
+    heights = [args.first_layer_height + i * args.layer_height for i in range(args.steps)]
+    print(_grid_note(args))
+    print("Chip thicknesses (mm) for stackforge-measure, check with calipers: "
+          + ",".join(f"{h:.3f}" for h in heights))
 
 
 def cmd_wedge(args):
+    resolve_grid(args)
     db = DB(args.db)
     fils = db.resolve(args.filament)
     base = db.get(args.base)
@@ -137,10 +175,13 @@ def cmd_wedge(args):
     plate, decals, w, base_h = build_wedge(
         args.steps, args.layer_height, args.base_layers,
         args.step_width, args.step_depth, args.gap, rows=len(fils),
-        hinge_layers=hinge,
+        hinge_layers=hinge, first_layer_h=args.first_layer_height,
     )
     threemf.get_writer(args.flavor)(args.output, [plate], {0: decals}, 1, "part",
-                                  colors=[base.color] + [f.color for f in fils])
+                                    template=args.template,
+                                    colors=[base.color] + [f.color for f in fils],
+                                    layer_height=args.layer_height,
+                                    first_layer_height=args.first_layer_height)
     depth = len(fils) * args.step_depth + (len(fils) - 1) * 4.0
     print(f"wedge: {args.steps} steps, 1..{args.steps} layers, "
           f"{len(fils)} filament{'s' if len(fils) > 1 else ''}")
@@ -154,17 +195,19 @@ def cmd_wedge(args):
     print(f"\nAssign extruder 1 = {base.label()}")
     for i, f in enumerate(fils, 2):
         print(f"         extruder {i} = {f.label()}   (row {i-1}, front to back)")
-    print(f"Slice at layer height EXACTLY {args.layer_height} mm.")
+    print(_grid_note(args))
 
     # A base that is not opaque makes every patch a measurement of the build
     # plate as much as of the filament.
     t = float(base.transmittance(base_h).max())
     if t > 0.01:
-        need = int(np.ceil(base.td_vec().max() * 4.6 / args.layer_height))
+        need = 1 + int(np.ceil(max(0.0, base.td_vec().max() * 4.6 - args.first_layer_height)
+                               / args.layer_height))
         print(f"\n  ! {args.base_layers} layers of {base.name} pass {100*t:.0f}% of "
               f"the light reaching them, so these patches would be sitting on the "
               f"build plate as much as on {base.name}.")
-        print(f"    Use --base-layers {need} ({need*args.layer_height:.2f} mm).")
+        print(f"    Use --base-layers {need} "
+              f"({args.first_layer_height + (need-1)*args.layer_height:.2f} mm).")
     print("\nPrint one over white and one over black if you can -- two backgrounds")
     print("separate the filament's colour from its opacity.")
 
@@ -195,14 +238,15 @@ def _predict(base_lin, col, td, depth):
     return base_lin[None, :] * T + col[None, :] * (1 - T)
 
 
-def fit_td(datasets, layer_h, per_channel=False, fil_color=None):
+def fit_td(datasets, layer_h, per_channel=False, fil_color=None, first_layer_h=None):
     """Solve for (td, filament colour) from one or more step wedges.
 
     `datasets` is a list of (measured_srgb (n,3), base_srgb (3,)) -- one entry
     per background the wedge was printed over.
 
-    Model, per step i carrying (i+1) layers:
-        T_i = exp(-(i+1) * layer_h / td)
+    Model, per step i carrying (i+1) layers (the first is `first_layer_h` thick,
+    default `layer_h`):
+        T_i = exp(-(first + i * layer_h) / td)
         C_i = base * T_i + colour * (1 - T_i)
     all in linear light.
 
@@ -213,11 +257,12 @@ def fit_td(datasets, layer_h, per_channel=False, fil_color=None):
     over a contrasting background breaks that degeneracy, because the two
     backgrounds must be explained by ONE colour and ONE td.
     """
+    first = layer_h if first_layer_h is None else first_layer_h
     prepped = []
     for meas_srgb, base_srgb in datasets:
         meas = colormath.srgb_to_linear(meas_srgb)
         base = colormath.srgb_to_linear(base_srgb)
-        depth = (np.arange(len(meas)) + 1) * layer_h
+        depth = first + np.arange(len(meas)) * layer_h
         prepped.append((meas, base, depth))
 
     def unpack(p):
@@ -300,8 +345,9 @@ def cmd_fit(args):
         print("  ! fewer than 6 steps for a 6-parameter per-channel fit; "
               "treat the result with suspicion", file=sys.stderr)
 
+    first = args.first_layer_height or args.layer_height
     td, col, des, preds, (span, nsets) = fit_td(
-        datasets, args.layer_height, args.per_channel, fil.rgb()
+        datasets, args.layer_height, args.per_channel, fil.rgb(), first
     )
 
     for (meas, base_rgb), pred, de in zip(datasets, preds, des):
@@ -367,7 +413,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--base", required=True, help="opaque backing filament id")
     p.add_argument("-o", "--output", required=True)
     p.add_argument("--steps", type=int, default=12)
-    p.add_argument("--layer-height", type=float, default=0.08)
+    p.add_argument("--layer-height", type=float, default=None,
+                   help="must match the slicer (default: from --template, else 0.08)")
+    p.add_argument("--first-layer-height", type=float, default=None,
+                   help="the slicer's first layer; step edges sit on first + n*layer "
+                        "(default: from --template, else --layer-height)")
+    p.add_argument("--template", help="a project .3mf from your slicer: supplies the layer grid "
+                   "and is carried over so Flash Studio opens the file as a project")
     p.add_argument("--base-layers", type=int, default=8)
     p.add_argument("--step-width", type=float, default=14.0,
                    help="mm; a ColorMunki samples an ~8 mm circle, so leave >= 3 mm each side")
@@ -386,7 +438,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--filament", required=True)
     p.add_argument("-o", "--output", required=True)
     p.add_argument("--steps", type=int, default=8)
-    p.add_argument("--layer-height", type=float, default=0.08)
+    p.add_argument("--layer-height", type=float, default=None,
+                   help="must match the slicer (default: from --template, else 0.08)")
+    p.add_argument("--first-layer-height", type=float, default=None,
+                   help="the slicer's first layer; step edges sit on first + n*layer "
+                        "(default: from --template, else --layer-height)")
+    p.add_argument("--template", help="a project .3mf from your slicer: supplies the layer grid "
+                   "and is carried over so Flash Studio opens the file as a project")
     p.add_argument("--step-width", type=float, default=20.0)
     p.add_argument("--step-depth", type=float, default=20.0)
     p.add_argument("--gap", type=float, default=2.0)
@@ -404,6 +462,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--steps", type=int, default=12, help="patch count when using --from-image")
     p.add_argument("--axis", choices=["x", "y"], default="x")
     p.add_argument("--layer-height", type=float, default=0.08)
+    p.add_argument("--first-layer-height", type=float, default=None,
+                   help="the slicer's first layer the wedge was printed with (default: "
+                        "--layer-height). Step n is first + (n-1)*layer thick")
     p.add_argument("--per-channel", action="store_true",
                    help="fit td separately per RGB channel (needs >=6 steps)")
     p.add_argument("--write", action="store_true", help="save into the database")

@@ -226,3 +226,27 @@ class Hardware(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FirstLayerGridTests(unittest.TestCase):
+    def test_wedge_sits_on_the_slicer_grid(self):
+        plate, decals, w, base_h = calibrate.build_wedge(4, 0.08, 5, 14.0, 14.0, 0.0, first_layer_h=0.25)
+        self.assertAlmostEqual(base_h, 0.25 + 4 * 0.08)
+        for ext, v, t in decals:
+            self.assertAlmostEqual(v[:, 2].min(), base_h)
+            self.assertAlmostEqual(v[:, 2].max(), base_h + 4 * 0.08)
+
+    def test_chips_follow_first_layer(self):
+        chips = calibrate.build_chips(3, 0.08, 20.0, 20.0, 2.0, first_layer_h=0.25)
+        self.assertTrue(np.allclose([c.verts[:, 2].max() for c in chips], [0.25, 0.33, 0.41]))
+
+    def test_fit_uses_first_layer_depth(self):
+        from stackforge.core import colormath as cm
+        w, col = np.array([244., 245, 240]), np.array([40., 150, 148])
+        depth = 0.25 + np.arange(8) * 0.08
+        T = np.exp(-depth / 0.3)[:, None]
+        meas = cm.linear_to_srgb(cm.srgb_to_linear(w) * T + cm.srgb_to_linear(col) * (1 - T))
+        td, *_ = calibrate.fit_td([(meas, w)], 0.08, first_layer_h=0.25)
+        self.assertAlmostEqual(float(td[0]), 0.3, places=2)
+        td_bad, *_ = calibrate.fit_td([(meas, w)], 0.08)
+        self.assertGreater(abs(float(td_bad[0]) - 0.3), 0.03)   # grid ignored: visibly wrong
