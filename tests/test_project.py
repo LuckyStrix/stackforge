@@ -85,7 +85,7 @@ class ProjectTests(unittest.TestCase):
         self.assertTrue(os.path.isabs(self.p.get("db")))
 
     def test_warnings(self):
-        self.assertIn("no template", self.p.warning())     # orca with no grid to go on
+        self.assertIn("Choose your Flash Studio project", self.p.warning())  # orca, no grid
         self.p.set("flavor", "prusa")
         self.assertIsNone(self.p.warning())
         self.p.set("flavor", "orca")
@@ -94,7 +94,7 @@ class ProjectTests(unittest.TestCase):
         self.assertIsNone(self.p.warning())                # an overridden grid is enough
         self.p.set("layer_override", False)
         self.p.set("template", "/no/such.3mf")
-        self.assertIn("not found", self.p.warning())
+        self.assertIn("moved or deleted", self.p.warning())
         t = os.path.join(self.d.name, "a.3mf")
         make_template(t)
         self.p.set("template", t)

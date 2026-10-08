@@ -248,28 +248,38 @@ class BoxBuilder:
 
 
 def greedy_rects(label: np.ndarray, valid: np.ndarray):
-    """Axis-aligned rectangles over equal labels. Yields (row, col, h, w, label)."""
+    """Axis-aligned rectangles over equal labels. Yields (row, col, h, w, label).
+
+    Row by row, top to bottom: each maximal run of free, equal-label cells in a
+    row becomes a rectangle as tall as that run stays valid and equal below it.
+    Nothing below a run can already be taken: a rectangle started on an earlier
+    row that reached down there would also cover this row's cells, so the run
+    would not be free. That makes the height a lookup in `down`, the length of
+    the equal-label column below each cell.
+    """
     h, w = label.shape
+    if h == 0 or w == 0:
+        return
+    valid = np.asarray(valid, bool)
+    down = np.zeros((h, w), np.int64)
+    down[h - 1] = valid[h - 1]
+    for y in range(h - 2, -1, -1):
+        same = valid[y + 1] & (label[y + 1] == label[y])
+        down[y] = valid[y] * np.where(same, down[y + 1] + 1, 1)
     used = ~valid
+    brk = np.ones(w + 1, bool)
     for y in range(h):
-        x = 0
-        while x < w:
-            if used[y, x]:
-                x += 1
-                continue
-            v = label[y, x]
-            rw = 1
-            while x + rw < w and not used[y, x + rw] and label[y, x + rw] == v:
-                rw += 1
-            rh = 1
-            while y + rh < h:
-                row = slice(x, x + rw)
-                if used[y + rh, row].any() or (label[y + rh, row] != v).any():
-                    break
-                rh += 1
-            used[y : y + rh, x : x + rw] = True
-            yield y, x, rh, rw, int(v)
-            x += rw
+        free, lab = ~used[y], label[y]
+        if not free.any():
+            continue
+        brk[1:w] = ~free[1:] | ~free[:-1] | (lab[1:] != lab[:-1])
+        edges = np.nonzero(brk)[0]
+        starts, ends = edges[:-1], edges[1:]
+        keep = free[starts]
+        for x, x1 in zip(starts[keep].tolist(), ends[keep].tolist()):
+            rh = int(down[y, x:x1].min())
+            used[y:y + rh, x:x1] = True
+            yield y, x, rh, x1 - x, int(lab[x])
 
 
 # --------------------------------------------------------------------------
@@ -282,10 +292,11 @@ def _fmt(x):
 
 
 def _mesh_xml(verts, tris, indent="    "):
-    vs = "".join(
-        f'{indent}  <vertex x="{_fmt(a)}" y="{_fmt(b)}" z="{_fmt(c)}"/>\n' for a, b, c in verts
-    )
-    ts = "".join(f'{indent}  <triangle v1="{a}" v2="{b}" v3="{c}"/>\n' for a, b, c in tris)
+    # One %-format over the whole array: the same text as _fmt per value, ~4x faster.
+    vs = (f'{indent}  <vertex x="%.6g" y="%.6g" z="%.6g"/>\n' * len(verts)) % tuple(
+        np.asarray(verts, np.float64).ravel().tolist())
+    ts = (f'{indent}  <triangle v1="%d" v2="%d" v3="%d"/>\n' * len(tris)) % tuple(
+        np.asarray(tris).ravel().tolist())
     return (
         f"{indent}<mesh>\n{indent} <vertices>\n{vs}{indent} </vertices>\n"
         f"{indent} <triangles>\n{ts}{indent} </triangles>\n{indent}</mesh>\n"
@@ -626,6 +637,43 @@ def template_layer_settings(template):
             return None
 
     return num("layer_height"), num("initial_layer_print_height")
+
+
+def solid_object_settings(flavor, layer_height, solid=True) -> dict:
+    """Per-object overrides that keep every layer a continuous film.
+
+    Orca discards project-level values whose preset name matches a system
+    preset, so settings that must hold go in per-object overrides, which
+    survive; the prusa writer carries no profile at all. The first layer has
+    no per-object form, so the profile rewrite is all it gets.
+    """
+    obj = {"layer_height": f"{layer_height:g}"}
+    if solid and flavor == "orca":
+        obj.update(sparse_infill_density="100%", infill_combination="0")
+    elif solid:
+        obj.update(fill_density="100%", infill_every_layers="1")
+    return obj
+
+
+def template_slots(template):
+    """Filament slots set up in the template's profile, or None if unreadable."""
+    try:
+        with zipfile.ZipFile(template) as tz:
+            settings = json.loads(tz.read("Metadata/project_settings.config"))
+    except (KeyError, zipfile.BadZipFile, OSError, ValueError):
+        return None
+    cols = settings.get("filament_colour")
+    return len(cols) if isinstance(cols, list) and cols else None
+
+
+def check_template_slots(template, n) -> None:
+    """Refuse up front a template with fewer filament slots than filaments in use."""
+    have = template_slots(template)
+    if have is not None and have < n:
+        raise SystemExit(
+            f"Your slicer project has only {have} filament slot(s) but {n} filaments are "
+            f"in use; the extra ones would print in the base colour.\nSet up all {n} "
+            f"filaments in your slicer, save the project again and choose it again.")
 
 
 def check_template(template) -> None:

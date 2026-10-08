@@ -52,6 +52,7 @@ from PIL import Image, ImageDraw, ImageFont
 from scipy.spatial import cKDTree
 
 from stackforge.core import colormath
+from stackforge.core import optics
 from stackforge.core import threemf
 from stackforge.core.filamentdb import DEFAULT_DB, DB
 
@@ -88,60 +89,63 @@ class Gamut:
 
         base_lin = base.linear()
 
-        # colors[i], parent[i], fil[i], depth[i] -- parent chain rebuilds stacks
-        colors = [base_lin]
-        parent = [-1]
-        fil = [-1]
-        depth = [0]
-        seen = {self._key(base_lin, grid)}
+        # colors[i], parent[i], fil[i], depth[i] -- parent chain rebuilds stacks.
+        # Kept as one chunk per depth; the newest chunk is the frontier.
+        colors = [base_lin[None, :]]
+        parent = [np.array([-1])]
+        fil = [np.array([-1])]
+        depth = [np.array([0])]
+        seen = self._keys(base_lin[None, :], grid)          # sorted packed cell keys
         frontier = np.array([0])
+        total = 1
 
         self.capped = False
         t0 = time.time()
         for d in range(1, max_layers + 1):
-            fc = np.array([colors[i] for i in frontier])            # (m,3)
-            fkeys = self._keys(fc, grid)
-            new_c, new_p, new_f = [], [], []
-            for fi in range(self.n):
-                cand = fc * trans[fi] + cols[fi] * (1.0 - trans[fi])
-                keys = self._keys(cand, grid)
-                moved = np.abs(cand - fc).max(-1) > CARRY_EPS
-                for j, k in enumerate(keys):
-                    # A layer that moves the colour by less than one cell lands
-                    # in its parent's own cell. Dropping it would stop that
-                    # filament accumulating at all: white + a translucent
-                    # natural never got past 3 layers. Keep it while it moves.
-                    if k in seen and not (k == fkeys[j] and moved[j]):
-                        continue
-                    seen.add(k)
-                    new_c.append(cand[j])
-                    new_p.append(int(frontier[j]))
-                    new_f.append(fi)
-            if not new_c:
+            fc = colors[-1]                                           # (m,3)
+            m = len(fc)
+            # Every filament over every frontier state, filament-major: (n*m, 3).
+            cand = (fc[None] * trans[:, None] + cols[:, None] * (1.0 - trans[:, None])).reshape(-1, 3)
+            keys = self._keys(cand, grid)
+            fkeys = np.tile(self._keys(fc, grid), self.n)
+            moved = (np.abs(cand.reshape(self.n, m, 3) - fc[None]).max(-1) > CARRY_EPS).ravel()
+            # A layer that moves the colour by less than one cell lands in its
+            # parent's own cell. Dropping it would stop that filament
+            # accumulating at all: white + a translucent natural never got
+            # past 3 layers. Keep it while it moves.
+            carried = (keys == fkeys) & moved
+            # Otherwise a cell is taken once: by the first candidate (in
+            # filament-major order) to reach a cell no earlier depth reached.
+            fresh = np.nonzero(~carried & ~np.isin(keys, seen, assume_unique=False))[0]
+            _, first = np.unique(keys[fresh], return_index=True)
+            fresh = fresh[first]
+            keep = np.sort(np.concatenate([np.nonzero(carried)[0], fresh]))
+            if not len(keep):
                 if verbose:
                     print(f"  depth {d}: converged, no new colors")
                 break
-            start = len(colors)
-            colors.extend(new_c)
-            parent.extend(new_p)
-            fil.extend(new_f)
-            depth.extend([d] * len(new_c))
-            frontier = np.arange(start, len(colors))
+            seen = np.union1d(seen, keys[fresh])
+            colors.append(cand[keep])
+            parent.append(frontier[keep % m])
+            fil.append(keep // m)
+            depth.append(np.full(len(keep), d))
+            frontier = np.arange(total, total + len(keep))
+            total += len(keep)
             if verbose:
-                print(f"  depth {d:2d}: +{len(new_c):7d} states, {len(colors):8d} total")
+                print(f"  depth {d:2d}: +{len(keep):7d} states, {total:8d} total")
             if progress:
-                progress(d / max_layers, f"gamut depth {d}/{max_layers}: {len(colors)} colors")
-            if len(colors) > cap:
+                progress(d / max_layers, f"gamut depth {d}/{max_layers}: {total} colors")
+            if total > cap:
                 self.capped = True
                 if verbose:
                     print(f"  ! hit --cap {cap} at depth {d}; stopping expansion early. "
                           f"Lower --grid or --max-layers for a cleaner search.")
                 break
 
-        self.colors = np.array(colors)
-        self.parent = np.array(parent)
-        self.fil = np.array(fil)
-        self.depth = np.array(depth)
+        self.colors = np.concatenate(colors)
+        self.parent = np.concatenate(parent)
+        self.fil = np.concatenate(fil)
+        self.depth = np.concatenate(depth)
         self.lab = colormath.linear_to_lab(self.colors)
         self.tree = cKDTree(self.lab)
         if verbose:
@@ -152,13 +156,11 @@ class Gamut:
     # distinct darks collapse into one state. Measured on white/black/blue/red,
     # 10 layers: dark (L* < 25) reach error p99 2.6 -> 0.5 dE for ~35% more states.
     @staticmethod
-    def _key(c, grid):
-        return tuple((colormath.linear_to_srgb(c) * (grid / 255.0)).astype(np.int32))
-
-    @staticmethod
     def _keys(c, grid):
-        q = (colormath.linear_to_srgb(c) * (grid / 255.0)).astype(np.int32)
-        return [tuple(r) for r in q]
+        """(k,3) linear colours -> (k,) int64 cell keys (the three cell indices packed)."""
+        q = (colormath.linear_to_srgb(c) * (grid / 255.0)).astype(np.int64)
+        g = grid + 1
+        return (q[:, 0] * g + q[:, 1]) * g + q[:, 2]
 
     def srgb(self) -> np.ndarray:
         return colormath.linear_to_srgb(self.colors)
@@ -342,21 +344,171 @@ def build_geometry(labels, width_mm, res, layer_h, base_h, base_index, n_fil):
 def write_plaque(path, flavor, plate, decals, fils, base_index, part_type,
                  template, layer_height, first_layer_height, solid=True):
     """Write the 3MF. Shared by the CLI and the GUI so both force solid infill."""
-    # Orca discards project-level values whose preset name matches a system
-    # preset, so settings that must hold go in per-object overrides, which
-    # survive; the prusa writer carries no profile at all. The first layer has
-    # no per-object form, so the profile rewrite is all it gets.
-    obj = {"layer_height": f"{layer_height:g}"}
-    if solid and flavor == "orca":
-        obj.update(sparse_infill_density="100%", infill_combination="0")
-    elif solid:
-        obj.update(fill_density="100%", infill_every_layers="1")
+    obj = threemf.solid_object_settings(flavor, layer_height, solid)
     threemf.get_writer(flavor)(
         path, [plate], {0: decals}, base_index + 1, part_type,
         template=template, colors=[f.color for f in fils],
         layer_height=layer_height, first_layer_height=first_layer_height,
         solid=solid, object_settings=obj,
     )
+
+
+# --------------------------------------------------------------------------
+# the pipeline, shared by the CLI and the GUI designer so they cannot drift
+# --------------------------------------------------------------------------
+
+# 1% transmission: the backing hides what is under it.
+OPAQUE_T = 0.01
+# Past this the base filament is too translucent to be a backing at all.
+OPAQUE_MAX_MM = 4.0
+
+
+def resolve_layers(args, template, log=print):
+    """Fill args.layer_height / first_layer_height from the template unless given.
+
+    Per-layer modifiers only land correctly on the grid the slicer will
+    actually use, so the template's profile wins unless overridden.
+    """
+    t_lh, t_flh = threemf.template_layer_settings(template) if template else (None, None)
+    if args.layer_height is None:
+        args.layer_height = t_lh or 0.08
+        if t_lh:
+            log(f"layer height {t_lh} mm (from template)")
+    elif t_lh and abs(t_lh - args.layer_height) > 1e-9:
+        log(f"  - overriding the template's {t_lh} mm layer height with "
+            f"{args.layer_height} mm; the output profile is rewritten to match, "
+            f"so the geometry and the settings still agree.")
+    if args.first_layer_height is None:
+        args.first_layer_height = t_flh or args.layer_height
+        if t_flh:
+            log(f"first layer {t_flh} mm (from template)")
+
+
+def pixel_grid(args, img_w, img_h):
+    """(w_px, h_px) for --width/--height at --resolution; height 0 keeps the aspect."""
+    w_px = max(1, int(round(args.width / args.resolution)))
+    h_px = (max(1, int(round(args.height / args.resolution))) if args.height > 0
+            else max(1, int(round(w_px * img_h / img_w))))
+    return w_px, h_px
+
+
+def check_bed(template, w_mm, h_mm):
+    """Refuse a plaque bigger than the template's bed."""
+    bed = threemf.template_bed_size(template) if template else None
+    if bed and (w_mm > bed[0] + 1e-9 or h_mm > bed[1] + 1e-9):
+        raise SystemExit(f"The plaque ({w_mm:.0f} x {h_mm:.0f} mm) does not fit the "
+                         f"{bed[0]:g} x {bed[1]:g} mm bed in your slicer project. "
+                         f"Make it narrower (Width) or shorter (Height).")
+
+
+def base_height(args):
+    return args.first_layer_height + (args.base_layers - 1) * args.layer_height
+
+
+def opaque_base_layers(base, first_layer, layer):
+    """(layers, mm of base) for the base to pass at most OPAQUE_T of the light."""
+    return optics.opaque_layers(base, first_layer, layer, OPAQUE_T)
+
+
+def resolve_base_layers(args, base, log=print):
+    """--base-layers auto (None): the fewest layers that make the base opaque."""
+    if args.base_layers is not None:
+        return
+    need, opaque = opaque_base_layers(base, args.first_layer_height, args.layer_height)
+    cap = 1 + int(np.ceil(max(0.0, OPAQUE_MAX_MM - args.first_layer_height) / args.layer_height))
+    args.base_layers = min(need, cap)
+    log(f"base: {args.base_layers} layers of {base.name} ({base_height(args):.2f} mm), "
+        f"auto: enough to block {100 * (1 - OPAQUE_T):.0f}% of the light"
+        if need <= cap else
+        f"base: {args.base_layers} layers ({base_height(args):.2f} mm), the auto maximum")
+
+
+def base_warning(base, args):
+    """Why the base is not an opaque backing, or None if it is."""
+    t = float(base.transmittance(base_height(args)).max())
+    if t <= OPAQUE_T:
+        return None
+    need, opaque = opaque_base_layers(base, args.first_layer_height, args.layer_height)
+    msg = (f"{args.base_layers} base layers of {base.name} ({base_height(args):.2f} mm) "
+           f"still let {100 * t:.0f}% of the light through, so the print picks up "
+           f"whatever is under it. ")
+    if opaque > OPAQUE_MAX_MM:
+        return msg + f"{base.name} would need {opaque:.0f} mm: choose a more opaque base."
+    return msg + (f"Use {need} base layers "
+                  f"({args.first_layer_height + (need - 1) * args.layer_height:.2f} mm).")
+
+
+def solve(fils, base, args, img, progress=None, verbose=False):
+    """Gamut, per-pixel stacks and their error for `img` -> dict.
+
+    `progress(frac, msg)` is called along the way (the GUI cancels through it).
+    """
+    def prog(f, m):
+        if progress:
+            progress(f, m)
+    g = Gamut(fils, base, args.layer_height, args.max_layers, args.grid, args.cap,
+              verbose=verbose, progress=lambda f, m: prog(0.7 * f, m))
+    prog(0.7, "matching pixels to reachable colours")
+    t0 = time.time()
+    state = solve_image(g, img, getattr(args, "dither", "none"))
+    if verbose:
+        print(f"  solved {state.size} pixels in {time.time()-t0:.1f}s "
+              f"({getattr(args, 'dither', 'none')} dither)")
+    achieved = np.round(g.srgb()[state])
+    err = np.linalg.norm(colormath.srgb_to_lab(achieved.astype(np.float64))
+                         - colormath.srgb_to_lab(img.astype(np.float64)), axis=-1)
+    prog(0.9, "building layer labels")
+    # Per-pixel error always penalises a dither; compare dither modes on this.
+    blurred = colormath.blurred_de(achieved, img, BLUR_MM / args.resolution)
+    labels, trim = trim_base_layers(layer_labels(g, state), g.base_index)
+    return {"gamut": g, "state": state, "achieved": achieved, "err": err,
+            "blurred": blurred, "labels": labels, "trim": trim, "fils": fils, "base": base}
+
+
+def match_quality(mean_de):
+    """Plain words for a mean colour error (CIE76 dE)."""
+    if mean_de < 5:
+        return "excellent"
+    if mean_de < 10:
+        return "good"
+    if mean_de < 20:
+        return "fair"
+    return "poor: these filaments cannot make some of the image's colours"
+
+
+def export(path, result, args, flavor, part_type, template, solid=True, progress=None):
+    """Geometry + 3MF for a solve() result -> dict(total_h, nbox, notes).
+
+    `notes` are what the writer had to say about the template (infill forced,
+    prime tower moved, ...), so a GUI can show them rather than lose them on stdout.
+    """
+    import contextlib
+    import io
+    if progress:
+        progress(0.1, "building geometry")
+    g, labels = result["gamut"], result["labels"]
+    plate, decals, total_h = build_geometry(
+        labels, args.width, args.resolution, args.layer_height,
+        base_height(args), g.base_index, len(result["fils"]))
+    if progress:
+        progress(0.6, "writing the 3MF")
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        write_plaque(path, flavor, plate, decals, result["fils"], g.base_index,
+                     part_type, template, args.layer_height, args.first_layer_height,
+                     solid=solid)
+    notes = [ln.strip(" -!") for ln in buf.getvalue().splitlines() if ln.strip()]
+    return {"total_h": total_h, "nbox": sum(len(t) // 12 for _, _, t in decals),
+            "volumes": len(decals), "notes": notes}
+
+
+def next_steps(fils, args):
+    """What to do with the file, in words."""
+    load = ", ".join(f"T{i} {f.label()}" for i, f in enumerate(fils, 1))
+    return (f"Next: open the file in Flash Studio (File > Open Project). Load the spools as "
+            f"{load}. The file already carries the {args.layer_height:g} mm layer height and "
+            f"{args.first_layer_height:g} mm first layer; don't change them, or colours drop "
+            f"out. Then slice and print.")
 
 
 # --------------------------------------------------------------------------
@@ -572,9 +724,10 @@ def check_args(a):
         if v is not None and v <= 0:
             out.append(f"--{name.replace('_', '-')} must be positive")
     # base_h is first_layer + (base_layers - 1) * layer: with no base layer
-    # the first colour layer would be the thick first layer.
+    # the first colour layer would be the thick first layer. None is auto.
     for name in ("max_layers", "base_layers", "grid", "rank_samples", "top"):
-        if getattr(a, name) < (0 if name == "top" else 1):
+        v = getattr(a, name)
+        if v is not None and v < (0 if name == "top" else 1):
             out.append(f"--{name.replace('_', '-')} must be at least "
                        f"{0 if name == 'top' else 1}")
     return out
@@ -610,7 +763,9 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--max-layers", type=int, default=16,
                     help="color layers above the base; the gamut stops growing "
                          "once the deepest stack goes opaque, so more is just time")
-    ap.add_argument("--base-layers", type=int, default=5, help="opaque backing layers")
+    ap.add_argument("--base-layers", type=int, default=None,
+                    help="layers of base filament under the colour (default: auto, the "
+                         "fewest that block 99%% of the light for the base's td)")
     ap.add_argument("--dither", choices=["none", "ordered", "blue", "floyd"], default="none",
                     help="spatial mixing of two stacks per pixel. 'blue' (blue-noise "
                          "screen) and 'ordered' (Bayer) only help when stacks are "
@@ -694,21 +849,8 @@ def main(argv=None):
     if base.id not in {f.id for f in fils}:
         raise SystemExit(f"--base {base.id} must also appear in --filaments")
 
-    # Per-layer modifiers only land correctly on the grid the slicer will
-    # actually use, so the template's profile wins unless overridden.
-    t_lh, t_flh = threemf.template_layer_settings(args.template) if args.template else (None, None)
-    if args.layer_height is None:
-        args.layer_height = t_lh or 0.08
-        if t_lh:
-            print(f"layer height {t_lh} mm (from template)")
-    elif t_lh and abs(t_lh - args.layer_height) > 1e-9:
-        print(f"  - overriding the template's {t_lh} mm layer height with "
-              f"{args.layer_height} mm; the output profile is rewritten to match, "
-              f"so the geometry and the settings still agree.")
-    if args.first_layer_height is None:
-        args.first_layer_height = t_flh or args.layer_height
-        if t_flh:
-            print(f"first layer {t_flh} mm (from template)")
+    resolve_layers(args, args.template)
+    resolve_base_layers(args, base)
 
     est = [f.id for f in fils if f.provenance != "measured"]
     print(f"filaments ({len(fils)}):")
@@ -722,22 +864,14 @@ def main(argv=None):
         print("    Colors will be approximate until you run stackforge-calibrate.\n")
 
     # --- geometry grid ---
-    w_px = max(1, int(round(args.width / args.resolution)))
     im = colormath.open_image(args.image)
-    h_px = (
-        max(1, int(round(args.height / args.resolution)))
-        if args.height > 0
-        else max(1, int(round(w_px * im.height / im.width)))
-    )
+    w_px, h_px = pixel_grid(args, im.width, im.height)
     # Transparent pixels (and contain-padding) become base: nothing printed.
     img = colormath.fit_image(args.image, w_px, h_px, args.fit,
                             pad=tuple(int(v) for v in base.rgb()))
     print(f"image: {w_px} x {h_px} px  ->  "
           f"{w_px*args.resolution:.1f} x {h_px*args.resolution:.1f} mm")
-    bed = threemf.template_bed_size(args.template) if args.template else None
-    if bed and (w_px * args.resolution > bed[0] or h_px * args.resolution > bed[1]):
-        raise SystemExit(f"the plaque does not fit the template's {bed[0]:g} x {bed[1]:g} mm "
-                         f"bed; set --width/--height")
+    check_bed(args.template, w_px * args.resolution, h_px * args.resolution)
 
     # --- ranking mode ---
     ranking = args.rank or (len(fils) > args.slots and not args.no_rank)
@@ -761,26 +895,18 @@ def main(argv=None):
 
     if not args.output:
         raise SystemExit("-o/--output is required when producing a plaque")
+    if args.template:
+        threemf.check_template_slots(args.template, len(fils))
 
-    # --- gamut ---
+    # --- gamut + solve ---
     print(f"building gamut (<= {args.max_layers} layers of {len(fils)} filaments):")
-    gamut = Gamut(fils, base, args.layer_height, args.max_layers, args.grid, args.cap)
-
-    # --- solve ---
-    t0 = time.time()
-    state = solve_image(gamut, img, args.dither)
-    print(f"  solved {state.size} pixels in {time.time()-t0:.1f}s "
-          f"({args.dither} dither)")
-
-    achieved = np.round(gamut.srgb()[state])
-    err = np.linalg.norm(
-        colormath.srgb_to_lab(achieved.astype(np.float64)) - colormath.srgb_to_lab(img.astype(np.float64)),
-        axis=-1,
-    )
+    r = solve(fils, base, args, img, verbose=True)
+    gamut, achieved, err, labels = r["gamut"], r["achieved"], r["err"], r["labels"]
     print(f"  color error dE: mean {err.mean():.1f}, p95 {np.percentile(err, 95):.1f}, "
-          f"max {err.max():.1f}")
-    # Per-pixel error always penalises a dither; compare dither modes on this.
-    bm, bp = colormath.blurred_de(achieved, img, BLUR_MM / args.resolution)
+          f"max {err.max():.1f}  ({match_quality(err.mean())})")
+    print("    (dE under 5 is hard to see, 10-20 is noticeable, over 20 means colours "
+          "these filaments cannot make; --gamut-preview shows where)")
+    bm, bp = r["blurred"]
     print(f"  at arm's length (blurred dE): mean {bm:.1f}, p95 {bp:.1f}")
 
     if args.preview:
@@ -790,47 +916,17 @@ def main(argv=None):
         _gamut_preview(args.gamut_preview, img, achieved, err)
         print(f"  gamut preview -> {args.gamut_preview}")
 
-    # --- geometry ---
-    labels = layer_labels(gamut, state)
-
-    labels, trim = trim_base_layers(labels, gamut.base_index)
-    if trim:
-        print(f"  trimmed {trim} bottom colour layer(s) that were uniformly "
-              f"{base.name} ({trim*args.layer_height:.2f} mm), optically identical")
-
-    base_h = args.first_layer_height + (args.base_layers - 1) * args.layer_height
+    if r["trim"]:
+        print(f"  trimmed {r['trim']} bottom colour layer(s) that were uniformly "
+              f"{base.name} ({r['trim']*args.layer_height:.2f} mm), optically identical")
 
     # The whole colour model starts from "the base is an opaque backing". With
     # a realistic td that is not free: whites are far more transmissive than
     # they look, and a thin white base lets the build plate show through and
     # tint everything above it.
-    t_base = float(base.transmittance(base_h).max())
-    if t_base > 0.01:
-        # 1% transmission is ln(100) = 4.6 td; the first layer counts at its own height.
-        opaque = base.td_vec().max() * np.log(100)
-        need = 1 + int(np.ceil(max(0.0, opaque - args.first_layer_height) / args.layer_height))
-        print(f"  ! {args.base_layers} base layers of {base.name} ({base_h:.2f} mm) "
-              f"still pass {100*t_base:.0f}% of the light reaching them.")
-        if opaque > 10:
-            print(f"    The gamut assumes an opaque backing, and {base.name} would need "
-                  f"{opaque:.0f} mm to become one: choose a more opaque --base.")
-        else:
-            print(f"    The gamut assumes an opaque backing, so the print will pick up "
-                  f"whatever is under it. Use --base-layers {need} "
-                  f"({args.first_layer_height + (need-1)*args.layer_height:.2f} mm), "
-                  f"or a more opaque --base.")
-
-    plate, decals, total_h = build_geometry(
-        labels, args.width, args.resolution, args.layer_height,
-        base_h, gamut.base_index, len(fils),
-    )
-    nbox = sum(len(t) // 12 for _, _, t in decals)
-    print(f"plaque: {total_h:.2f} mm thick "
-          f"({args.base_layers} base + {labels.shape[0]} color layers)")
-    print(f"  {nbox} boxes in {len(decals)} {args.part_type} volumes ({nbox*12} triangles)")
-    if nbox > 250_000:
-        print("  ! that is a lot of geometry and your slicer will be slow to load it.")
-        print("    Coarsen --resolution, drop --dither, or cut --max-layers.")
+    warn = base_warning(base, args)
+    if warn:
+        print(f"  ! {warn}")
 
     used, counts = np.unique(labels, return_counts=True)
     tot = labels.size
@@ -856,15 +952,19 @@ def main(argv=None):
                   f"deep and the colour stack is {stack_mm:.2f} mm: the layers below "
                   f"print as sparse infill and the colours will not match.")
 
-    write_plaque(
-        args.output, args.flavor, plate, decals, fils, gamut.base_index,
-        args.part_type, args.template, args.layer_height,
-        args.first_layer_height, solid=not args.no_force_solid,
-    )
+    info = export(args.output, r, args, args.flavor, args.part_type, args.template,
+                  solid=not args.no_force_solid)
+    for note in info["notes"]:
+        print(f"  - {note}")
+    nbox = info["nbox"]
+    print(f"plaque: {info['total_h']:.2f} mm thick "
+          f"({args.base_layers} base + {labels.shape[0]} color layers)")
+    print(f"  {nbox} boxes in {info['volumes']} {args.part_type} volumes ({nbox*12} triangles)")
+    if nbox > 250_000:
+        print("  ! that is a lot of geometry and your slicer will be slow to load it.")
+        print("    Coarsen --resolution, drop --dither, or cut --max-layers.")
     print(f"wrote {args.output}")
-    print(f"\nSlice with layer height EXACTLY {args.layer_height} mm and first "
-          f"layer {args.first_layer_height} mm, or the modifiers land between "
-          f"layers and colours drop out.")
+    print("\n" + next_steps(fils, args))
 
 
 def _gamut_preview(path, target, achieved, err):

@@ -15,7 +15,8 @@ class Job:
 
     kind: str
     result: object = None
-    error: str = ""
+    error: str = ""         # one line for the user
+    detail: str = ""        # the traceback, for "Show details"
 
 
 class Worker:
@@ -52,10 +53,10 @@ class Worker:
                 self.q.put(Job(kind, fn()))
             except Cancelled:
                 self.q.put(Job("cancelled"))
-            except BaseException:
+            except BaseException as exc:
                 # SystemExit too: filamentdb/threemf report bad data that way,
                 # and an uncaught one kills this thread with the UI still busy.
-                self.q.put(Job(kind, error=traceback.format_exc()))
+                self.q.put(Job(kind, error=error_text(exc), detail=traceback.format_exc()))
 
         self._thread = threading.Thread(target=run, daemon=True)
         self._thread.start()
@@ -69,3 +70,23 @@ class Worker:
 
 class Cancelled(Exception):
     pass
+
+
+def error_text(exc: BaseException) -> str:
+    """What to tell the user. SystemExit/ValueError carry a message written for
+    them; anything else is a bug, named by its type."""
+    msg = str(exc).strip()
+    if isinstance(exc, (SystemExit, ValueError, OSError)) and msg:
+        return msg
+    return f"Something went wrong ({type(exc).__name__}: {msg or 'no message'})."
+
+
+def show_error(parent, title, job_or_text, detail=""):
+    """A critical message box with the traceback behind "Show Details"."""
+    from PySide6.QtWidgets import QMessageBox
+    text = getattr(job_or_text, "error", job_or_text)
+    detail = getattr(job_or_text, "detail", detail)
+    box = QMessageBox(QMessageBox.Critical, title, text, QMessageBox.Ok, parent)
+    if detail:
+        box.setDetailedText(detail)
+    box.exec()

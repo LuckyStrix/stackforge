@@ -91,7 +91,7 @@ LABELS = {
     "output": "Output file", "preview": "Preview image", "gamut_preview": "Gamut preview image",
     "rank_sheet": "Ranking sheet", "sheet": "Contact sheet", "model": "3D model (3MF or GLB)",
     "image": "Image", "filaments": "Filaments", "palette": "Palette (colours)",
-    "base": "Base filament", "base2": "Second base", "template": "Template project",
+    "base": "Base filament", "base2": "Second base", "template": "Slicer project (.3mf)",
     "first_layer_height": "First layer height (mm)", "layer_height": "Layer height (mm)",
     "resolution": "Resolution (mm)", "depth": "Depth (mm)", "width": "Width (mm)",
     "height": "Height (mm)", "scale": "Cell size (mm)", "period": "Stripe period (mm)",

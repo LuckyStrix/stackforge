@@ -18,18 +18,40 @@ image ──► gamut search ──► per-pixel stack ──► 3MF (modifier v
 
 ## Quick start
 
+**1. Install** (once). Needs Python 3.10+. Debian/Ubuntu refuse a system-wide `pip install`,
+so use a virtual environment:
+
 ```sh
-pip install -e .   # the command-line tools; add ".[gui]" for the Qt GUI
-stackforge-plaque docs/plaque_target.png --base polymaker-pla-pro-white \
-    --filaments polymaker-pla-pro-white,polymaker-pla-pro-blue,polymaker-pla-pro-red,polymaker-pla-pro-yellow \
-    --width 60 --base-layers 27 --template your_project.3mf --preview sim.png -o plaque.3mf
+git clone <this repo> stackforge && cd stackforge
+python3 -m venv venv && . venv/bin/activate      # again in every new terminal
+pip install -e ".[gui]"                          # drop [gui] for the command-line tools only
+stackforge-filaments list                        # check: prints the filament library
 ```
 
-`--template` is your slicer's own project, exported as a `.3mf`: it sets the layer grid and lets
-Flash Studio / Orca-family slicers open the output as a project. Orca output (the default
-`--flavor`) is refused without it unless you give `--layer-height` yourself (see *Caveats*).
-`--base-layers 27` makes the white base opaque; see *The base has to actually be opaque*.
-Always look at `--preview` before slicing. Run `pip install -e ".[dev]" && pytest` for the tests (`python3 -m unittest discover -s tests` also works).
+**2. Make your slicer project** (once, and again if you change the print profile). In Flash
+Studio: choose the Creator 5 and your print profile (e.g. 0.12 mm), set up **all four filament
+slots**, then *File > Save Project As…* to a `.3mf`. stackforge copies your printer and print
+settings from it and builds the plaque on its layer height. This is the `--template` file, and
+the *Slicer project* box at the top of the GUI.
+
+**3. Make a plaque.** In the GUI (`stackforge`), or from the repo folder:
+
+```sh
+stackforge-plaque docs/plaque_target.png --base polymaker-pla-pro-white \
+    --filaments polymaker-pla-pro-white,polymaker-pla-pro-blue,polymaker-pla-pro-red,polymaker-pla-pro-yellow \
+    --width 60 --template my_project.3mf --preview sim.png -o plaque.3mf
+```
+
+Look at `sim.png` first: it is what the print should look like. The base thickness is chosen
+for you (enough layers of the base filament to block 99% of the light; see *The base has to
+actually be opaque*).
+
+**4. Print it.** Open `plaque.3mf` in Flash Studio (*File > Open Project*), load the spools in
+the T1–T4 order stackforge printed, leave the layer height alone, slice and print. In the
+slice preview, colour should show on every layer near the top, not on alternate ones.
+
+Orca output (the default `--flavor`) is refused without `--template` unless you give
+`--layer-height` yourself (see *Caveats*). Run `pip install -e ".[dev]" && pytest` for the tests (`python3 -m unittest discover -s tests` also works).
 
 ## One GUI for everything
 
@@ -38,9 +60,10 @@ pip install -e ".[gui]"   # once; adds PySide6
 stackforge [image.png] # or: python -m stackforge.gui.app
 ```
 
-Start on the **Plaque** tab: open an image, tick the filaments you own (the list is your
-database), press **Generate**, then **Export 3MF**. Set your slicer project as the *Template*
-in the bar at the top and the layer height follows it.
+First choose your slicer project with **Choose…** in the bar at the top (step 2 above); the
+layer height follows it, and nothing can be generated without it. Then on the **Plaque** tab:
+open an image, tick the filaments you own (the list is your database), press **Generate**,
+then **Export 3MF**. The export dialog says which spool goes on which toolhead.
 
 `stackforge` opens a single window over every tool here: Plaque (the plaque designer, plus
 an *All options* form), Paint (stackforge-top-paint / stackforge-paint), Filaments (the library editor, plus the
@@ -424,12 +447,13 @@ calibrates three filaments per print:
 
 ```sh
 stackforge-calibrate wedge --filament black,blue,red --base white \
-    -o wedge.3mf --steps 8 --base-layers 27
+    --template my_project.3mf -o wedge.3mf --steps 8
 ```
 
-Mind `--base-layers`: the patches are only measuring the filament if the base
-underneath them is opaque, and white needs ~27 layers to get there. The command
-warns when it does not.
+The base under the steps is made opaque by default (`--base-layers` overrides it): the
+patches only measure the filament if the base underneath them is opaque. The wedge is forced
+to solid infill, like the plaque. `fit` takes the same `--template` for the layer height the
+wedge was printed at; step n carries n layers of the filament, on top of the base.
 
 A step is too small to hold a hand-held instrument against, so give it a gap:
 `--gap 8` leaves 8 mm between steps and thins the base there to a hinge (`--hinge-layers`,
@@ -638,9 +662,11 @@ land on a lattice rather than a surface.
 
 The gamut starts from "the base is an opaque backing", and with a realistic td
 that is not free. White is far more transmissive than it looks: the shipped
-Polymaker PLA Pro White (`td` 0.467 mm, estimated) passes **42%** through the
-default 5 base layers (0.40 mm), and the print picks up whatever is underneath;
-stackforge-plaque asks for 27 (2.16 mm). Black at `td` 0.022 is opaque in 2 layers.
+Polymaker PLA Pro White (`td` 0.467 mm, estimated) passes **42%** through 5 base
+layers (0.40 mm), and the print picks up whatever is underneath. It needs about 2.2 mm:
+27 layers at 0.08 mm, 17 at 0.12 mm. `--base-layers` therefore defaults to *auto*, the fewest
+layers that pass at most 1%; give a number to override it, and stackforge warns when that is
+not opaque. Black at `td` 0.022 is opaque in 2 layers.
 
 What `td` means matters here. `stackforge-calibrate` fits it to *reflected* light,
 which crosses each layer twice, so it is an effective value; `stackforge-measure

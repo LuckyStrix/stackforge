@@ -88,15 +88,16 @@ class Project:
         t = self.settings.get("template")
         if not t:
             if (self.settings.get("flavor") or "orca") == "orca" and self.layers()[0] is None:
-                return ("no template: choose your slicer's project 3MF (or override the layer "
-                        "height) before generating orca output")
+                return ("Choose your Flash Studio project file above (\u201cChoose…\u201d). "
+                        "It sets the layer height; nothing can be exported without it.")
             return None
         if not os.path.exists(t):
-            return "template not found"
+            return "Your slicer project file was moved or deleted: choose it again."
         try:
             threemf.check_template(t)
         except SystemExit:
-            return "template is not a slicer project 3MF"
+            return ("That file is not a slicer project: in Flash Studio use File > Save Project "
+                    "As…, not Export.")
         app = threemf._template_app(t)
         have, want = _ver(app), _ver(threemf.ORCA_APP)
         if have is None:

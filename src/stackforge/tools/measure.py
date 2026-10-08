@@ -111,7 +111,9 @@ def parse_reading(text: str) -> dict:
         raise DeadReading(
             "the instrument returned an all-zero reading (X=Y=Z=0). Its dial is probably at "
             "the calibration position, or the sensor is blocked. Turn it to the measure "
-            "position (power-cycle it there) and start again.")
+            "position (power-cycle it there) and start again. If your meter always reports "
+            "the dial wrong, use the patched Argyll: --nospos (in the GUI, tick "
+            "Instrument > No dial check).")
     out = {"xyz": xyz}
     lab = LAB_RE.search(text)
     if lab:
@@ -483,7 +485,8 @@ def cmd_measure_wedge(args):
         with open(args.output, "w") as f:
             json.dump(out, f, indent=1)
         print(f"\nsaved {args.output}")
-    print(f"\ncalibrate.py fit --filament <id> --base <hex or id> --measured \"{hexes}\"")
+    print(f"\nNext: stackforge-calibrate fit --filament <id> --base <hex or id> "
+          f"--template <your slicer project.3mf> --measured \"{hexes}\" --write")
 
 
 def cmd_transmission(args):

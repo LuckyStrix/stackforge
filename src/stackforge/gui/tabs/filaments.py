@@ -4,6 +4,9 @@ from __future__ import annotations
 from PySide6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 
 from stackforge.core import filamentdb
+from PySide6.QtWidgets import QMessageBox
+
+from stackforge.gui import theme
 from stackforge.gui.filaments.editor import FilamentEditor
 from stackforge.gui.tabs.common import ToolTabs
 from stackforge.tools import polymaker
@@ -18,7 +21,8 @@ class FilamentsTab(QWidget):
         super().__init__()
         self.project = project
         db = project.get("db") if project else filamentdb.DEFAULT_DB
-        self.ed = FilamentEditor(db, project.get("catalog") if project else polymaker.CACHE)
+        self.ed = FilamentEditor(db, project.get("catalog") if project else polymaker.CACHE,
+                                 project=project)
         self.nb = QTabWidget()
         self.nb.addTab(self.ed, "Editor")
         self.ed.dirty_changed.connect(lambda on: self.nb.setTabText(0, "Editor •" if on else "Editor"))
@@ -48,8 +52,27 @@ class FilamentsTab(QWidget):
         return self.ed.dirty
 
     def reload_db(self, path=None):
-        """Re-read the database (after another tab changed it); keeps unsaved edits safe."""
+        """Re-read the database after another tab wrote it.
+
+        Unsaved edits here are merged onto the new file, never saved over it: saving the
+        stale copy would throw away what the other tab (a calibration fit) just wrote.
+        """
         path = path or self.ed.db_path
-        if self.ed.dirty and not self.ed.confirm_discard():
+        if path != self.ed.db_path:
+            if self.ed.dirty and not self.ed.confirm_discard():
+                return
+            self.ed.load(path)
             return
-        self.ed.load(path)
+        if not self.ed.dirty:
+            self.ed.load(path)
+            return
+        lost = self.ed.merge_from_disk()
+        msg = "reloaded the database; your unsaved edits are kept"
+        if lost:
+            msg += f" except to {', '.join(lost)}, which the other tab just changed"
+            QMessageBox.information(
+                self, "Filaments",
+                f"The filament database was just updated (for example by a calibration fit).\n\n"
+                f"Your unsaved edits to {', '.join(lost)} were replaced by the new values; "
+                f"your other unsaved edits are kept. Press Save when you are done.")
+        self.ed.status(msg, theme.WARN)

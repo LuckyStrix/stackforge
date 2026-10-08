@@ -9,7 +9,7 @@ import numpy as np
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QLabel, QMessageBox,
                                QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
 
-from stackforge.core import threemf, colormath
+from stackforge.core import optics, threemf, colormath
 from stackforge.gui import theme
 from stackforge.gui.filaments import APP
 from stackforge.gui.filaments.common import report_box, scroll_page, section, show_lines, spin
@@ -143,8 +143,9 @@ class CalibratePage(QWidget):
                     "filament's colour from its opacity, which a single background cannot do.")
         self.wbase = QComboBox()
         self.steps = spin(3, 40, 1, 12)
-        self.baselayers = spin(2, 30, 1, 8)
-        self.stepw = spin(4, 40, 1, 10, 0)
+        self.baselayers = spin(0, 60, 1, 0)
+        self.baselayers.setSpecialValueText("auto (opaque)")
+        self.stepw = spin(4, 40, 1, 14, 0)
         self.stepd = spin(4, 60, 1, 14, 0)
         self.gap = spin(0, 30, 1, 0, 0)
         self.hinge = spin(1, 29, 1, 4)
@@ -152,9 +153,8 @@ class CalibratePage(QWidget):
         self.flavor.addItems(["orca", "prusa"])
         w.addRow("Base filament", self.wbase)
         w.addRow("Steps", self.steps)
-        w.addRow("Layer height (mm)", editor.layer.spin())
-        w.addRow("", theme.hint("Slice at exactly this, or the steps carry the wrong thickness "
-                                "and the fit is meaningless."))
+        self.grid_note = theme.hint("")
+        w.addRow("Layers", self.grid_note)
         w.addRow("Base layers", self.baselayers)
         w.addRow("Step width (mm)", self.stepw)
         w.addRow("Step depth (mm)", self.stepd)
@@ -165,6 +165,8 @@ class CalibratePage(QWidget):
         self.gap.valueChanged.connect(lambda v: self.hinge.setEnabled(v > 0))
         self.hinge.setEnabled(False)
         w.addRow("Slicer flavour", self.flavor)
+        w.addRow("", theme.hint("After printing: read each step with the Measure tab (or take a "
+                                "photo, cropped to just the steps) and fill in step 2 below."))
         b = QPushButton("Write wedge 3MF…")
         b.clicked.connect(self.write_wedge)
         w.addRow("", b)
@@ -172,7 +174,11 @@ class CalibratePage(QWidget):
         m = section(col, "2 · Measured patches",
                     "Thinnest step first, comma separated. A spectrophotometer is ideal; a phone "
                     "photo under flat indirect daylight with a white card in frame, white-balanced "
-                    "against the card, works well enough.")
+                    "against the card, works well enough. Crop the photo to just the row of "
+                    "steps first: \u201cFrom photo\u201d samples evenly across the whole image.")
+        m.addRow("Layer height (mm)", editor.layer.spin())
+        m.addRow("", theme.hint("The layer height the wedge was printed at; it follows your "
+                                "slicer project. A wrong one makes every td wrong."))
         self.wedge_a = WedgeInputs(self, "Wedge A", "#F4F5F0")
         self.wedge_b = WedgeInputs(self, "Wedge B (contrasting base)", "#1A1A1C")
         m.addRow(self.wedge_a)
@@ -213,6 +219,23 @@ class CalibratePage(QWidget):
         if base_id and base_id in self.ed.db.filaments:
             self.wbase.setCurrentText(base_id)
 
+    def grid(self):
+        """(layer, first layer, template) from the project bar: the wedge must sit on the
+        slicer's grid, and Flash Studio needs the template to keep the extruders."""
+        proj = self.ed.project
+        if proj is None:
+            return None, None, None
+        lh, fl = proj.layers()
+        return lh, fl or lh, proj.get("template")
+
+    def refresh_grid(self):
+        lh, fl, tpl = self.grid()
+        self.grid_note.setText(
+            f"{lh:g} mm, first layer {fl:g} mm (from the slicer project at the top)" if lh else
+            "choose your slicer project at the top first: it sets the layer height")
+        if self.ed.project is not None:
+            self.flavor.setCurrentText(self.ed.project.get("flavor") or "orca")
+
     def write_wedge(self):
         fil = self.ed.fil()
         if fil is None:
@@ -221,28 +244,47 @@ class CalibratePage(QWidget):
         if base is None:
             QMessageBox.warning(self, APP, "Choose a base filament.")
             return
+        lh, fl, tpl = self.grid()
+        flavor = self.flavor.currentText()
+        if tpl and not os.path.exists(tpl):
+            QMessageBox.warning(self, APP, "Your slicer project file was moved or deleted; choose "
+                                           "it again in the bar at the top.")
+            return
+        if lh is None or (flavor == "orca" and not tpl):
+            QMessageBox.warning(self, APP, "First choose your Flash Studio project file in the bar "
+                                           "at the top. The wedge has to be built on its layer "
+                                           "height, and Flash Studio needs it to keep the "
+                                           "extruder assignments.")
+            return
         p, _ = QFileDialog.getSaveFileName(self, "Write step wedge", f"wedge_{fil.id}.3mf", "3MF (*.3mf)")
         if not p:
             return
         if not p.lower().endswith(".3mf"):
             p += ".3mf"
-        steps, lh = self.steps.value(), self.ed.layer.value
-        bl, sw, sd = self.baselayers.value(), self.stepw.value(), self.stepd.value()
+        steps = self.steps.value()
+        bl = self.baselayers.value() or optics.opaque_layers(base, fl, lh)[0]
+        sw, sd = self.stepw.value(), self.stepd.value()
         try:
             gap = self.gap.value()
+            hinge = min(self.hinge.value(), bl - 1) if gap > 0 else None
             plate, decals, w, base_h = calibrate.build_wedge(
-                steps, lh, bl, sw, sd, gap, hinge_layers=self.hinge.value() if gap > 0 else None)
-            threemf.get_writer(self.flavor.currentText())(p, [plate], {0: decals}, 1, "part")
-        except Exception as exc:
+                steps, lh, bl, sw, sd, gap, hinge_layers=hinge, first_layer_h=fl)
+            threemf.get_writer(flavor)(
+                p, [plate], {0: decals}, 1, "part", template=tpl, colors=[base.color, fil.color],
+                layer_height=lh, first_layer_height=fl, solid=True,
+                object_settings=threemf.solid_object_settings(flavor, lh))
+        except (Exception, SystemExit) as exc:
             QMessageBox.critical(self, APP, f"Could not write the wedge:\n{exc}")
             return
+        self.ed.layer.set(lh)
         self.ed.status(f"wrote {os.path.basename(p)}", theme.OK)
         QMessageBox.information(
             self, APP,
             f"Wrote {p}\n\n{steps} steps, 1..{steps} layers of {fil.label()} over {bl} base layers "
             f"of {base.label()}.\n{w:.1f} × {sd:.1f} mm, {base_h:.2f}..{base_h + steps * lh:.2f} mm "
             f"tall.\n\nExtruder 1 = {base.label()}\nExtruder 2 = {fil.label()}\n\n"
-            f"Slice at layer height EXACTLY {lh} mm.\n\nPrint a second wedge over a contrasting "
+            f"The file carries the {lh:g} mm layer height and {fl:g} mm first layer: don't change "
+            "them in the slicer.\n\nPrint a second wedge over a contrasting "
             "base if you can — one background cannot separate colour from opacity.")
 
     # -- fit -------------------------------------------------------------------------------

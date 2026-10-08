@@ -1,10 +1,18 @@
 """ProjectBar: the strip across the top, bound to Project/Settings and shared by every tab."""
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QLabel, QLineEdit,
-                               QPushButton, QVBoxLayout, QWidget)
+                               QPushButton, QToolButton, QVBoxLayout, QWidget)
 
 from stackforge.gui.project import Project
+
+TEMPLATE_HELP = (
+    "Your Flash Studio project, saved as a .3mf. stackforge copies your printer, filament and "
+    "print settings from it and builds the plaque on its layer height.\n\n"
+    "To make one: open Flash Studio, choose the Creator 5 printer and your print profile "
+    "(e.g. 0.12 mm), set up all four filament slots, then File > Save Project As… and "
+    "pick that file here. Make it once; re-save it if you change the profile.")
 
 
 class ProjectBar(QWidget):
@@ -32,24 +40,49 @@ class ProjectBar(QWidget):
         self.warn.setObjectName("warn")
         self.warn.setWordWrap(True)
 
+        self.template.setPlaceholderText("choose your Flash Studio project file (.3mf)…")
+        self.layers_note = QLabel()
+        self.layers_note.setObjectName("hint")
+        self.advanced = QToolButton()
+        self.advanced.setText("Advanced")
+        self.advanced.setCheckable(True)
+        self.advanced.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.advanced.setArrowType(Qt.RightArrow)
+        self.advanced.setToolTip("Filament database, slicer flavour, part type and a manual "
+                                 "layer height. The defaults are right for Flash Studio.")
+
         r1 = QHBoxLayout()
-        r1.addWidget(QLabel("Database"))
-        r1.addWidget(self.db, 1)
-        r1.addWidget(self._browse(self.db, "JSON (*.json);;All files (*)"))
-        r1.addSpacing(12)
-        r1.addWidget(QLabel("Template"))
+        lbl = QLabel("Slicer project")
+        lbl.setToolTip(TEMPLATE_HELP)
+        self.template.setToolTip(TEMPLATE_HELP)
+        r1.addWidget(lbl)
         r1.addWidget(self.template, 1)
-        r1.addWidget(self._browse(self.template, "3MF (*.3mf);;All files (*)"))
-        r2 = QHBoxLayout()
-        for text, w in (("Flavor", self.flavor), ("Part type", self.part),
+        r1.addWidget(self._browse(self.template, "Slicer project (*.3mf);;All files (*)",
+                                  "Choose your Flash Studio project (.3mf)", "Choose…"))
+        r1.addSpacing(12)
+        r1.addWidget(self.layers_note)
+        r1.addSpacing(12)
+        r1.addWidget(self.advanced)
+
+        self.adv_row = QWidget()
+        r2 = QHBoxLayout(self.adv_row)
+        r2.setContentsMargins(0, 0, 0, 0)
+        r2.addWidget(QLabel("Filament database"))
+        r2.addWidget(self.db, 1)
+        r2.addWidget(self._browse(self.db, "JSON (*.json);;All files (*)",
+                                  "Choose a filament database"))
+        r2.addSpacing(12)
+        for text, w in (("Slicer flavor", self.flavor), ("Part type", self.part),
                         ("Layer height", self.lh), ("First layer", self.fl)):
             r2.addWidget(QLabel(text))
             r2.addWidget(w)
-            r2.addSpacing(12)
+            r2.addSpacing(8)
         r2.addWidget(self.override)
-        r2.addStretch(1)
+        self.override.setText("set by hand")
+        self.adv_row.setVisible(False)
+        self.advanced.toggled.connect(self._toggle_advanced)
         outer.addLayout(r1)
-        outer.addLayout(r2)
+        outer.addWidget(self.adv_row)
         outer.addWidget(self.warn)
 
         self.db.editingFinished.connect(lambda: self._edited("db", self.db.text().strip()))
@@ -62,12 +95,17 @@ class ProjectBar(QWidget):
         self._loading = False
         self.sync()
 
-    def _browse(self, edit: QLineEdit, filt: str) -> QPushButton:
-        b = QPushButton("…")
-        b.setMaximumWidth(32)
+    def _toggle_advanced(self, on):
+        self.adv_row.setVisible(on)
+        self.advanced.setArrowType(Qt.DownArrow if on else Qt.RightArrow)
+
+    def _browse(self, edit: QLineEdit, filt: str, title="Choose file", text="…") -> QPushButton:
+        b = QPushButton(text)
+        if text == "…":
+            b.setMaximumWidth(32)
 
         def go():
-            p, _ = QFileDialog.getOpenFileName(self, "Choose file", edit.text(), filt)
+            p, _ = QFileDialog.getOpenFileName(self, title, edit.text(), filt)
             if p:
                 edit.setText(p)
                 edit.editingFinished.emit()
@@ -108,7 +146,18 @@ class ProjectBar(QWidget):
             self.fl.setText(fl)
             self.lh.setReadOnly(not on)
             self.fl.setReadOnly(not on)
+            cur = self.project.layers()
+            if cur[0] is None:
+                self.layers_note.setText("")
+            else:
+                src = "set by hand" if on else "from project"
+                self.layers_note.setText(f"layers {cur[0]:g} mm, first {cur[1] or cur[0]:g} mm "
+                                         f"({src})")
             w = self.project.warning() or ""
+            # an unusual flavour/part type/override hides in Advanced; keep it visible
+            if (on or (self.project.settings.get("flavor") or "orca") != "orca"
+                    or (self.project.settings.get("part_type") or "modifier") != "modifier"):
+                self.advanced.setChecked(True)
             self.warn.setText(w)
             self.warn.setVisible(bool(w))
         finally:

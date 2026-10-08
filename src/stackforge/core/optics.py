@@ -15,6 +15,15 @@ from stackforge.core.filamentdb import Filament
 PREVIEW_BASES = [("over white", "#F4F5F0"), ("over black", "#1A1A1C")]
 
 
+def opaque_layers(fil: Filament, first_layer: float, layer: float, t_max: float = 0.01):
+    """(layers, mm) of `fil` for it to pass at most `t_max` of the light: an opaque backing.
+
+    The first layer is `first_layer` thick, every other one `layer`.
+    """
+    mm = float(fil.td_vec().max()) * np.log(1 / t_max)
+    return 1 + int(np.ceil(max(0.0, mm - first_layer) / layer - 1e-9)), mm
+
+
 def patch_rgb(fil: Filament, base_lin, n_layers: int, layer_h: float, td=None) -> np.ndarray:
     """sRGB of `n_layers` of `fil` over a base given in linear light (`td` overrides fil.td)."""
     if td is None:

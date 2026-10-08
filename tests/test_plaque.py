@@ -104,6 +104,58 @@ class Gamut(unittest.TestCase):
         self.assertLess(np.percentile(g.tree.query(dark)[0], 99), 1.0)
 
 
+def _greedy_rects_reference(label, valid):
+    """The original cell-by-cell greedy_rects: the fast one must match it exactly."""
+    h, w = label.shape
+    used = ~valid
+    for y in range(h):
+        x = 0
+        while x < w:
+            if used[y, x]:
+                x += 1
+                continue
+            v = label[y, x]
+            rw = 1
+            while x + rw < w and not used[y, x + rw] and label[y, x + rw] == v:
+                rw += 1
+            rh = 1
+            while y + rh < h:
+                row = slice(x, x + rw)
+                if used[y + rh, row].any() or (label[y + rh, row] != v).any():
+                    break
+                rh += 1
+            used[y:y + rh, x:x + rw] = True
+            yield y, x, rh, rw, int(v)
+            x += rw
+
+
+class GreedyRects(unittest.TestCase):
+    def test_matches_the_reference_exactly(self):
+        from stackforge.core import threemf
+        rng = np.random.default_rng(3)
+        for trial in range(60):
+            h, w = rng.integers(1, 30, 2)
+            k = int(rng.integers(1, 4))
+            # blocky labels, so rectangles actually grow
+            lab = np.kron(rng.integers(0, k, (h // 3 + 1, w // 3 + 1)),
+                          np.ones((3, 3), int))[:h, :w]
+            lab[rng.random((h, w)) < 0.1] = k
+            valid = rng.random((h, w)) < 0.85 if trial % 2 else lab == 0
+            want = list(_greedy_rects_reference(lab, valid))
+            self.assertEqual(list(threemf.greedy_rects(lab, valid)), want)
+
+    def test_gamut_keys_are_unique_per_cell(self):
+        fils = DB(packaged("filaments.json")).resolve("white,blue,red")
+        g = plaque.Gamut(fils, fils[0], 0.12, 4, verbose=False)
+        keys = plaque.Gamut._keys(g.colors, 192)
+        # every state is a new cell, or a carried one sharing its parent's cell
+        dup = np.zeros(len(keys), bool)
+        _, first = np.unique(keys, return_index=True)
+        dup[np.setdiff1d(np.arange(len(keys)), first)] = True
+        par = g.parent[dup]
+        self.assertTrue(np.all(keys[dup] == keys[par]))
+
+
 class Model(unittest.TestCase):
     def setUp(self):
         self.db = DB(packaged("filaments.json"))

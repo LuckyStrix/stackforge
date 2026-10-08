@@ -26,6 +26,14 @@ class MeasureTab(QWidget):
         self.host = host
         self._hexes = None
         lay = QVBoxLayout(self)
+        steps = QLabel(
+            "<b>Reading a printed wedge</b> &nbsp; 1. Plug in the ColorMunki. &nbsp; 2. Choose <i>measure-wedge</i> below, set the number "
+            "of steps, press <b>Run</b>. &nbsp; 3. Follow the prompts in the box at the bottom "
+            "(type in the input line, Enter to confirm). &nbsp; 4. When it finishes, press "
+            "<b>Copy hex list to Calibrate ▸ fit</b>, choose the filament there and Run.")
+        steps.setWordWrap(True)
+        steps.setObjectName("hint")
+        lay.addWidget(steps)
         banner = self._banner()
         if banner:
             w = QLabel(banner)
@@ -48,6 +56,11 @@ class MeasureTab(QWidget):
         bl.addLayout(row)
         self.tabs = ToolTabs.for_tool("measure", measure.build_parser, project=project, presets=presets,
                                       terminal=self.term, on_done=self._done)
+        if shutil.which(measure.NOSPOS_WRAPPER):
+            # The patched Argyll is installed because this meter needs it.
+            for panel in self.tabs.panels.values():
+                if "nospos" in panel.form.entries:
+                    panel.form.set_values({"nospos": True})
         split.addWidget(self.tabs)
         split.addWidget(bottom)
         split.setSizes([380, 300])

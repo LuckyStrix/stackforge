@@ -162,6 +162,69 @@ class Editor(unittest.TestCase):
         txt = ed.look.report.toPlainText()
         self.assertIn("0.12", txt)
 
+    def _tab(self):
+        from stackforge.gui.tabs.filaments import FilamentsTab
+        from stackforge.gui.project import Project
+        from stackforge.gui.settings import Settings
+        from tests.test_template import make_template
+        proj = Project(Settings(os.path.join(self.d.name, "s.json")))
+        proj.settings.set("db", self.path)
+        tpl = os.path.join(self.d.name, "t.3mf")
+        make_template(tpl)
+        proj.set("template", tpl)
+        tab = FilamentsTab(proj)
+        self.addCleanup(tab.deleteLater)
+        return tab
+
+    def test_wedge_is_written_on_the_project_grid_with_the_template(self):
+        import json
+        import zipfile
+        from unittest import mock
+        from PySide6.QtWidgets import QFileDialog
+        tab = self._tab()
+        ed = tab.ed
+        self.assertEqual(ed.layer.value, 0.12)               # follows the project
+        ed.select("polymaker-pla-pro-blue")
+        out = os.path.join(self.d.name, "w.3mf")
+        with mock.patch.object(QFileDialog, "getSaveFileName", return_value=(out, "")), \
+                mock.patch.object(QMessageBox, "information"):
+            ed.calibrate.write_wedge()
+        with zipfile.ZipFile(out) as z:
+            prof = json.loads(z.read("Metadata/project_settings.config"))
+            self.assertIn("Metadata/model_settings.config", z.namelist())
+            model = z.read("3D/3dmodel.model").decode()
+        self.assertEqual(prof["sparse_infill_density"], "100%")
+        self.assertEqual(prof["layer_height"], "0.12")
+        import re
+        z = np.array([float(v) for v in re.findall(r'z="([-\d.eE]+)"', model)])
+        # base top and every step edge on first + k*layer
+        self.assertTrue(np.allclose(((z[z > 0] - 0.2) / 0.12 + 1e-6) % 1, 0, atol=1e-4))
+
+    def test_wedge_refused_without_a_slicer_project(self):
+        from unittest import mock
+        tab = self._tab()
+        tab.project.set("template", "")
+        with mock.patch.object(QMessageBox, "warning") as warn:
+            tab.ed.calibrate.write_wedge()
+        self.assertIn("project", warn.call_args[0][2])
+
+    def test_reload_after_a_fit_keeps_both_writes(self):
+        tab = self._tab()
+        ed = tab.ed
+        ed.select("polymaker-pla-pro-red")
+        ed.e_name.setText("My red")                           # unsaved edit here
+        disk = DB(self.path)                                  # meanwhile a fit writes blue
+        disk.filaments["polymaker-pla-pro-blue"].td = 0.777
+        disk.save()
+        tab.reload_db()
+        self.assertEqual(ed.db.filaments["polymaker-pla-pro-blue"].td, 0.777)
+        self.assertEqual(ed.db.filaments["polymaker-pla-pro-red"].name, "My red")
+        self.assertTrue(ed.dirty)
+        self.assertTrue(ed.save())
+        again = DB(self.path)
+        self.assertEqual(again.filaments["polymaker-pla-pro-blue"].td, 0.777)
+        self.assertEqual(again.filaments["polymaker-pla-pro-red"].name, "My red")
+
     def test_every_page_paints(self):
         ed = self.ed
         ed.resize(1100, 700)

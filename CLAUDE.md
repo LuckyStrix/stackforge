@@ -28,6 +28,9 @@ clean and CI runs both. PySide6 is the `gui` extra; the CLIs need only numpy/Pil
 - **One-pixel features don't print at 0.4 mm.** Each modifier region gets walls; a region one
   nozzle-width across gets no plastic (5-9% of colour pixels lost at `--resolution 0.4`, 0.1% at
   0.6). Default is 0.6 (`MIN_FEATURE_MM`). Dithers are mostly one-pixel features.
+- **Wedge step n carries n layers of filament** (`layer_height` each): the thick first layer is
+  in the base under the steps. `fit_td` models exactly that; chips (no base) are the ones on
+  `first + (n-1)*layer`. Wedges and chips are written solid, like the plaque.
 - **td is the reflectance-fit kind** (`tools/calibrate.py`: light crosses each layer twice). measure's
   transmission td is single-pass, ~2x for a clear absorber; never paste it in as `td_rgb`.
 

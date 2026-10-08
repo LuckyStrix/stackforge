@@ -240,13 +240,64 @@ class FirstLayerGridTests(unittest.TestCase):
         chips = calibrate.build_chips(3, 0.08, 20.0, 20.0, 2.0, first_layer_h=0.25)
         self.assertTrue(np.allclose([c.verts[:, 2].max() for c in chips], [0.25, 0.33, 0.41]))
 
-    def test_fit_uses_first_layer_depth(self):
+    def test_fit_models_the_wedge_it_was_printed_from(self):
+        """The fit's step depths are the filament thicknesses build_wedge makes: the
+        thick first layer is in the base, so step n is n layers, not first+(n-1)."""
         from stackforge.core import colormath as cm
-        w, col = np.array([244., 245, 240]), np.array([40., 150, 148])
-        depth = 0.25 + np.arange(8) * 0.08
+        plate, decals, w, base_h = calibrate.build_wedge(8, 0.12, 9, 14.0, 14.0, 0.0,
+                                                         first_layer_h=0.25)
+        v = decals[0][1].reshape(-1, 8, 3)                 # one box per step
+        depth = np.sort(v[:, :, 2].max(1) - v[:, :, 2].min(1))
+        self.assertTrue(np.allclose(depth, (np.arange(8) + 1) * 0.12), depth)
+        wh, col = np.array([244., 245, 240]), np.array([40., 150, 148])
         T = np.exp(-depth / 0.3)[:, None]
-        meas = cm.linear_to_srgb(cm.srgb_to_linear(w) * T + cm.srgb_to_linear(col) * (1 - T))
-        td, *_ = calibrate.fit_td([(meas, w)], 0.08, first_layer_h=0.25)
+        meas = cm.linear_to_srgb(cm.srgb_to_linear(wh) * T + cm.srgb_to_linear(col) * (1 - T))
+        td, *_ = calibrate.fit_td([(meas, wh)], 0.12)
         self.assertAlmostEqual(float(td[0]), 0.3, places=2)
-        td_bad, *_ = calibrate.fit_td([(meas, w)], 0.08)
-        self.assertGreater(abs(float(td_bad[0]) - 0.3), 0.03)   # grid ignored: visibly wrong
+
+
+class CalibrateCli(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        from tests.test_template import make_template
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.tpl = os.path.join(self.tmp.name, "t.3mf")
+        make_template(self.tpl)
+
+    def run_cli(self, *argv):
+        import contextlib
+        import io
+        from stackforge.core.paths import packaged
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            calibrate.main(["--db", packaged("filaments.json"), *argv])
+        return out.getvalue()
+
+    def test_wedge_and_chips_are_forced_solid(self):
+        import json
+        import zipfile
+        for cmd in (["wedge", "--filament", "blue", "--base", "white"],
+                    ["chips", "--filament", "blue"]):
+            out = os.path.join(self.tmp.name, cmd[0] + ".3mf")
+            self.run_cli(*cmd, "--template", self.tpl, "--steps", "3", "-o", out)
+            with zipfile.ZipFile(out) as z:
+                prof = json.loads(z.read("Metadata/project_settings.config"))
+                cfg = z.read("Metadata/model_settings.config").decode()
+            self.assertEqual(prof["sparse_infill_density"], "100%", cmd[0])
+            self.assertIn('key="sparse_infill_density" value="100%"', cfg)
+
+    def test_wedge_base_is_opaque_by_default(self):
+        log = self.run_cli("wedge", "--filament", "blue", "--base", "white", "--template",
+                           self.tpl, "--steps", "3", "-o", os.path.join(self.tmp.name, "w.3mf"))
+        self.assertIn("(auto: opaque)", log)
+        self.assertNotIn("pass", log.split("wrote")[1].split("Print one")[0])
+
+    def test_fit_takes_the_grid_from_the_template_and_never_guesses(self):
+        hexes = "#D8E6E4,#B4D2D0,#8FBEBC,#6FADAB,#54A09E"
+        with self.assertRaises(SystemExit) as cm:
+            self.run_cli("fit", "--filament", "blue", "--base", "white", "--measured", hexes)
+        self.assertIn("--template", str(cm.exception))
+        log = self.run_cli("fit", "--filament", "blue", "--base", "white", "--measured", hexes,
+                           "--template", self.tpl)
+        self.assertIn("at 0.12 mm layers", log)

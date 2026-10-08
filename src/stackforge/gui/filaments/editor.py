@@ -41,10 +41,12 @@ class FilamentEditor(QWidget):
     edited = Signal()                 # the selected filament changed (or another was selected)
     dirty_changed = Signal(bool)
 
-    def __init__(self, db_path, catalog_path=polymaker.CACHE, parent=None):
+    def __init__(self, db_path, catalog_path=polymaker.CACHE, parent=None, project=None):
         super().__init__(parent)
         self.db_path, self.catalog_path = db_path, catalog_path
+        self.project = project            # the layer grid and template for wedges
         self.db = DB(db_path)
+        self._disk = deepcopy(self.db.filaments)   # as last read/written: what "unsaved" is against
         self.layer = SharedValue(0.08)    # one layer height for every page
         self.dirty = False
         self.current: str | None = None
@@ -65,6 +67,16 @@ class FilamentEditor(QWidget):
             self.select(sorted(self.db.filaments)[0])
         else:
             self.pages["details"].setEnabled(False)
+        if project is not None:
+            project.subscribe(self.project_changed)
+        self.project_changed()
+
+    def project_changed(self):
+        """Follow the project's layer grid: every page must assume the slicer's layer height."""
+        lh = self.project.layers()[0] if self.project is not None else None
+        if lh:
+            self.layer.set(lh)
+        self.calibrate.refresh_grid()
 
     # -- left: the library ------------------------------------------------------------------
 
@@ -88,6 +100,9 @@ class FilamentEditor(QWidget):
         self.list = QListWidget()
         self.list.currentItemChanged.connect(lambda it, _p: it and self.select(it.data(Qt.UserRole)))
         col.addWidget(self.list, 1)
+        self.measured_note = QLabel()
+        self.measured_note.setWordWrap(True)
+        col.addWidget(self.measured_note)
         row = QHBoxLayout()
         for text, fn in (("New", self.new_filament), ("Duplicate", self.duplicate), ("Delete", self.delete)):
             b = QPushButton(text)
@@ -130,6 +145,14 @@ class FilamentEditor(QWidget):
         self.list.blockSignals(False)
         total = len(self.db.filaments)
         self.count.setText(f"{self.list.count()}/{total}" if needle else str(total))
+        n = sum(f.provenance == "measured" for f in self.db.filaments.values())
+        self.measured_note.setText(
+            f"{n} of {total} measured. The rest are estimates (grey): plaque colours from them "
+            f"are approximate until you calibrate them (Calibrate page or tab)."
+            if n < total else f"all {total} measured")
+        self.measured_note.setObjectName("warn" if n < total else "hint")
+        self.measured_note.style().unpolish(self.measured_note)
+        self.measured_note.style().polish(self.measured_note)
 
     def _item(self, fid):
         for i in range(self.list.count()):
@@ -728,6 +751,7 @@ class FilamentEditor(QWidget):
             QMessageBox.critical(self, APP, f"Could not write {self.db.path}:\n{exc}")
             return False
         self._set_dirty(False)
+        self._disk = deepcopy(self.db.filaments)
         self.status(f"saved {len(self.db.filaments)} filaments to {os.path.basename(self.db.path)}",
                     theme.OK)
         return True
@@ -752,6 +776,7 @@ class FilamentEditor(QWidget):
             QMessageBox.critical(self, APP, str(exc))
             return
         self.db, self.db_path = db, path
+        self._disk = deepcopy(db.filaments)
         self._set_dirty(False)
         self.current = None
         self._render_list()
@@ -763,6 +788,40 @@ class FilamentEditor(QWidget):
             self.status("empty database — New, or Starter set…", theme.WARN)
         self.calibrate.reset_fit()
         self.lbl_path.setText(path)
+
+    def merge_from_disk(self) -> list[str]:
+        """Re-read the file another tab just wrote, keeping this editor's unsaved edits.
+
+        Each entry the editor changed (or added/deleted) since it last read or wrote the
+        file is carried over onto the new file; where the other writer changed that same
+        entry, the file wins, since it is the newer measurement. Returns those ids.
+        Saving the stale in-memory copy instead would silently undo the other write.
+        """
+        try:
+            disk = DB(self.db_path)
+        except SystemExit as exc:
+            QMessageBox.critical(self, APP, str(exc))
+            return []
+        lost = []
+        for fid in set(self.db.filaments) | set(self._disk):
+            mine, was = self.db.filaments.get(fid), self._disk.get(fid)
+            if mine == was:
+                continue                                  # not edited here
+            if disk.filaments.get(fid) != was:
+                lost.append(fid)                          # changed on both sides
+            elif mine is None:
+                disk.filaments.pop(fid, None)
+            else:
+                disk.filaments[fid] = mine
+        self._disk = deepcopy(DB(self.db_path).filaments)
+        self.db.filaments = disk.filaments
+        cur = self.current if self.current in self.db.filaments else None
+        self.current = None
+        self._render_list()
+        if cur or self.db.filaments:
+            self.select(cur or sorted(self.db.filaments)[0])
+        self._set_dirty(self.db.filaments != self._disk)
+        return lost
 
     def open_db(self):
         if not self.confirm_discard():

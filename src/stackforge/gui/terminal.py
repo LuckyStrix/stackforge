@@ -54,6 +54,7 @@ class TerminalView(QWidget):
     # ---- job lifecycle -----------------------------------------------------------------
     def attach(self, job: Job, on_finish=None):
         self.job = job
+        self.status.setStyleSheet("")
         self._on_finish = on_finish or self.on_finish
         self.screen = Screen()
         self._render()

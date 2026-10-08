@@ -240,6 +240,9 @@ class Pickers(unittest.TestCase):
         self.assertEqual(form.entries["scale"].label.toolTip().splitlines()[0], "--scale")
 
 
+from stackforge.tools import plaque  # noqa: E402
+
+
 class Designer(unittest.TestCase):
     def setUp(self):
         from stackforge.gui.tabs.plaque import PlaqueDesigner
@@ -258,7 +261,8 @@ class Designer(unittest.TestCase):
         d = self.des
         self.assertEqual(d.list.count(), len(d.db.filaments))
         self.assertEqual({f.name for f in d.selected()}, {"White", "Black", "Blue", "Red"})
-        self.assertEqual(d.base.currentText(), "polymaker-pla-pro-white")
+        self.assertEqual(d._base_id(), "polymaker-pla-pro-white")
+        self.assertEqual(d.base.currentText(), "Polymaker PLA Pro White")
         d._set_all(False)
         self.assertEqual(d.selected(), [])
         d.filter.setText("teal")
@@ -272,17 +276,25 @@ class Designer(unittest.TestCase):
         from unittest import mock
         from PySide6.QtWidgets import QFileDialog, QMessageBox
         d = self.des
+        t = os.path.join(self.d.name, "t.3mf")
+        make_template(t)
+        self.proj.set("template", t)
         d.s_width.setValue(40)
         d.s_maxl.setValue(6)
         d._generate()
         pump(lambda: d.result is not None, 90)
         self.assertIsNotNone(d.result)
         self.assertTrue(d.btn_export.isEnabled())
+        # auto base layers: opaque on the template's grid
+        self.assertIsNone(plaque.base_warning(d.result["base"], d.result["args"]))
         out = os.path.join(self.d.name, "plaque.3mf")
         with mock.patch.object(QFileDialog, "getSaveFileName", return_value=(out, "")), \
-                mock.patch.object(QMessageBox, "information"):
+                mock.patch.object(QMessageBox, "information") as info:
             d._export()
+            pump(lambda: info.called, 90)
         self.assertTrue(os.path.exists(out))
+        self.assertIn("T1", info.call_args[0][2])
+        self.assertIn("Flash Studio", info.call_args[0][2])
         self.assertEqual(zipfile.ZipFile(out).testzip(), None)
         d._preset_values()
         with mock.patch("PySide6.QtWidgets.QInputDialog.getText", return_value=("mine", True)):
@@ -294,6 +306,31 @@ class Designer(unittest.TestCase):
         d.preset_combo.setCurrentText("mine")
         d._apply_preset()
         self.assertEqual(d.s_width.value(), 40)
+
+    def test_generate_refuses_without_a_layer_grid(self):
+        from unittest import mock
+        from PySide6.QtWidgets import QMessageBox
+        d = self.des
+        with mock.patch.object(QMessageBox, "warning") as warn:
+            d._generate()
+        self.assertIn("Slicer project", warn.call_args[0][2])
+        self.assertFalse(d.worker.busy)
+        self.proj.set("template", os.path.join(self.d.name, "gone.3mf"))
+        with mock.patch.object(QMessageBox, "warning") as warn:
+            d._generate()
+        self.assertIn("moved or deleted", warn.call_args[0][2])
+
+    def test_plaque_bigger_than_the_bed_is_refused(self):
+        from unittest import mock
+        from PySide6.QtWidgets import QMessageBox
+        t = os.path.join(self.d.name, "t.3mf")
+        make_template(t)
+        self.proj.set("template", t)
+        self.des.s_width.setValue(400)
+        with mock.patch.object(QMessageBox, "warning") as warn:
+            self.des._generate()
+        self.assertIn("does not fit", warn.call_args[0][2])
+        self.assertFalse(self.des.worker.busy)
 
     def test_layers_come_from_the_project_bar(self):
         t = os.path.join(self.d.name, "t.3mf")
@@ -341,6 +378,21 @@ class Host(unittest.TestCase):
         self.assertEqual(fx.job.returncode, 0)
         self.assertTrue(os.path.exists(os.path.join(self.d.name, "badge.3mf")))
         self.assertIsNone(other.job)
+
+    def test_a_failed_run_says_why(self):
+        tt = self.win.tabs["Tools"].tabs
+        fx = tt.panels["make fixtures"]
+        fx.form.set_values({"out_dir": os.path.join(self.d.name, "no", "such", "dir")})
+        fx.run()
+        pump(lambda: fx.job is not None and fx.job.done and not fx.term._timer.isActive())
+        if fx.job.returncode == 0:
+            self.skipTest("make_samples created the directory")
+        box = fx._failure_box
+        self.assertIn("failed", box.text())
+        box.close()
+
+    def test_calibrate_fit_saves_by_default(self):
+        self.assertTrue(self.win.tabs["Calibrate"].tabs.panels["fit"].form.values()["write"])
 
     def test_measure_hex_list_flows_to_calibrate_fit(self):
         from stackforge.gui.tabs.measure import HEX_LINE

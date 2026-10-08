@@ -13,6 +13,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QHBoxLayout, QMessageBox, QPushButton, QSplitter, QVBoxLayout,
                                QWidget)
 
+from stackforge.gui import theme
 from stackforge.gui.argform import argv as av
 from stackforge.gui.form import CommandForm
 from stackforge.gui.imageview import ImageView
@@ -108,6 +109,23 @@ class ToolPanel(QWidget):
         self.run_btn.setEnabled(False)
         self.cancel_btn.setEnabled(True)
 
+    def _report_failure(self):
+        """A failed run says why, out loud: an "exit 1" in grey is easy to miss."""
+        lines = [ln.strip() for ln in self.term.screen.text.splitlines() if ln.strip()]
+        why = next((ln for ln in reversed(lines) if not ln.startswith(("Traceback", "File "))),
+                   "it stopped with an error")
+        for prefix in ("SystemExit: ", "error: "):
+            why = why.split(prefix, 1)[-1]
+        self.term.status.setStyleSheet(f"color: {theme.ERR}")
+        box = QMessageBox(QMessageBox.Warning, "Did not finish",
+                          f"{self.title()} failed:\n\n{why}", QMessageBox.Ok, self)
+        box.setDetailedText(self.term.screen.text[-6000:])
+        box.open()                          # not exec(): never blocks the event loop
+        self._failure_box = box
+
+    def title(self) -> str:
+        return " ".join((self.tool,) + self.command)
+
     def cancel(self):
         if self._running():
             self.job.cancel()
@@ -115,6 +133,8 @@ class ToolPanel(QWidget):
     def _finished(self, job: Job):
         self.cancel_btn.setEnabled(False)
         self._form_changed()
+        if job.returncode not in (0, None) and not job.cancelled:
+            self._report_failure()
         if self.on_done:
             self.on_done(self, job)
         if self.view and job.returncode == 0 and self._preview_path and os.path.exists(self._preview_path):

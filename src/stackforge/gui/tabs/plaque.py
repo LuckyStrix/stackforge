@@ -23,11 +23,11 @@ from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDoubleSpinBox, QFi
                                QListWidgetItem, QMessageBox, QProgressBar, QPushButton, QScrollArea,
                                QSpinBox, QSplitter, QTabWidget, QVBoxLayout, QWidget)
 
-from stackforge.core import colormath
+from stackforge.core import colormath, threemf
 from stackforge.core.filamentdb import DB, DEFAULT_DB
 from stackforge.gui import theme
 from stackforge.gui.imageview import ImageView
-from stackforge.gui.worker import Worker
+from stackforge.gui.worker import Worker, show_error
 from stackforge.tools import plaque
 
 APP = "Plaque"
@@ -142,6 +142,10 @@ class PlaqueDesigner(QWidget):
         self.list.setSelectionMode(QAbstractItemView.NoSelection)
         self.list.itemChanged.connect(lambda _i: self._inputs_changed())
         bl.addWidget(self.list, 1)
+        self.lbl_measured = QLabel()
+        self.lbl_measured.setObjectName("warn")
+        self.lbl_measured.setWordWrap(True)
+        bl.addWidget(self.lbl_measured)
         quick = QHBoxLayout()
         for text, fn in (("All", lambda: self._set_all(True)), ("None", lambda: self._set_all(False)),
                          ("Measured only", self._select_measured)):
@@ -200,7 +204,8 @@ class PlaqueDesigner(QWidget):
         self.s_height = _spin(0, 500, 5, 0.0, 1)
         self.s_res = _spin(0.1, 2.0, 0.05, plaque.MIN_FEATURE_MM, 2)
         self.s_maxl = _spin(2, 40, 1, 16)
-        self.s_basel = _spin(1, 20, 1, 5)
+        self.s_basel = _spin(0, 80, 1, 0)
+        self.s_basel.setSpecialValueText("auto")
         g.addRow("Width (mm)", self.s_width)
         g.addRow("Height (mm)", self.s_height)
         g.addRow("", theme.hint("0 keeps the image's aspect ratio."))
@@ -210,6 +215,8 @@ class PlaqueDesigner(QWidget):
         g.addRow("", theme.hint("The gamut stops growing once the deepest stack goes opaque, so past "
                                 "~16 this is just print time."))
         g.addRow("Base layers", self.s_basel)
+        g.addRow("", theme.hint("Auto picks the fewest layers that stop light getting through the "
+                                "base; a see-through base makes every colour wrong."))
 
         c = section("Colour")
         self.c_fit = _combo(["cover", "contain", "stretch"], "cover")
@@ -316,9 +323,30 @@ class PlaqueDesigner(QWidget):
 
     # ---- project values ----------------------------------------------------------------
     def _layers(self):
+        """The project's layer grid; 0.08 stands in only for the estimate, never for a print
+        (Generate refuses while _grid_problem() says so)."""
         lh, fl = self.project.layers() if self.project else (None, None)
         lh = lh or 0.08
         return lh, fl or lh
+
+    def _grid_problem(self):
+        """Why a plaque can't be built on the right layer grid yet, in plain words, or None."""
+        t = self._template()
+        if t and not os.path.exists(t):
+            return ("Your Flash Studio project file was moved or deleted:\n" + t
+                    + "\n\nChoose it again with the \u201cSlicer project\u201d box at the top.")
+        if t:
+            try:
+                threemf.check_template(t)
+            except SystemExit as exc:
+                return str(exc)
+        lh = self.project.layers()[0] if self.project else None
+        if self._flavor() == "orca" and lh is None:
+            return ("First choose your Flash Studio project file with the \u201cSlicer project\u201d "
+                    "box at the top.\n\nIt tells stackforge your printer, your four filament "
+                    "slots and the layer height the slicer will use; the plaque must be built "
+                    "on exactly that layer height or the colours print on alternate layers.")
+        return None
 
     def _flavor(self):
         return (self.project.get("flavor") if self.project else None) or "orca"
@@ -361,13 +389,12 @@ class PlaqueDesigner(QWidget):
             self.list.addItem(it)
         names = [f.id for f in self.db.filaments.values()]
         self.base.blockSignals(True)
-        cur = self.base.currentText()
+        cur = self._base_id()
         self.base.clear()
-        self.base.addItems(names)
-        if cur in names:
-            self.base.setCurrentText(cur)
-        elif names:
-            self.base.setCurrentText(next((n for n in names if "white" in n), names[0]))
+        for fil in self.db.filaments.values():
+            self.base.addItem(_swatch(fil.rgb()), fil.label(), fil.id)
+        if names:
+            self._set_base(cur if cur in names else next((n for n in names if "white" in n), names[0]))
         self.base.blockSignals(False)
         self._loading = False
         self._apply_filter()
@@ -397,6 +424,11 @@ class PlaqueDesigner(QWidget):
         self._loading = False
         self._inputs_changed()
 
+    def _set_base(self, fid):
+        i = self.base.findData(fid)
+        if i >= 0:
+            self.base.setCurrentIndex(i)
+
     def _set_checked(self, ids: set):
         self._loading = True
         for i in range(self.list.count()):
@@ -413,7 +445,7 @@ class PlaqueDesigner(QWidget):
         lh, fl = self._layers()
         return SimpleNamespace(
             layer_height=lh, first_layer_height=fl, max_layers=self.s_maxl.value(),
-            base_layers=self.s_basel.value(), resolution=self.s_res.value(),
+            base_layers=self.s_basel.value() or None, resolution=self.s_res.value(),
             width=self.s_width.value(), height=self.s_height.value(), grid=self.s_grid.value(),
             cap=400_000, dither=self.c_dither.currentText(), fit=self.c_fit.currentText(),
             slots=self.s_slots.value(), top=self.s_top.value(), rank_by=self.c_rankby.currentText(),
@@ -432,15 +464,31 @@ class PlaqueDesigner(QWidget):
         if len(sel) < 2:
             QMessageBox.warning(self, APP, "Tick at least two filaments.")
             return None
-        base_id = self.base.currentText()
+        base_id = self._base_id()
         if base_id not in self.db.filaments:
             QMessageBox.warning(self, APP, "Choose a base filament.")
+            return None
+        problem = self._grid_problem()
+        if problem:
+            QMessageBox.warning(self, APP, problem)
+            return None
+        a = self.config_ns()
+        w_px, h_px = plaque.pixel_grid(a, self.source_img.width, self.source_img.height)
+        try:
+            plaque.check_bed(self._template(), w_px * a.resolution, h_px * a.resolution)
+            if self._template():
+                threemf.check_template_slots(self._template(), min(len(sel), a.slots))
+        except SystemExit as exc:
+            QMessageBox.warning(self, APP, str(exc))
             return None
         base = self.db.filaments[base_id]
         if base.id not in {f.id for f in sel}:
             self._set_checked(self._checked() | {base.id})
         sel = [base] + [f for f in sel if f.id != base.id]
         return sel, base
+
+    def _base_id(self):
+        return self.base.currentData() or ""
 
     # ---- image, estimate, staleness ----------------------------------------------------
     def _open_image(self):
@@ -464,10 +512,8 @@ class PlaqueDesigner(QWidget):
         if self.source_img is None:
             return
         a = self.config_ns()
-        w_px = max(1, int(round(a.width / a.resolution)))
-        h_px = (max(1, int(round(a.height / a.resolution))) if a.height > 0
-                else max(1, int(round(w_px * self.source_img.height / self.source_img.width))))
-        base = self.db.filaments.get(self.base.currentText())
+        w_px, h_px = plaque.pixel_grid(a, self.source_img.width, self.source_img.height)
+        base = self.db.filaments.get(self._base_id())
         pad = tuple(int(v) for v in base.rgb()) if base else (255, 255, 255)
         self.fitted = colormath.fit_image(self.image_path, w_px, h_px, a.fit, pad=pad)
         self.view[0].set_image(self.fitted)
@@ -480,7 +526,7 @@ class PlaqueDesigner(QWidget):
     def _signature(self):
         pool = tuple(sorted(repr(f) for f in self.selected()))
         return (tuple(sorted(vars(self.config_ns()).items())), self.image_path, pool,
-                self.base.currentText())
+                self._base_id(), self._template())
 
     def _check_stale(self):
         if self.result is None or self.result["sig"] == self._signature():
@@ -504,40 +550,53 @@ class PlaqueDesigner(QWidget):
             self.lbl_est.setText("\n".join(problems))
             return
         sel = self.selected()
-        base_id = self.base.currentText()
+        base_id = self._base_id()
         if base_id in self.db.filaments and base_id not in {f.id for f in sel}:
             sel = sel + [self.db.filaments[base_id]]      # _validate adds the base if unticked
         n, slots = len(sel), a.slots
-        total = a.first_layer_height + (a.base_layers - 1 + a.max_layers) * a.layer_height
-        w_px = max(1, int(round(a.width / a.resolution)))
-        if self.source_img is not None:
-            h_px = (max(1, int(round(a.height / a.resolution))) if a.height > 0
-                    else max(1, int(round(w_px * self.source_img.height / self.source_img.width))))
+        base = self.db.filaments.get(base_id)
+        auto = a.base_layers is None
+        if base is not None:
+            plaque.resolve_base_layers(a, base, log=lambda _m: None)
         else:
-            h_px = w_px
+            a.base_layers = a.base_layers or 1
+        total = a.first_layer_height + (a.base_layers - 1 + a.max_layers) * a.layer_height
+        if self.source_img is not None:
+            w_px, h_px = plaque.pixel_grid(a, self.source_img.width, self.source_img.height)
+        else:
+            w_px = h_px = plaque.pixel_grid(a, 1, 1)[0]
         combos = comb(max(0, n - 1), slots - 1) if n > slots else 0
         lines = [f"grid       {w_px} x {h_px} px",
                  f"plaque     {w_px*a.resolution:.0f} x {h_px*a.resolution:.0f} x {total:.2f} mm",
-                 f"layers     {a.base_layers} base + {a.max_layers} colour "
+                 f"layers     {a.base_layers}{' (auto)' if auto else ''} base + {a.max_layers} colour "
                  f"at {a.layer_height:g} / {a.first_layer_height:g} mm",
                  f"selected   {n} filament{'s' if n != 1 else ''}"]
         if combos:
             lines.append(f"ranking    {combos} combinations")
-        base = self.db.filaments.get(base_id)
+        warn = None
         if base is not None:
-            base_h = a.first_layer_height + (a.base_layers - 1) * a.layer_height
             try:
-                t = float(base.transmittance(base_h).max())
+                warn = plaque.base_warning(base, a)
             except SystemExit:
-                t = 0.0
-            if t > 0.01:
-                lines.append(f"base       {base_h:.2f} mm passes {100*t:.0f}% — not opaque")
+                warn = None
+            if warn:
+                lines.append("base       not opaque: " + warn)
         est = [f.id for f in sel if f.provenance != "measured"]
         if est:
-            lines.append(f"unmeasured {len(est)} of {n}")
-        if self._layers() == (0.08, 0.08) and not (self.project and self.project.layers()[0]):
-            lines.append("layers     no template: 0.08 mm assumed (set a template above)")
+            lines.append(f"unmeasured {len(est)} of {n}: colours are approximate until calibrated")
+        self.lbl_measured.setText(
+            f"{len(est)} of the {n} ticked filaments are estimates (grey), not measured: the "
+            f"simulated print is approximate until they are calibrated." if est else "")
+        self.lbl_measured.setVisible(bool(est))
+        grid = self._grid_problem()
+        if grid:
+            lines.append("layers     no slicer project yet: 0.08 mm assumed for this estimate only")
         self.lbl_est.setText("\n".join(lines))
+        if self.result is None and not self.worker.busy:
+            if grid:
+                self._status(grid.split("\n")[0], theme.WARN)
+            elif warn:
+                self._status("Base is see-through: " + warn, theme.WARN)
 
     # ---- running -----------------------------------------------------------------------
     def _generate(self):
@@ -550,6 +609,7 @@ class PlaqueDesigner(QWidget):
         if problems:
             QMessageBox.warning(self, APP, "\n".join(problems))
             return
+        plaque.resolve_base_layers(a, base, log=lambda _m: None)
         self._refresh_fit()
         img, sig = self.fitted, self._signature()
         self._start("generate", lambda: dict(self._job_auto(sel, base, a, img), sig=sig))
@@ -574,19 +634,10 @@ class PlaqueDesigner(QWidget):
         return r
 
     def _job_solve(self, sel, base, a, img, lo=0.0):
-        def prog(f, m):
-            self.worker.progress(lo + (1 - lo) * f, m)
-        g = plaque.Gamut(sel, base, a.layer_height, a.max_layers, a.grid, a.cap, verbose=False, progress=prog)
-        prog(0.7, "matching pixels to reachable colours")
-        state = plaque.solve_image(g, img, a.dither)
-        achieved = np.round(g.srgb()[state])
-        err = np.linalg.norm(colormath.srgb_to_lab(achieved.astype(np.float64))
-                             - colormath.srgb_to_lab(img.astype(np.float64)), axis=-1)
-        prog(0.95, "building layer labels")
-        blurred = colormath.blurred_de(achieved, img, plaque.BLUR_MM / a.resolution)[0]
-        labels, _ = plaque.trim_base_layers(plaque.layer_labels(g, state), g.base_index)
-        return {"gamut": g, "labels": labels, "achieved": achieved, "err": err, "blurred": blurred,
-                "fils": sel, "base": base, "args": a, "image_path": self.image_path}
+        r = plaque.solve(sel, base, a, img,
+                         progress=lambda f, m: self.worker.progress(lo + (1 - lo) * f, m))
+        r.update(args=a, image_path=self.image_path)
+        return r
 
     def _start(self, kind, fn):
         if self.worker.busy or not self.worker.submit(kind, fn):
@@ -600,6 +651,7 @@ class PlaqueDesigner(QWidget):
     def _finish(self):
         self.btn_go.setEnabled(True)
         self.btn_cancel.setEnabled(False)
+        self.btn_export.setEnabled(self.result is not None)
         self.prog.setValue(0)
 
     def _poll(self):
@@ -617,14 +669,16 @@ class PlaqueDesigner(QWidget):
                 self._status("cancelled")
             elif job.error:
                 self._finish()
-                self._status("failed", theme.ERR)
-                QMessageBox.critical(self, APP, job.error)
+                self._status("failed: " + job.error.splitlines()[0], theme.ERR)
+                show_error(self, APP, job)
             elif job.kind == "generate":
                 self._on_solved(job.result)
+            elif job.kind == "export":
+                self._on_exported(job.result)
 
     def _on_solved(self, r):
-        self._finish()
         self.result = r
+        self._finish()
         self.rank_results = r["ranked"]
         self._tab_titles(stale=False)
         self.view[3].set_image(Image.open(r["ranked"]["sheet"]) if r["ranked"] else None)
@@ -633,20 +687,29 @@ class PlaqueDesigner(QWidget):
         self.view[2].set_image((np.stack([heat, 1 - heat, np.zeros_like(heat)], -1) * 255).astype(np.uint8))
         self.views.setCurrentIndex(1)
         self._update_legend()
-        self.btn_export.setEnabled(True)
 
         e, labels = r["err"], r["labels"]
         per_layer = np.mean([len(np.unique(labels[i])) for i in range(labels.shape[0])])
-        capped = "   ·   gamut hit the state cap" if r["gamut"].capped else ""
+        notes = []
+        if r["ranked"]:
+            notes.append(f"best of {len(r['ranked']['results'])} combinations: "
+                         + ", ".join(f.name for f in r["fils"]))
         thin = plaque.thin_fraction(labels, r["gamut"].base_index)
         if thin > 0.05 and r["args"].resolution < plaque.MIN_FEATURE_MM - 1e-9:
-            capped += f"   ·   {100*thin:.0f}% of colour in 1-px features (slicer drops them)"
-        if r["ranked"]:
-            capped = (f"   ·   best of {len(r['ranked']['results'])} combinations: "
-                      + ", ".join(f.name for f in r["fils"]) + capped)
-        self._status(f"dE mean {e.mean():.1f}  p95 {np.percentile(e,95):.1f}  max {e.max():.1f}  "
-                     f"(blurred {r['blurred']:.1f})   ·   {per_layer:.1f} filaments per layer{capped}",
-                     theme.OK if e.mean() < 8 else theme.WARN)
+            notes.append(f"{100*thin:.0f}% of colour in 1-px features (slicer drops them)")
+        if r["gamut"].capped:
+            notes.append("gamut hit the state cap")
+        warn = plaque.base_warning(r["base"], r["args"])
+        if warn:
+            notes.append("base is see-through")
+        quality = plaque.match_quality(e.mean())
+        self._status(f"Colour match: {quality}" + "".join("   ·   " + n for n in notes),
+                     theme.OK if e.mean() < 10 and not warn else theme.WARN)
+        self.lbl_status.setToolTip(
+            f"Colour error (dE; under 5 is hard to see, over 20 is a colour these filaments "
+            f"cannot make): mean {e.mean():.1f}, worst 5% {np.percentile(e, 95):.1f}, "
+            f"max {e.max():.1f}, at arm's length {r['blurred'][0]:.1f}\n"
+            f"{per_layer:.1f} filaments per layer on average" + (f"\n\n{warn}" if warn else ""))
         self._check_stale()     # inputs may have changed while it ran
 
     def _status(self, msg, colour=theme.FG_DIM):
@@ -661,33 +724,45 @@ class PlaqueDesigner(QWidget):
             QMessageBox.warning(self, APP, "Nothing to export yet: press Generate "
                                            "(it is out of date if you changed anything).")
             return
+        problem = self._grid_problem()
+        if problem:
+            QMessageBox.warning(self, APP, problem)
+            return
         r = self.result
-        start = os.path.splitext(os.path.basename(r["image_path"] or "plaque"))[0] + "_plaque.3mf"
+        a = r["args"]
+        warn = plaque.base_warning(r["base"], a)
+        if warn and QMessageBox.question(
+                self, APP, warn + "\n\nExport anyway?") != QMessageBox.Yes:
+            return
+        img = r["image_path"]
+        name = os.path.splitext(os.path.basename(img or "plaque"))[0] + "_plaque.3mf"
+        start = os.path.join(os.path.dirname(img), name) if img else name
         p, _ = QFileDialog.getSaveFileName(self, "Export 3MF", start, "3MF (*.3mf)")
         if not p:
             return
         if not p.lower().endswith(".3mf"):
             p += ".3mf"
-        a = r["args"]
-        try:
-            plate, decals, total_h = plaque.build_geometry(
-                r["labels"], a.width, a.resolution, a.layer_height,
-                a.first_layer_height + (a.base_layers - 1) * a.layer_height,
-                r["gamut"].base_index, len(r["fils"]))
-            plaque.write_plaque(p, self._flavor(), plate, decals, r["fils"], r["gamut"].base_index,
-                            self._part(), self._template(), a.layer_height, a.first_layer_height)
-        except (Exception, SystemExit) as exc:
-            QMessageBox.critical(self, APP, f"Export failed:\n{exc}")
+        if self._template() and os.path.abspath(p) == os.path.abspath(self._template()):
+            QMessageBox.warning(self, APP, "That is your slicer project file; choose another name "
+                                           "so it is not overwritten.")
             return
-        nbox = sum(len(t) // 12 for _, _, t in decals)
+        flavor, part, tpl = self._flavor(), self._part(), self._template()
+        self._start("export", lambda: dict(
+            plaque.export(p, r, a, flavor, part, tpl, progress=self.worker.progress), path=p))
+
+    def _on_exported(self, info):
+        self._finish()
+        r, p = self.result, info["path"]
         size = os.path.getsize(p) / 1e6
-        self._status(f"wrote {os.path.basename(p)}  ({size:.1f} MB, {nbox} boxes)", theme.OK)
+        self._status(f"wrote {os.path.basename(p)}  ({size:.1f} MB, {info['nbox']} boxes)", theme.OK)
+        notes = "".join(f"\n  · {n}" for n in info["notes"])
         QMessageBox.information(
             self, APP,
-            f"Wrote {p}\n\n{total_h:.2f} mm thick · {nbox} boxes · {size:.1f} MB\n\nLoad order:\n"
+            f"Wrote {p}\n\n{info['total_h']:.2f} mm thick · {info['nbox']} boxes · {size:.1f} MB"
+            + (f"\n\nChanged in the slicer settings:{notes}" if notes else "")
+            + "\n\nLoad order:\n"
             + "\n".join(f"  T{i}  {f.label()}" for i, f in enumerate(r["fils"], 1))
-            + f"\n\nSlice at layer height EXACTLY {a.layer_height} mm with a {a.first_layer_height} mm "
-              f"first layer, or the modifiers land between layers and colours drop out.")
+            + "\n\n" + plaque.next_steps(r["fils"], r["args"]))
 
     def save_preview(self):
         if not self.result:
@@ -705,7 +780,7 @@ class PlaqueDesigner(QWidget):
                 "dither": self.c_dither.currentText(), "grid": self.s_grid.value(),
                 "slots": self.s_slots.value(), "top": self.s_top.value(),
                 "rankby": self.c_rankby.currentText(), "samples": self.s_samples.value(),
-                "filaments": sorted(f.id for f in self.selected()), "base": self.base.currentText()}
+                "filaments": sorted(f.id for f in self.selected()), "base": self._base_id()}
 
     def _refresh_presets(self, select=""):
         self.preset_combo.clear()
@@ -751,7 +826,7 @@ class PlaqueDesigner(QWidget):
         if want - set(self.db.filaments):
             notes.append(f"{len(want - set(self.db.filaments))} filament(s) no longer in the database")
         if p.get("base") in self.db.filaments:
-            self.base.setCurrentText(p["base"])
+            self._set_base(p["base"])
         self._loading = False
         self._refresh_fit()
         self._refresh_estimate()
