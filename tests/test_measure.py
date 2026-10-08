@@ -323,9 +323,10 @@ class CalibrateCli(unittest.TestCase):
         out = os.path.join(self.tmp.name, "w.3mf")
         log = self.run_cli("wedge", "--filament", "white", "--base", "white,black",
                            "--template", self.tpl, "--steps", "3", "-o", out)
-        # extruder 1 is white (the filament under test), 2 black; only the wedge over black
+        # only the wedge over black, so black is extruder 1 and white 2: the unused white base
+        # takes no extruder (it did, which moved white to another printhead)
         self.assertEqual([(o[0], o[1], o[2]) for o in self._extruders(out)],
-                         [("wedge_over_polymaker-pla-pro-black", 2, [1])])
+                         [("wedge_over_polymaker-pla-pro-black", 1, [2])])
         self.assertNotIn("Extruder 3", log)
 
     def test_white_over_black_with_a_gap_has_a_sturdy_base_and_a_hinge(self):

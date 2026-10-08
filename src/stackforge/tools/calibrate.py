@@ -134,7 +134,8 @@ class WedgeSet:
     """Every wedge a calibration needs, in one file: one wedge per base, each carrying a row
     of steps per test filament.
 
-    Extruders: the bases first, in order, then the test filaments that are not also a base.
+    Extruders: the bases that carry a wedge first, in order, then the test filaments that are
+    not also one of those bases.
     A row whose filament IS its wedge's base is left out (it would be a solid block), and a
     wedge left with no rows is dropped, so calibrating white over "white,black" gives one
     wedge over black. Every wedge gets the same base height, opaque for the most
@@ -145,12 +146,16 @@ class WedgeSet:
                  base_layers=None, hinge_layers=None, base_patch=True):
         self.steps, self.layer_h, self.first_layer_h = steps, layer_h, first_layer_h
         self.base_patch = base_patch
-        self.slots = list(bases) + [f for f in fils if f.id not in {b.id for b in bases}]
-        ext = {f.id: i for i, f in enumerate(self.slots, 1)}
         self.wedges = [(b, [f for f in fils if f.id != b.id]) for b in bases]
         self.wedges = [(b, rows) for b, rows in self.wedges if rows]
         if not self.wedges:
             raise ValueError("every test filament is its own base: nothing to measure")
+        # Only bases that carry a wedge take an extruder: white over "white,black" is black
+        # on 1 and white on 2, as a single-base wedge always was, not white on 1 because it
+        # was offered as a base.
+        used = [b for b, _ in self.wedges]
+        self.slots = used + [f for f in fils if f.id not in {b.id for b in used}]
+        ext = {f.id: i for i, f in enumerate(self.slots, 1)}
         if base_layers is None:
             # Black is opaque in one layer, but a 0.25 mm base is too flimsy to handle
             # and leaves no room for a hinge thinner than it.
