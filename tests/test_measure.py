@@ -327,6 +327,19 @@ class CalibrateCli(unittest.TestCase):
                          [("wedge_over_polymaker-pla-pro-black", 2, [1])])
         self.assertNotIn("Extruder 3", log)
 
+    def test_white_over_black_with_a_gap_has_a_sturdy_base_and_a_hinge(self):
+        from stackforge.core.filamentdb import DB
+        from stackforge.core.paths import packaged
+        db = DB(packaged("filaments.json"))
+        white, black = db.get("white"), db.get("black")
+        ws = calibrate.WedgeSet([white], [white, black], 12, 0.12, 0.25, 14.0, 14.0, gap=8.0)
+        self.assertEqual(len(ws.wedges), 1)                  # black is opaque in one layer...
+        self.assertGreaterEqual(ws.base_h, calibrate.MIN_BASE_MM)   # ...but the base is not that thin
+        self.assertTrue(1 <= ws.hinge < ws.base_layers)
+        with self.assertRaises(ValueError):                  # an explicit 1-layer base can't hinge
+            calibrate.WedgeSet([white], [black], 12, 0.12, 0.25, 14.0, 14.0, gap=8.0,
+                               base_layers=1)
+
     def test_wedge_set_needs_the_slots(self):
         from tests.test_template import make_template
         tpl = os.path.join(self.tmp.name, "two.3mf")

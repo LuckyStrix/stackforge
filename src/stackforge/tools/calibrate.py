@@ -120,6 +120,7 @@ def build_chips(steps, layer_h, step_w, step_d, gap, first_layer_h=None):
 
 
 WEDGE_SPACING = 8.0     # mm between the wedges of a set, front to back
+MIN_BASE_MM = 1.0       # thinnest automatic base, opaque or not
 
 
 class WedgeSet:
@@ -130,7 +131,7 @@ class WedgeSet:
     A row whose filament IS its wedge's base is left out (it would be a solid block), and a
     wedge left with no rows is dropped, so calibrating white over "white,black" gives one
     wedge over black. Every wedge gets the same base height, opaque for the most
-    see-through base unless `base_layers` is given.
+    see-through base and at least MIN_BASE_MM, unless `base_layers` is given.
     """
 
     def __init__(self, fils, bases, steps, layer_h, first_layer_h, step_w, step_d, gap=0.0,
@@ -142,11 +143,17 @@ class WedgeSet:
         if not self.wedges:
             raise ValueError("every test filament is its own base: nothing to measure")
         if base_layers is None:
-            base_layers = max(optics.opaque_layers(b, first_layer_h, layer_h)[0]
-                              for b, _ in self.wedges)
+            # Black is opaque in one layer, but a 0.25 mm base is too flimsy to handle
+            # and leaves no room for a hinge thinner than it.
+            sturdy = 1 + int(np.ceil(max(0.0, MIN_BASE_MM - first_layer_h) / layer_h - 1e-9))
+            base_layers = max([sturdy] + [optics.opaque_layers(b, first_layer_h, layer_h)[0]
+                                          for b, _ in self.wedges])
         self.base_layers = base_layers
         self.hinge = None
         if gap > 0:
+            if base_layers < 2:
+                raise ValueError("a gap needs at least 2 base layers: the hinge between the "
+                                 "steps has to be thinner than the base")
             self.hinge = min(hinge_layers or 4, base_layers - 1)
         self.items, self.decals, self.base_ext = [], {}, []
         y = 0.0
