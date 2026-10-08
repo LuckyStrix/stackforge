@@ -18,6 +18,7 @@ from stackforge.gui.filaments import APP
 from stackforge.gui.filaments.common import (SharedValue, report_box, scroll_page, section,
                                              show_lines, spin)
 from stackforge.gui.pickers import swatch_icon
+from stackforge.gui.settings import PresetStore
 from stackforge.gui.widgets import IMAGE_FILTER
 from stackforge.tools import calibrate
 
@@ -138,9 +139,10 @@ class CalibratePage(QWidget):
     """Works on the filament database on disk (the project's), so a fit is saved straight to
     the library; `on_saved(fid)` lets the Filaments editor pick the change up."""
 
-    def __init__(self, project=None, db_path=None, on_saved=None):
+    def __init__(self, project=None, db_path=None, on_saved=None, presets=None):
         super().__init__()
         self.project, self.on_saved = project, on_saved
+        self.presets = presets or PresetStore()
         self.db_path = db_path or (project.get("db") if project else DEFAULT_DB)
         self.db = DB(self.db_path)
         self.layer = SharedValue(0.08)
@@ -194,9 +196,22 @@ class CalibratePage(QWidget):
         self.gap.valueChanged.connect(lambda v: self.hinge.setEnabled(v > 0))
         self.hinge.setEnabled(False)
         w.addRow("Slicer flavour", self.flavor)
+        row = QHBoxLayout()
         b = QPushButton("Write wedges 3MF…")
         b.clicked.connect(self.write_wedge)
-        w.addRow("", b)
+        row.addWidget(b)
+        row.addStretch(1)
+        for text, fn, tip in (
+                ("Set as default", self.save_defaults,
+                 "Remember the bases, steps, sizes, gap, hinge and per-channel choice: they are "
+                 "filled in every time stackforge starts."),
+                ("Restore built-in", self.restore_defaults,
+                 "Forget your defaults and go back to the ones stackforge ships with.")):
+            d = QPushButton(text)
+            d.setToolTip(tip)
+            d.clicked.connect(fn)
+            row.addWidget(d)
+        w.addRow("", row)
 
         m = section(col, "2 · Read the printed steps",
                     "Thinnest step first, comma separated. Easiest: the Measure tab "
@@ -234,8 +249,11 @@ class CalibratePage(QWidget):
 
         if project is not None:
             project.subscribe(self.project_changed)
+        self._builtin = self.default_values()
         self.reload()
+        self._builtin.update(wbase=self.wbase.currentText(), wbase2=self.wbase2.currentText())
         self.project_changed()
+        self.load_defaults()
 
     # -- state -----------------------------------------------------------------------------
 
@@ -294,6 +312,48 @@ class CalibratePage(QWidget):
         self.fil_note.setText(
             f"td {fil.td:g} mm now, source: {PROVENANCE_LABEL.get(fil.provenance, fil.provenance)}"
             + (f" (measured {fil.measured_at})" if fil.measured_at else ""))
+
+    # -- defaults --------------------------------------------------------------------------
+
+    DEFAULTS = ("calibrate", ("guided",), "default")
+
+    def default_values(self) -> dict:
+        return {"wbase": self.wbase.currentText(), "wbase2": self.wbase2.currentText(),
+                "steps": self.steps.value(), "base_layers": self.baselayers.value(),
+                "step_width": self.stepw.value(), "step_depth": self.stepd.value(),
+                "gap": self.gap.value(), "hinge": self.hinge.value(),
+                "per_channel": self.per_channel.isChecked()}
+
+    def apply_values(self, v: dict):
+        for key, box in (("wbase", self.wbase), ("wbase2", self.wbase2)):
+            if v.get(key) and box.findText(v[key]) >= 0:      # a base gone from the library: skip
+                box.setCurrentText(v[key])
+        for key, sp in (("steps", self.steps), ("base_layers", self.baselayers),
+                        ("step_width", self.stepw), ("step_depth", self.stepd),
+                        ("gap", self.gap), ("hinge", self.hinge)):
+            if isinstance(v.get(key), (int, float)):
+                sp.setValue(v[key])
+        if "per_channel" in v:
+            self.per_channel.setChecked(bool(v["per_channel"]))
+
+    def load_defaults(self):
+        try:
+            self.apply_values(self.presets.load(*self.DEFAULTS))
+        except (OSError, ValueError, AttributeError):
+            pass            # none saved (or unreadable): the built-in ones stand
+
+    def save_defaults(self):
+        try:
+            self.presets.save(*self.DEFAULTS, self.default_values())
+        except OSError as exc:
+            QMessageBox.critical(self, APP, f"Could not save the defaults:\n{exc}")
+            return
+        self.status("saved: these wedge settings now load every time stackforge starts", theme.OK)
+
+    def restore_defaults(self):
+        self.presets.delete(*self.DEFAULTS)
+        self.apply_values(self._builtin)
+        self.status("back to the built-in wedge settings", theme.OK)
 
     # -- wedge -----------------------------------------------------------------------------
 

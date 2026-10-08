@@ -21,7 +21,8 @@ class CalibrateTab(QWidget):
     def __init__(self, project=None, presets=None, host=None):
         super().__init__()
         self.host = host
-        self.guided = CalibratePage(project, on_saved=lambda _fid: self._db_written())
+        self.guided = CalibratePage(project, on_saved=lambda _fid: self._db_written(),
+                                    presets=presets)
         self.tabs = ToolTabs.for_tool("calibrate", calibrate.build_parser, project=project,
                                       presets=presets, on_done=self._done)
         # Saving is the point of a fit; a bad one is still refused by the tool itself.

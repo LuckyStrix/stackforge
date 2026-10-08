@@ -229,6 +229,28 @@ class Editor(unittest.TestCase):
         self.assertNotIn("Extruder 3", msg)
         self.assertEqual(page.wedge_a.base.currentText(), "polymaker-pla-pro-black")
 
+    def test_wedge_settings_saved_as_default_load_next_time(self):
+        from stackforge.gui.filaments.calibrate import CalibratePage
+        from stackforge.gui.settings import PresetStore
+        tab = self._tab()
+        store = PresetStore(os.path.join(self.d.name, "presets"))
+        page = CalibratePage(tab.project, presets=store)
+        self.addCleanup(page.deleteLater)
+        page.gap.setValue(8)
+        page.hinge.setValue(3)
+        page.steps.setValue(10)
+        page.wbase2.setCurrentText("polymaker-pla-pro-dark-blue")
+        page.save_defaults()
+        again = CalibratePage(tab.project, presets=store)       # the next start
+        self.addCleanup(again.deleteLater)
+        self.assertEqual((again.gap.value(), again.hinge.value(), again.steps.value()), (8, 3, 10))
+        self.assertTrue(again.hinge.isEnabled())
+        self.assertEqual(again.wbase2.currentText(), "polymaker-pla-pro-dark-blue")
+        again.restore_defaults()
+        self.assertEqual((again.gap.value(), again.steps.value()), (0, 12))
+        self.assertEqual(again.wbase2.currentText(), "polymaker-pla-pro-black")
+        self.assertEqual(store.names("calibrate", ("guided",)), [])
+
     def test_wedge_refused_without_a_slicer_project(self):
         from unittest import mock
         tab = self._tab()
