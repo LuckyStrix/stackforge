@@ -197,7 +197,7 @@ def main(argv=None):
         palette = colormath.parse_palette(args.palette or "#FFFFFF,#101010,#0B3D91,#FC3D21")
 
     if not 1 <= args.base_extruder <= len(palette):
-        raise SystemExit(f"--base-extruder must be within 1..{len(palette)}")
+        raise SystemExit(f"--base-extruder must be 1 to {len(palette)}")
 
     threemf.require_layer_grid(args.flavor, args.template, args.layer_height)
     if args.layer_height is None:

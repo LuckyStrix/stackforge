@@ -162,7 +162,7 @@ class CalibratePage(QWidget):
         top.addRow("", self.fil_note)
 
         w = section(col, "1 · Print the step wedges",
-                    "Staircases carrying 1..N layers of this filament over an opaque base: one "
+                    "Staircases carrying 1 to N layers of this filament over an opaque base: one "
                     "over a light base and one over a dark base, both in one file. Two backgrounds "
                     "separate the filament's colour from its opacity, which one cannot do. A wedge "
                     "whose base is the filament itself is left out (white over white shows "
@@ -400,9 +400,9 @@ class CalibratePage(QWidget):
         one = len(ws.wedges) == 1
         QMessageBox.information(
             self, APP,
-            f"Wrote {p}\n\n{len(ws.wedges)} wedge{'' if one else 's'}, 1..{steps} layers of "
+            f"Wrote {p}\n\n{len(ws.wedges)} wedge{'' if one else 's'}, steps of 1 to {steps} layers of "
             f"{fil.label()} over {ws.base_layers} base layers.\n{ws.width:.1f} × {ws.depth:.1f} "
-            f"mm, {ws.base_h:.2f}..{ws.top:.2f} mm tall.\n\n" + "\n".join(ws.describe())
+            f"mm; base {ws.base_h:.2f} mm thick, tallest step {ws.top:.2f} mm.\n\n" + "\n".join(ws.describe())
             + f"\n\nThe file carries the {lh:g} mm layer height and {fl:g} mm first layer: don't "
             "change them in the slicer."
             + ("\n\nOnly one wedge: choose a contrasting dark base if you can — one background "

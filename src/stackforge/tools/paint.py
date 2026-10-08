@@ -501,7 +501,7 @@ def main(argv=None):
         palette = colormath.parse_palette(args.palette)
         colors = [colormath.to_hex(c) for c in palette]
     if not 1 <= args.base_extruder <= len(palette):
-        raise SystemExit(f"--base-extruder must be within 1..{len(palette)}")
+        raise SystemExit(f"--base-extruder must be 1 to {len(palette)}")
 
     for flag, val in (("--resolution", args.resolution), ("--layer-height", args.layer_height),
                       ("--first-layer-height", args.first_layer_height),

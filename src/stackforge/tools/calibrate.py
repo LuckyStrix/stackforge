@@ -3,7 +3,7 @@
 
 Two steps, with a print in between.
 
-  1. `wedge` builds a step-wedge 3MF: a staircase of 1..N layers of the test
+  1. `wedge` builds a step-wedge 3MF: a staircase of 1 to N layers of the test
      filament, laid over an opaque base. Give it a white AND a black base and
      the one file holds a wedge on each. Two backgrounds pin down the
      filament's own color and its opacity independently, which a single
@@ -66,7 +66,7 @@ def build_wedge(steps, layer_h, base_layers, step_w, step_d, gap, rows=1, row_ga
         if gap <= 0:
             raise ValueError("a hinge needs a gap between the steps (--gap > 0)")
         if not 1 <= hinge_layers < base_layers:
-            raise ValueError(f"hinge layers must be 1..{base_layers - 1} "
+            raise ValueError(f"hinge layers must be 1 to {base_layers - 1} "
                              f"(thinner than the {base_layers} base layers)")
     base_h = first_layer_h + (base_layers - 1) * layer_h
     total_w = steps * step_w + (steps - 1) * gap
@@ -229,7 +229,7 @@ def cmd_chips(args):
                                     first_layer_height=args.first_layer_height, solid=True,
                                     object_settings=threemf.solid_object_settings(
                                         args.flavor, args.layer_height))
-    print(f"chips: {args.steps} standalone steps, 1..{args.steps} layers of {fil.label()}, "
+    print(f"chips: {args.steps} standalone steps of 1 to {args.steps} layers of {fil.label()}, "
           f"{args.step_width:.0f} x {args.step_depth:.0f} mm each")
     print(f"wrote {args.output}")
     heights = [args.first_layer_height + i * args.layer_height for i in range(args.steps)]
@@ -252,13 +252,13 @@ def cmd_wedge(args):
         raise SystemExit(f"wedge: {exc}")
     ws.write(args.output, args.flavor, args.template, args.layer_height, args.first_layer_height)
     print(f"wedge: {len(ws.wedges)} wedge{'s' if len(ws.wedges) > 1 else ''} of {args.steps} "
-          f"steps, 1..{args.steps} layers")
+          f"steps of 1 to {args.steps} layers")
     # Opaque, or every patch measures the build plate as much as the filament.
     print(f"  over {ws.base_layers} base layers" + (" (auto: opaque)" if auto else ""))
     if ws.hinge is not None:
         print(f"  {args.gap:g} mm gaps joined by a {ws.hinge}-layer hinge "
               f"({ws.hinge * args.layer_height:.2f} mm): flex a step flat onto the aperture")
-    print(f"  {ws.width:.1f} x {ws.depth:.1f} mm, {ws.base_h:.2f}..{ws.top:.2f} mm tall")
+    print(f"  {ws.width:.1f} x {ws.depth:.1f} mm; base {ws.base_h:.2f} mm thick, tallest step {ws.top:.2f} mm")
     print(f"wrote {args.output}\n")
     print("\n".join(ws.describe()))
     print(_grid_note(args))

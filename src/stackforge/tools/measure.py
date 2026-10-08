@@ -8,7 +8,7 @@ Three jobs:
   measure-wedge   reflectance of each step of a printed wedge, printed as the
                   hex list `stackforge-calibrate fit --measured` takes (and saved with
                   the spectra, for a later Kubelka-Munk fit).
-  transmission    how much light gets through standalone chips of 1..N layers
+  transmission    how much light gets through standalone chips of 1 to N layers
                   (stackforge-calibrate chips), using a *laptop screen* as the
                   backlight: measure the screen bare, then with a chip laid on
                   it. T = with / bare, and td = -thickness / ln(T).
