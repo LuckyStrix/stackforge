@@ -27,6 +27,7 @@ middle of each step, average a patch, and white-balance against the card.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 
 import numpy as np
@@ -34,6 +35,7 @@ import numpy as np
 from stackforge.core import threemf
 from stackforge.core import colormath
 from stackforge.core import optics
+from stackforge.core import wedgesheet
 from stackforge.core.filamentdb import DEFAULT_DB, DB
 
 
@@ -43,8 +45,11 @@ from stackforge.core.filamentdb import DEFAULT_DB, DB
 
 
 def build_wedge(steps, layer_h, base_layers, step_w, step_d, gap, rows=1, row_gap=4.0,
-                hinge_layers=None, first_layer_h=None):
+                hinge_layers=None, first_layer_h=None, base_patch=False):
     """A staircase: step i carries i+1 layers of the test filament.
+
+    `base_patch` leaves the first slot bare: a patch of base with no test filament,
+    measured as step 0 so the fit uses the base as printed, not as the library guesses it.
 
     `rows` puts several test filaments on one plate, one staircase each, over a
     shared base. On an independent-toolhead machine that is free -- the base
@@ -69,7 +74,9 @@ def build_wedge(steps, layer_h, base_layers, step_w, step_d, gap, rows=1, row_ga
             raise ValueError(f"hinge layers must be 1 to {base_layers - 1} "
                              f"(thinner than the {base_layers} base layers)")
     base_h = first_layer_h + (base_layers - 1) * layer_h
-    total_w = steps * step_w + (steps - 1) * gap
+    first = 1 if base_patch else 0          # slot of step 1
+    slots = steps + first
+    total_w = slots * step_w + (slots - 1) * gap
     total_d = rows * step_d + (rows - 1) * row_gap
     if hinge_layers is None:
         plate = threemf.Item(
@@ -83,7 +90,7 @@ def build_wedge(steps, layer_h, base_layers, step_w, step_d, gap, rows=1, row_ga
         pb.add(0, 0, 0, total_w, total_d, hinge_h)
         for r in range(rows):
             y0 = r * (step_d + row_gap)
-            for i in range(steps):
+            for i in range(slots):
                 x0 = i * (step_w + gap)
                 pb.add(x0, y0, hinge_h, x0 + step_w, y0 + step_d, base_h)
         verts, tris = pb.mesh()
@@ -93,7 +100,7 @@ def build_wedge(steps, layer_h, base_layers, step_w, step_d, gap, rows=1, row_ga
         bb = threemf.BoxBuilder()
         y0 = r * (step_d + row_gap)
         for i in range(steps):
-            x0 = i * (step_w + gap)
+            x0 = (i + first) * (step_w + gap)
             bb.add(x0, y0, base_h, x0 + step_w, y0 + step_d,
                    base_h + (i + 1) * layer_h)
         m = bb.mesh()
@@ -135,7 +142,9 @@ class WedgeSet:
     """
 
     def __init__(self, fils, bases, steps, layer_h, first_layer_h, step_w, step_d, gap=0.0,
-                 base_layers=None, hinge_layers=None):
+                 base_layers=None, hinge_layers=None, base_patch=True):
+        self.steps, self.layer_h, self.first_layer_h = steps, layer_h, first_layer_h
+        self.base_patch = base_patch
         self.slots = list(bases) + [f for f in fils if f.id not in {b.id for b in bases}]
         ext = {f.id: i for i, f in enumerate(self.slots, 1)}
         self.wedges = [(b, [f for f in fils if f.id != b.id]) for b in bases]
@@ -160,7 +169,7 @@ class WedgeSet:
         for i, (b, rows) in enumerate(self.wedges):
             plate, decals, self.width, self.base_h = build_wedge(
                 steps, layer_h, base_layers, step_w, step_d, gap, rows=len(rows),
-                hinge_layers=self.hinge, first_layer_h=first_layer_h)
+                hinge_layers=self.hinge, first_layer_h=first_layer_h, base_patch=base_patch)
             shift = np.array([0.0, y, 0.0])
             self.items.append(threemf.Item(f"wedge_over_{b.id}", plate.verts + shift, plate.tris))
             self.decals[i] = [(ext[rows[r - 2].id], v + shift, t) for r, v, t in decals]
@@ -170,22 +179,59 @@ class WedgeSet:
         self.colors = [f.color for f in self.slots]
         self.top = self.base_h + steps * layer_h
 
-    def write(self, path, flavor, template, layer_h, first_layer_h):
+    @staticmethod
+    def letter(n):
+        return chr(ord("A") + n) if n < 26 else str(n + 1)
+
+    def where(self, n):
+        if len(self.wedges) == 1:
+            return "the only wedge"
+        return ("front wedge" if n == 0 else "back wedge" if n == len(self.wedges) - 1 else
+                f"wedge {n + 1} from the front")
+
+    def write(self, path, flavor, template):
         if template:
             threemf.check_template_slots(template, len(self.slots))
+            bed = threemf.template_bed_size(template)
+            if bed and (self.width > bed[0] or self.depth > bed[1]):
+                raise SystemExit(
+                    f"The wedges come to {self.width:.0f} x {self.depth:.0f} mm but the bed is "
+                    f"{bed[0]:.0f} x {bed[1]:.0f} mm: use a smaller gap, narrower steps or "
+                    f"fewer steps.")
         threemf.get_writer(flavor)(
             path, self.items, self.decals, self.base_ext, "part", template=template,
-            colors=self.colors, layer_height=layer_h, first_layer_height=first_layer_h,
-            solid=True, object_settings=threemf.solid_object_settings(flavor, layer_h))
+            colors=self.colors, layer_height=self.layer_h, first_layer_height=self.first_layer_h,
+            solid=True, object_settings=threemf.solid_object_settings(flavor, self.layer_h))
+
+    def sheet(self, model_path) -> dict:
+        """What measure needs to walk these wedges, and calibrate to fit them afterwards."""
+        strips = []
+        for n, (b, rows) in enumerate(self.wedges):
+            for r, f in enumerate(rows):
+                where = self.where(n) + (f", row {r + 1} from the front" if len(rows) > 1 else "")
+                strips.append({"wedge": self.letter(n), "where": where,
+                               "base": wedgesheet.filament_ref(b),
+                               "filament": wedgesheet.filament_ref(f)})
+        return {"kind": wedgesheet.SHEET_KIND, "version": wedgesheet.VERSION,
+                "model": os.path.basename(model_path), "layer_height": self.layer_h,
+                "first_layer_height": self.first_layer_h, "steps": self.steps,
+                "base_patch": self.base_patch, "strips": strips}
+
+    def write_sheet(self, model_path) -> str:
+        path = wedgesheet.sheet_path_for(model_path)
+        wedgesheet.write(path, self.sheet(model_path))
+        return path
 
     def describe(self) -> list[str]:
         """Extruder assignment and wedge order, for the user to set up the printer by."""
         out = [f"Extruder {i} = {f.label()}" for i, f in enumerate(self.slots, 1)]
         out.append("")
         for n, (b, rows) in enumerate(self.wedges):
-            where = ("front" if n == 0 else "back" if n == len(self.wedges) - 1 else "middle")
-            out.append(f"Wedge {'AB'[n] if n < 2 else n + 1} ({where}): over {b.label()}, "
+            out.append(f"Wedge {self.letter(n)} ({self.where(n)}): over {b.label()}, "
                        + ", ".join(f.label() for f in rows))
+        if self.base_patch:
+            out.append("The bare patch at the left end of each wedge is the base alone: "
+                       "it is measured first.")
         return out
 
 
@@ -247,10 +293,11 @@ def cmd_wedge(args):
     try:
         ws = WedgeSet(fils, bases, args.steps, args.layer_height, args.first_layer_height,
                       args.step_width, args.step_depth, args.gap, args.base_layers,
-                      args.hinge_layers)
+                      args.hinge_layers, base_patch=not args.no_base_patch)
     except ValueError as exc:
         raise SystemExit(f"wedge: {exc}")
-    ws.write(args.output, args.flavor, args.template, args.layer_height, args.first_layer_height)
+    ws.write(args.output, args.flavor, args.template)
+    sheet = ws.write_sheet(args.output)
     print(f"wedge: {len(ws.wedges)} wedge{'s' if len(ws.wedges) > 1 else ''} of {args.steps} "
           f"steps of 1 to {args.steps} layers")
     # Opaque, or every patch measures the build plate as much as the filament.
@@ -259,7 +306,8 @@ def cmd_wedge(args):
         print(f"  {args.gap:g} mm gaps joined by a {ws.hinge}-layer hinge "
               f"({ws.hinge * args.layer_height:.2f} mm): flex a step flat onto the aperture")
     print(f"  {ws.width:.1f} x {ws.depth:.1f} mm; base {ws.base_h:.2f} mm thick, tallest step {ws.top:.2f} mm")
-    print(f"wrote {args.output}\n")
+    print(f"wrote {args.output}")
+    print(f"wrote {sheet}  (the wedge sheet: give it to stackforge-measure measure-wedge --sheet)\n")
     print("\n".join(ws.describe()))
     print(_grid_note(args))
 
@@ -275,11 +323,9 @@ def cmd_wedge(args):
     if len(ws.wedges) < 2:
         print("\nOne base only: give a contrasting second one (--base white,black) -- two "
               "backgrounds separate the filament's colour from its opacity.")
-    fit = f"\nThen: stackforge-calibrate fit --filament <id> --base {ws.wedges[0][0].id} "
-    fit += "--measured \"<hex per step>\""
-    if len(ws.wedges) > 1:
-        fit += f" --base2 {ws.wedges[1][0].id} --measured2 \"<hex per step>\""
-    print(fit + f" --layer-height {args.layer_height:g} --write")
+    print(f"\nThen: stackforge-measure measure-wedge --sheet {sheet}")
+    print(f"      stackforge-calibrate fit --filament <id> "
+          f"--readings {wedgesheet.readings_path_for(sheet)} --write")
 
 
 # --------------------------------------------------------------------------
@@ -398,7 +444,40 @@ def fit_layer_height(args):
                          "--template (your slicer project) or --layer-height")
 
 
+def apply_readings(args):
+    """Fill --measured/--base (and the second wedge) from a measure readings file, for
+    --filament's strips. A measured bare-base patch is the base colour; the wedge's own
+    layer height wins over --template's."""
+    try:
+        data = wedgesheet.load_readings(args.readings)
+    except ValueError as exc:
+        raise SystemExit(str(exc))
+    fid = DB(args.db).get(args.filament).id
+    strips = [s for s in data["strips"] if s["filament"]["id"] == fid]
+    if not strips:
+        have = sorted({s["filament"]["id"] for s in data["strips"]})
+        raise SystemExit(f"{args.readings} has no wedge of {fid} (it has: {', '.join(have)})")
+    for n, s in enumerate(strips[:2]):
+        base = s.get("base_hex") or s["base"]["id"]
+        if n == 0:
+            args.measured, args.base = s["hex"], base
+        else:
+            args.measured2, args.base2 = s["hex"], base
+        print(f"{wedgesheet.strip_title(s)}: base {base}"
+              + (" (measured)" if s.get("base_hex") else " (from the library)"))
+        if s.get("reversed_steps"):
+            print(f"  ! step(s) {s['reversed_steps']} ran against the wedge when measured")
+    if args.layer_height is None:
+        args.layer_height = data["layer_height"]
+        print(f"layer height {args.layer_height:g} mm (from the readings file)")
+    elif abs(args.layer_height - data["layer_height"]) > 1e-9:
+        print(f"  ! the wedge was printed at {data['layer_height']:g} mm layers, not "
+              f"{args.layer_height:g}")
+
+
 def cmd_fit(args):
+    if args.readings:
+        apply_readings(args)
     fit_layer_height(args)
     db = DB(args.db)
     fil = db.get(args.filament)
@@ -413,6 +492,8 @@ def cmd_fit(args):
             return None
         return m, _resolve_base(db, base)
 
+    if (args.measured or args.from_image) and not args.base:
+        raise SystemExit("--base is required with --measured or --from-image")
     datasets = [load(args.measured, args.from_image, args.base)]
     if args.measured2 or args.from_image2:
         if not args.base2:
@@ -517,6 +598,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--hinge-layers", type=int, default=None,
                    help="base layers left in the gap (default 4 when --gap > 0; the pads "
                         "under the steps keep --base-layers)")
+    p.add_argument("--no-base-patch", action="store_true",
+                   help="leave out the bare patch of base at the start of each wedge (it is "
+                        "measured so the fit uses the base as printed)")
     p.add_argument("--flavor", choices=["orca", "prusa"], default="orca")
     p.set_defaults(fn=cmd_wedge)
 
@@ -539,7 +623,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("fit", help="fit td + colour from measured patches")
     p.add_argument("--filament", required=True)
-    p.add_argument("--base", required=True, help="base colour as hex, or a filament id")
+    p.add_argument("--readings", help="readings file from stackforge-measure measure-wedge "
+                   "--sheet: fills the measured colours, bases and layer height")
+    p.add_argument("--base", help="base colour as hex, or a filament id")
     p.add_argument("--measured", help="comma-separated hex, one per step, thinnest first")
     p.add_argument("--from-image", help="photo of the wedge to sample instead")
     p.add_argument("--base2", help="second wedge's base colour (hex or filament id)")

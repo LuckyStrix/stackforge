@@ -16,6 +16,8 @@ from stackforge.gui.tabs.common import ToolTabs
 from stackforge.tools import measure
 
 HEX_LINE = re.compile(r'--measured\s+"([^"]+)"')
+BASE_LINE = re.compile(r'--base\s+"(#[0-9A-Fa-f]{6})"')
+READINGS_LINE = re.compile(r"^readings file: (.+?)\s*$", re.M)
 
 
 class MeasureTab(QWidget):
@@ -24,14 +26,16 @@ class MeasureTab(QWidget):
     def __init__(self, project=None, presets=None, host=None):
         super().__init__()
         self.host = host
-        self._hexes = None
+        self._hexes = self._base = self._readings = None
         lay = QVBoxLayout(self)
         steps = QLabel(
-            "<b>Reading a printed wedge</b> &nbsp; 1. Plug in the ColorMunki. &nbsp; 2. Choose <i>measure-wedge</i> below, set the number "
-            "of steps, press <b>Run</b>. &nbsp; 3. Follow the prompts in the box at the bottom "
-            "(type in the input line, Enter to confirm). &nbsp; 4. When it finishes, press "
-            "<b>Copy readings to Calibrate</b>: they go into the next empty wedge there; choose "
-            "the filament and the wedge's base, then Fit.")
+            "<b>Reading printed wedges</b> &nbsp; 1. Plug in the ColorMunki. &nbsp; 2. Choose "
+            "<i>measure-wedge</i> below and pick the <b>wedge sheet</b> Calibrate wrote next to "
+            "the 3MF, then press <b>Run</b>. &nbsp; 3. Follow the prompts in the box at the bottom "
+            "(type in the input line, Enter to confirm): the bare base first, then each step, "
+            "wedge by wedge. &nbsp; 4. It writes a <b>readings file</b> next to the sheet. On "
+            "this computer press <b>Copy readings to Calibrate</b>; on another, take the file "
+            "there and use <i>Load readings…</i> in Calibrate.")
         steps.setWordWrap(True)
         steps.setObjectName("hint")
         lay.addWidget(steps)
@@ -74,13 +78,27 @@ class MeasureTab(QWidget):
                 f"{measure.NOSPOS_WRAPPER} wrapper: measuring will fail until one is installed.")
 
     def _done(self, panel, job):
-        m = HEX_LINE.search(self.term.screen.text) if job.returncode == 0 else None
-        self._hexes = m.group(1) if m and panel.command == ("measure-wedge",) else None
-        self.copy_btn.setEnabled(bool(self._hexes))
+        self._hexes = self._base = self._readings = None
+        if job.returncode == 0 and panel.command == ("measure-wedge",):
+            text = self.term.screen.text
+            r = READINGS_LINE.findall(text)
+            if r:
+                self._readings = r[-1]
+            else:
+                m, b = HEX_LINE.findall(text), BASE_LINE.findall(text)
+                self._hexes = m[-1] if m else None
+                self._base = b[-1] if b and self._hexes else None
+        self.copy_btn.setEnabled(bool(self._hexes or self._readings))
 
     def _to_calibrate(self):
         cal = self.host.tabs.get("Calibrate") if self.host else None
-        if cal is not None and self._hexes:
-            cal.set_measured(self._hexes)
-            self.host.show_tab("Calibrate")
-            self.copy_btn.setEnabled(False)      # once per reading, so B is not filled twice
+        if cal is None:
+            return
+        if self._readings:
+            cal.load_readings(self._readings)
+        elif self._hexes:
+            cal.set_measured(self._hexes, self._base)
+        else:
+            return
+        self.host.show_tab("Calibrate")
+        self.copy_btn.setEnabled(False)          # once per run, so B is not filled twice

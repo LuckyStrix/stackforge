@@ -23,10 +23,21 @@ run against the instrument yet.** Treat every section below as a checklist for t
    then the measure position, and re-run. (The same workaround is documented in the calibration-suite repo.)
 
 ## Reflectance (wedges and plaques)
-`stackforge-measure measure-wedge --steps 12 -o wedge.json` runs `spotread -s -i D50 -Q 1931_2` (reflective is
-the default). It prints the `stackforge-calibrate fit ... --measured ...` line to run next (in the GUI,
-*Copy readings to Calibrate* puts them in the Calibrate tab's next empty wedge); do this over white
-*and* black bases so td and colour separate.
+`stackforge-measure measure-wedge` runs `spotread -s -i D50 -Q 1931_2` (reflective is the default).
+
+**The wedge sheet round trip** (works across machines; the measuring one needs only the CLI and Argyll):
+1. `stackforge-calibrate wedge --base white,black ... -o wedge_teal.3mf` (or *Write wedges 3MF* in the
+   GUI) also writes `wedge_teal.sheet.json`: grid, step count, and every strip (one row of steps over
+   one base) in print order, with labels and colours since the measuring machine may have no library.
+2. `stackforge-measure measure-wedge --sheet wedge_teal.sheet.json` reads, strip by strip, the bare-base
+   patch at the left end of each wedge and then steps 1..N, and writes `wedge_teal.readings.json`.
+3. `stackforge-calibrate fit --filament teal --readings wedge_teal.readings.json --write` (or *Load
+   readings* on the guided page) fits with the **measured** base colours and the wedge's own layer
+   height. The bare patch exists because the library's base colour is an estimate, and every step is a
+   blend towards it.
+
+Without a sheet, `measure-wedge --steps 12 [--base-patch] -o wedge.json` reads one strip and prints the
+`fit ... --measured ...` line (in the GUI, *Copy readings to Calibrate* fills the next empty wedge).
 
 **Patch size.** The ColorMunki samples a roughly circular area about 8 mm across (measured 7.8 x 7.95 mm
 in an Argyll mailing-list test; readings were identical from 20 mm patches down to 7 mm, nearly so at
@@ -35,7 +46,8 @@ circle needs a patch a bit bigger than 8 mm just for the instrument; I'd allow *
 margin each side, so steps of 14 mm**, because light scatters sideways inside translucent PLA and a
 neighbouring step bleeds into the reading (this last part is my reasoning, not from a source).
 `stackforge-calibrate wedge` now defaults to 14 mm steps (it was 10 mm, which leaves only 1 mm of margin
-and is at the mercy of hand placement). 12 steps at 14 mm is 168 mm long.
+and is at the mercy of hand placement). 12 steps at 14 mm is 168 mm long, 182 mm with the bare-base
+patch; with gaps it can outgrow the bed, which `wedge` refuses when the template says so.
 
 **Light.** The ColorMunki is **UV-cut only** (white-LED illuminant; Argyll's docs say it cannot use
 fluorescent-whitener compensation), so PLA whiteners are not excited. A white filament can read

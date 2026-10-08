@@ -46,6 +46,7 @@ from datetime import datetime, timezone
 import numpy as np
 
 from stackforge.core import colormath
+from stackforge.core import wedgesheet
 
 try:
     import pty
@@ -460,33 +461,94 @@ def _read_patch(s, prompt, prev):
             return r
 
 
-def cmd_measure_wedge(args):
-    sargs = REFLECT_ARGS + args.spotread_arg
+def _read_strip(s, steps, base_patch, prev=None):
+    """The bare base (if there is a patch for it), then steps 1..N. Returns (base reading or
+    None, step readings)."""
+    def srgb(r):
+        r["srgb"] = [round(float(v), 1) for v in xyz_d50_to_srgb(r["xyz"])]
+        print(f"   {colormath.to_hex(r['srgb'])}  Lab D50 {r.get('lab_d50')}")
+        return r
+
+    base = None
+    if base_patch:
+        base = srgb(_read_patch(s, "\nbare base (the patch with no test filament, at the left "
+                                   "end): centre the aperture on it, then press Enter to measure ",
+                                prev))
+        prev = base
     readings = []
+    for i in range(steps):
+        r = _read_patch(s, f"\nstep {i + 1}/{steps} ({i + 1} layers): centre the aperture "
+                           f"on the patch, then press Enter to measure ", prev)
+        readings.append(prev := srgb(r))
+    return base, readings
+
+
+def _strip_result(base, readings) -> dict:
+    bad = wedge_reversals([xyz_d50_to_lab(r["xyz"])[0] for r in readings])
+    if bad:
+        print(f"\n  ! L* runs against the wedge at step(s) {bad}: re-measure before fitting")
+    out = {"hex": ",".join(colormath.to_hex(r["srgb"]) for r in readings),
+           "readings": readings, "reversed_steps": bad}
+    if base is not None:
+        out.update(base_hex=colormath.to_hex(base["srgb"]), base_reading=base)
+    return out
+
+
+def cmd_measure_wedge(args):
+    if args.wedge_sheet_in:
+        return _measure_sheet(args)
+    steps = args.steps or 12
+    sargs = REFLECT_ARGS + args.spotread_arg
     with SpotreadSession(sargs, nospos=args.nospos) as s:
         s.prepare()
         white = _white_check(s)
-        for i in range(args.steps):
-            r = _read_patch(s, f"\nstep {i + 1}/{args.steps} ({i + 1} layers): centre the aperture "
-                               f"on the patch, then press Enter to measure ",
-                            readings[-1] if readings else None)
-            r["srgb"] = [round(float(v), 1) for v in xyz_d50_to_srgb(r["xyz"])]
-            readings.append(r)
-            print(f"   {colormath.to_hex(r['srgb'])}  Lab D50 {r.get('lab_d50')}")
+        base, readings = _read_strip(s, steps, args.base_patch)
         meta = _meta("reflective", s)
-    bad = wedge_reversals([xyz_d50_to_lab(r["xyz"])[0] for r in readings])
-    if bad:
-        print(f"\n  ! L* runs against the wedge at step(s) {bad}: re-measure those before fitting")
-    hexes = ",".join(colormath.to_hex(r["srgb"]) for r in readings)
+    res = _strip_result(base, readings)
     if args.output:
-        out = {**meta, "readings": readings, "hex": hexes, "reversed_steps": bad}
+        out = {**meta, **res}
         if white is not None:
             out["white_check"] = white
         with open(args.output, "w") as f:
             json.dump(out, f, indent=1)
         print(f"\nsaved {args.output}")
-    print(f"\nNext: stackforge-calibrate fit --filament <id> --base <hex or id> "
-          f"--template <your slicer project.3mf> --measured \"{hexes}\" --write")
+    base_arg = f"\"{res['base_hex']}\"" if base is not None else "<hex or id>"
+    print(f"\nNext: stackforge-calibrate fit --filament <id> --base {base_arg} "
+          f"--template <your slicer project.3mf> --measured \"{res['hex']}\" --write")
+
+
+def _measure_sheet(args):
+    """Every strip on a calibrate wedge sheet, in order, into one readings file."""
+    try:
+        sheet = wedgesheet.load_sheet(args.wedge_sheet_in)
+    except ValueError as exc:
+        raise SystemExit(str(exc))
+    steps = sheet["steps"]
+    if args.steps and args.steps != steps:
+        print(f"  ! the sheet says {steps} steps; measuring {steps}, not {args.steps}")
+    out_path = args.output or wedgesheet.readings_path_for(args.wedge_sheet_in)
+    strips = sheet["strips"]
+    print(f"{sheet.get('model', 'wedges')}: {len(strips)} wedge(s) of {steps} steps"
+          + (", each with a bare-base patch first" if sheet.get("base_patch") else ""))
+    done = []
+    with SpotreadSession(REFLECT_ARGS + args.spotread_arg, nospos=args.nospos) as s:
+        s.prepare()
+        white = _white_check(s)
+        prev = None
+        for n, strip in enumerate(strips, 1):
+            print(f"\n=== {n}/{len(strips)}  {wedgesheet.strip_title(strip)} ===")
+            base, readings = _read_strip(s, steps, sheet.get("base_patch"), prev)
+            prev = readings[-1]
+            done.append({**strip, **_strip_result(base, readings)})
+        meta = _meta("reflective", s)
+    out = {**sheet, "kind": wedgesheet.READINGS_KIND, "sheet": os.path.basename(args.wedge_sheet_in),
+           "strips": done, "meter": meta}
+    if white is not None:
+        out["white_check"] = white
+    wedgesheet.write(out_path, out)
+    print(f"\nreadings file: {os.path.abspath(out_path)}")
+    print("Next: load it in Calibrate > Guided (“Load readings…”), or\n"
+          f"      stackforge-calibrate fit --filament <id> --readings {out_path} --write")
 
 
 def cmd_transmission(args):
@@ -599,8 +661,14 @@ def build_parser() -> argparse.ArgumentParser:
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("measure-wedge", help="reflectance of each step of a printed wedge")
-    p.add_argument("--steps", type=int, default=12)
-    p.add_argument("-o", "--output", help="JSON with readings and spectra")
+    p.add_argument("--sheet", dest="wedge_sheet_in",
+                   help="the wedge sheet calibrate wrote next to the 3MF (*.sheet.json): sets "
+                        "the steps and walks every wedge in order into one readings file")
+    p.add_argument("--steps", type=int, default=None, help="default: from the sheet, else 12")
+    p.add_argument("--base-patch", action="store_true",
+                   help="without a sheet: read the bare-base patch before step 1")
+    p.add_argument("-o", "--output", help="JSON with readings and spectra (with --sheet, "
+                   "default: <wedge>.readings.json next to the sheet)")
     p.set_defaults(fn=cmd_measure_wedge)
 
     p = sub.add_parser("transmission", help="chip transmission using the screen as backlight")

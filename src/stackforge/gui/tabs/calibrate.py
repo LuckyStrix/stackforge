@@ -58,9 +58,17 @@ class CalibrateTab(QWidget):
         self.guided.prepare(steps=steps, base_id=base_id)
         self.nb.setCurrentWidget(self.guided)
 
-    def set_measured(self, hexes: str):
+    def set_measured(self, hexes: str, base=None):
         """Readings from the Measure tab: into the guided page's next empty wedge (and the
-        fit form, for anyone using All options). Returns "A" or "B"."""
+        fit form, for anyone using All options). `base` is a measured base hex. Returns
+        "A" or "B"."""
         self.tabs.panels["fit"].form.set_values({"measured": hexes})
         self.nb.setCurrentWidget(self.guided)
-        return self.guided.add_measured(hexes)
+        return self.guided.add_measured(hexes, base=base)
+
+    def load_readings(self, path):
+        """A readings file from Measure (measured from the wedge sheet): fill the guided page."""
+        self.guided.reload()
+        self.nb.setCurrentWidget(self.guided)
+        self.tabs.panels["fit"].form.set_values({"readings": path})
+        return self.guided.load_readings(path)

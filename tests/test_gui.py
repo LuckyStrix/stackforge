@@ -404,6 +404,16 @@ class Host(unittest.TestCase):
         self.assertEqual(cal.guided.wedge_a.text.toPlainText(), "#AABBCC,#112233,#445566")
         self.assertEqual(cal.tabs.panels["fit"].form.values()["measured"], "#AABBCC,#112233,#445566")
 
+    def test_measure_base_and_readings_file_flow_to_calibrate(self):
+        from stackforge.gui.tabs.measure import BASE_LINE, READINGS_LINE
+        line = 'Next: stackforge-calibrate fit --filament <id> --base "#0C0E0C" --measured "#1"'
+        self.assertEqual(BASE_LINE.search(line).group(1), "#0C0E0C")
+        out = "...\nreadings file: C:\\Users\\x\\wedge_teal.readings.json\nNext: ..."
+        self.assertEqual(READINGS_LINE.findall(out), ["C:\\Users\\x\\wedge_teal.readings.json"])
+        cal = self.win.tabs["Calibrate"]
+        self.assertEqual(cal.set_measured("#AABBCC,#112233,#445566", "#0C0E0C"), "A")
+        self.assertEqual(cal.guided.wedge_a.base.currentText(), "#0C0E0C")
+
     def test_filament_editor_hands_over_to_calibrate(self):
         fil = self.win.tabs["Filaments"]
         fil.ed.select("polymaker-pla-pro-blue")

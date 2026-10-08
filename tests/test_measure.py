@@ -6,7 +6,7 @@ import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 from stackforge.tools import calibrate, measure
-from stackforge.core import colormath
+from stackforge.core import colormath, optics
 
 FAKE = r'''#!/usr/bin/env python3
 import os, sys
@@ -316,7 +316,8 @@ class CalibrateCli(unittest.TestCase):
                                                 "wedge_over_polymaker-pla-pro-black"])
         self.assertEqual([(o[1], o[2]) for o in objs], [(1, [3]), (2, [3])])
         self.assertIn("Extruder 3 = ", log)
-        self.assertIn("--base2", log)
+        self.assertIn("measure-wedge --sheet", log)
+        self.assertTrue(os.path.exists(os.path.join(self.tmp.name, "w.sheet.json")))
 
     def test_white_is_not_calibrated_over_itself(self):
         out = os.path.join(self.tmp.name, "w.3mf")
@@ -357,3 +358,128 @@ class CalibrateCli(unittest.TestCase):
         log = self.run_cli("fit", "--filament", "blue", "--base", "white", "--measured", hexes,
                            "--template", self.tpl)
         self.assertIn("at 0.12 mm layers", log)
+
+
+class FakeMeter:
+    """Stands in for SpotreadSession: hands out scripted readings, no instrument, no pty."""
+    nospos, command, args = False, ["spotread"], []
+
+    def __init__(self, srgbs):
+        self.srgbs = list(srgbs)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        pass
+
+    def prepare(self, *a, **k):
+        return 0
+
+    def measure(self):
+        from stackforge.core import colormath as cm
+        lin = cm.srgb_to_linear(np.array(self.srgbs.pop(0), float))
+        # exactly measure.xyz_d50_to_srgb backwards, so a hex survives the round trip
+        xyz = np.linalg.solve(cm._M_XYZ2RGB @ measure._BRADFORD_D50_D65, lin) * 100
+        return {"xyz": xyz.tolist(), "lab_d50": [0.0, 0.0, 0.0]}
+
+
+class SheetRoundTrip(unittest.TestCase):
+    """wedge writes a sheet -> measure walks it -> fit reads the readings."""
+    setUp, run_cli = CalibrateCli.setUp, CalibrateCli.run_cli
+
+    def _wedge(self, fil="blue", **kw):
+        out = os.path.join(self.tmp.name, f"wedge_{fil}.3mf")
+        self.run_cli("wedge", "--filament", fil, "--base", "white,black", "--template",
+                     self.tpl, "--steps", "6", "-o", out, *kw.get("extra", ()))
+        return out
+
+    def _measure(self, sheet, srgbs):
+        import contextlib
+        import io
+        from unittest import mock
+        log, self.prompts = io.StringIO(), []
+        ask = lambda p="": self.prompts.append(p) or ""  # noqa: E731
+        with mock.patch.object(measure, "SpotreadSession", lambda *a, **k: FakeMeter(srgbs)), \
+                mock.patch("builtins.input", ask), contextlib.redirect_stdout(log):
+            measure.main(["measure-wedge", "--sheet", sheet])
+        return log.getvalue()
+
+    def _simulated(self, fil_id, td):
+        """What a meter would read off each strip of the sheet: bare base, then steps."""
+        from stackforge.core.filamentdb import DB
+        from stackforge.core.paths import packaged
+        from stackforge.core import wedgesheet
+        db = DB(packaged("filaments.json"))
+        sheet = wedgesheet.load_sheet(os.path.join(self.tmp.name, f"wedge_{fil_id}.sheet.json"))
+        fil = db.get(fil_id)
+        out = []
+        for s in sheet["strips"]:
+            base = db.get(s["base"]["id"])
+            out.append(base.rgb())
+            out += [optics.patch_rgb(fil, base.linear(), n, sheet["layer_height"], td)
+                    for n in range(1, sheet["steps"] + 1)]
+        return out
+
+    def test_bare_patch_is_slot_zero_with_no_filament_on_it(self):
+        plate, decals, w, base_h = calibrate.build_wedge(4, 0.1, 5, 10.0, 14.0, 2.0,
+                                                         hinge_layers=2, base_patch=True)
+        self.assertAlmostEqual(w, 5 * 10 + 4 * 2)
+        xs = decals[0][1][:, 0]
+        self.assertAlmostEqual(xs.min(), 12.0)               # step 1 starts in slot 1
+        self.assertAlmostEqual(plate.verts[:, 2].max(), base_h)
+
+    def test_sheet_lists_every_strip_in_print_order(self):
+        import json
+        self._wedge()
+        with open(os.path.join(self.tmp.name, "wedge_blue.sheet.json")) as fh:
+            sheet = json.load(fh)
+        self.assertEqual(sheet["steps"], 6)
+        self.assertTrue(sheet["base_patch"])
+        self.assertEqual(sheet["layer_height"], 0.12)
+        self.assertEqual([(s["wedge"], s["base"]["id"], s["filament"]["id"]) for s in sheet["strips"]],
+                         [("A", "polymaker-pla-pro-white", "polymaker-pla-pro-blue"),
+                          ("B", "polymaker-pla-pro-black", "polymaker-pla-pro-blue")])
+
+    def test_wedges_too_big_for_the_bed_are_refused(self):
+        with self.assertRaises(SystemExit) as cm:
+            self.run_cli("wedge", "--filament", "blue", "--base", "white,black", "--template",
+                         self.tpl, "--steps", "20", "--gap", "8", "-o",
+                         os.path.join(self.tmp.name, "big.3mf"))
+        self.assertIn("bed is 256 x 256", str(cm.exception))
+
+    def test_measure_walks_the_sheet_and_fit_recovers_td(self):
+        from stackforge.core import wedgesheet
+        self._wedge()
+        sheet = os.path.join(self.tmp.name, "wedge_blue.sheet.json")
+        log = self._measure(sheet, self._simulated("blue", 0.3))
+        self.assertIn("Wedge A (front wedge)", log)
+        self.assertIn("bare base", self.prompts[0])          # the base patch is read first
+        self.assertEqual(len(self.prompts), 2 * 7)
+        path = os.path.join(self.tmp.name, "wedge_blue.readings.json")
+        self.assertIn(f"readings file: {os.path.abspath(path)}", log)
+        data = wedgesheet.load_readings(path)
+        self.assertEqual(len(data["strips"]), 2)
+        self.assertTrue(all(s["base_hex"] for s in data["strips"]))
+        self.assertEqual(len(data["strips"][0]["hex"].split(",")), 6)
+        fit = self.run_cli("fit", "--filament", "blue", "--readings", path)
+        self.assertIn("(measured)", fit)
+        self.assertIn("from the readings file", fit)
+        td = float(fit.split("td      = [")[1].split("]")[0].split(",")[0])
+        self.assertAlmostEqual(td, 0.3, delta=0.03)
+
+    def test_fit_names_what_a_readings_file_holds_when_the_filament_is_not_there(self):
+        self._wedge()
+        sheet = os.path.join(self.tmp.name, "wedge_blue.sheet.json")
+        self._measure(sheet, self._simulated("blue", 0.3))
+        with self.assertRaises(SystemExit) as cm:
+            self.run_cli("fit", "--filament", "red", "--readings",
+                         os.path.join(self.tmp.name, "wedge_blue.readings.json"))
+        self.assertIn("polymaker-pla-pro-blue", str(cm.exception))
+
+    def test_a_sheet_is_not_a_readings_file(self):
+        self._wedge()
+        with self.assertRaises(SystemExit) as cm:
+            self.run_cli("fit", "--filament", "blue", "--readings",
+                         os.path.join(self.tmp.name, "wedge_blue.sheet.json"))
+        self.assertIn("give it to Measure first", str(cm.exception))

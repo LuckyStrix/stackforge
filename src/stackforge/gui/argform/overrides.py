@@ -49,6 +49,8 @@ OVERRIDES: dict = {
     ("dither_compare", "*", "filaments"): "filament_ids",
     ("dither_compare", "*", "base"): "filament_id",
     ("measure", "verify-plaque", "predicted"): "hex_list",
+    ("measure", "measure-wedge", "wedge_sheet_in"): "file_in",
+    ("calibrate", "fit", "readings"): "file_in",
     ("filamentdb", "show", "id"): "filament_id",
     ("filamentdb", "set", "id"): "filament_id",
     ("filamentdb", "rm", "id"): "filament_id",
@@ -102,6 +104,8 @@ LABELS = {
     "from_image": "Photo of the wedge", "from_image2": "Photo of the second wedge",
     "measured": "Measured colours (thinnest first)", "measured2": "Second wedge colours",
     "per_channel": "Fit each colour channel", "write": "Save the fit to the database",
+    "wedge_sheet_in": "Wedge sheet (from Calibrate)", "readings": "Readings file (from Measure)",
+    "base_patch": "Read the bare-base patch first", "no_base_patch": "No bare-base patch",
 }
 
 

@@ -11,7 +11,7 @@ import numpy as np
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QLabel, QMessageBox,
                                QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
 
-from stackforge.core import colormath
+from stackforge.core import colormath, wedgesheet
 from stackforge.core.filamentdb import DB, DEFAULT_DB, PROVENANCE_LABEL
 from stackforge.gui import theme
 from stackforge.gui.filaments import APP
@@ -214,12 +214,18 @@ class CalibratePage(QWidget):
         w.addRow("", row)
 
         m = section(col, "2 · Read the printed steps",
-                    "Thinnest step first, comma separated. Easiest: the Measure tab "
-                    "(measure-wedge) reads each step with the ColorMunki and its \u201cCopy readings "
-                    "to Calibrate\u201d button fills this in. Otherwise a phone photo under flat "
-                    "indirect daylight with a white card in frame, white-balanced against the "
-                    "card, works well enough: crop it to just the row of steps first, because "
-                    "\u201cFrom photo\u201d samples evenly across the whole image.")
+                    "Easiest: give the wedge sheet written in step 1 to the Measure tab "
+                    "(measure-wedge, on whichever computer has the ColorMunki). It reads the bare "
+                    "base and every step of every wedge and writes a readings file; “Load "
+                    "readings…” fills everything below from it, using the measured base "
+                    "colours. Otherwise type the colours, thinnest step first, comma separated, "
+                    "or use a phone photo under flat indirect daylight with a white card in frame, "
+                    "white-balanced against the card: crop it to just the row of steps first, "
+                    "because “From photo” samples evenly across the whole image.")
+        load = QPushButton("Load readings…")
+        load.setToolTip("The *.readings.json that Measure wrote from the wedge sheet")
+        load.clicked.connect(lambda: self.load_readings())
+        m.addRow("Readings file", load)
         m.addRow("Layer height (mm)", self.layer.spin())
         m.addRow("", theme.hint("The layer height the wedge was printed at; it follows your "
                                 "slicer project. A wrong one makes every td wrong."))
@@ -388,10 +394,60 @@ class CalibratePage(QWidget):
         if base_id and base_id in self.db.filaments:
             self.wbase.setCurrentText(base_id)
 
-    def add_measured(self, hexes: str, steps=None) -> str:
-        """Put a hex list from the Measure tab into Wedge A, or B if A is filled. Returns which."""
+    def load_readings(self, path=None) -> bool:
+        """Fill the wedges from a measure readings file: the filament, each wedge's readings
+        against its measured base, the step count and the layer height it was printed at."""
+        if path is None:
+            path, _ = QFileDialog.getOpenFileName(self, "Wedge readings from Measure", "",
+                                                  "Wedge readings (*.readings.json);;JSON (*.json)")
+            if not path:
+                return False
+        try:
+            data = wedgesheet.load_readings(path)
+        except ValueError as exc:
+            QMessageBox.warning(self, APP, str(exc))
+            return False
+        strips = wedgesheet.strips_for(data, self.fil_combo.currentData())
+        fil = strips[0]["filament"]
+        if not self.select(fil["id"]):
+            QMessageBox.warning(self, APP, f"{fil['label']} ({fil['id']}) is not in your filament "
+                                           "library: add it in the Filaments tab first.")
+            return False
+        notes = []
+        others = {s["filament"]["label"] for s in data["strips"]} - {fil["label"]}
+        if others:
+            notes.append(f"the file also has {', '.join(sorted(others))}: choose that filament "
+                         "and load the file again to fit it")
+        for box, s in zip((self.wedge_a, self.wedge_b), strips + [None]):
+            box.text.setPlainText(s["hex"] if s else "")
+            if s:
+                box.base.setCurrentText(s.get("base_hex") or s["base"]["id"])
+                if s.get("reversed_steps"):
+                    notes.append(f"wedge {s['wedge']}: step(s) {s['reversed_steps']} ran against "
+                                 "the wedge when measured")
+        if len(strips) > 2:
+            notes.append(f"only the first two of {len(strips)} wedges are used")
+        self.steps.setValue(data["steps"])
+        lh = data["layer_height"]
+        proj = self.project.layers()[0] if self.project is not None else None
+        if proj and abs(proj - lh) > 1e-9:
+            notes.append(f"printed at {lh:g} mm layers, not the project's {proj:g}: fitting at {lh:g}")
+        self.layer.set(lh)
+        self.reset_fit()
+        measured = all(s.get("base_hex") for s in strips)
+        self.status(f"loaded {len(strips[:2])} wedge(s) of {fil['label']}"
+                    + (" with measured bases" if measured else "") + ": press Fit"
+                    + ("  — " + "; ".join(notes) if notes else ""),
+                    theme.WARN if notes else theme.OK)
+        return True
+
+    def add_measured(self, hexes: str, steps=None, base=None) -> str:
+        """Put a hex list from the Measure tab into Wedge A, or B if A is filled, with its
+        measured `base` hex if the bare patch was read. Returns which."""
         target = self.wedge_a if not self.wedge_a.text.toPlainText().strip() else self.wedge_b
         target.text.setPlainText(hexes)
+        if base:
+            target.base.setCurrentText(base)
         n = len([h for h in hexes.split(",") if h.strip()])
         if n:
             self.steps.setValue(n)
@@ -448,15 +504,20 @@ class CalibratePage(QWidget):
             ws = calibrate.WedgeSet([fil], bases, steps, lh, fl, self.stepw.value(),
                                     self.stepd.value(), self.gap.value(),
                                     self.baselayers.value() or None, self.hinge.value())
-            ws.write(p, flavor, tpl, lh, fl)
+            ws.write(p, flavor, tpl)
+            sheet = ws.write_sheet(p)
         except (Exception, SystemExit) as exc:
             QMessageBox.critical(self, APP, f"Could not write the wedges:\n{exc}")
             return
         self.layer.set(lh)
+        # New wedges: old readings would land in the wrong box or against the wrong base.
         # Each wedge's readings go in the box of the same letter, against its base.
+        for box in (self.wedge_a, self.wedge_b):
+            box.text.clear()
         for box, (b, _rows) in zip((self.wedge_a, self.wedge_b), ws.wedges):
             box.base.setCurrentText(b.id)
-        self.status(f"wrote {os.path.basename(p)}", theme.OK)
+        self.reset_fit()
+        self.status(f"wrote {os.path.basename(p)} and {os.path.basename(sheet)}", theme.OK)
         one = len(ws.wedges) == 1
         QMessageBox.information(
             self, APP,
@@ -465,6 +526,10 @@ class CalibratePage(QWidget):
             f"mm; base {ws.base_h:.2f} mm thick, tallest step {ws.top:.2f} mm.\n\n" + "\n".join(ws.describe())
             + f"\n\nThe file carries the {lh:g} mm layer height and {fl:g} mm first layer: don't "
             "change them in the slicer."
+            + f"\n\nAlso wrote the wedge sheet {os.path.basename(sheet)}. Take it to the "
+            "ColorMunki: Measure > measure-wedge with it as the wedge sheet reads every wedge in "
+            "order and writes a readings file. Bring that back and press “Load readings…” "
+            "in step 2."
             + ("\n\nOnly one wedge: choose a contrasting dark base if you can — one background "
                "cannot separate colour from opacity." if one else ""))
 

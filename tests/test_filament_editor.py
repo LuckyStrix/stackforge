@@ -251,6 +251,83 @@ class Editor(unittest.TestCase):
         self.assertEqual(again.wbase2.currentText(), "polymaker-pla-pro-black")
         self.assertEqual(store.names("calibrate", ("guided",)), [])
 
+    def _readings(self, fid, td, base_ids=("polymaker-pla-pro-white", "polymaker-pla-pro-black"),
+                  lh=0.12, steps=8):
+        """A readings file as Measure writes it from a wedge sheet, simulated at `td`."""
+        from stackforge.core import colormath as cm
+        from stackforge.core import wedgesheet
+        db = DB(self.path)
+        fil = db.filaments[fid]
+        ws = calibrate.WedgeSet([fil], [db.filaments[b] for b in base_ids], steps, lh, 0.2,
+                                14.0, 14.0)
+        data = ws.sheet(os.path.join(self.d.name, "w.3mf"))
+        data["kind"] = wedgesheet.READINGS_KIND
+        for s in data["strips"]:
+            base = db.filaments[s["base"]["id"]]
+            hexes = [cm.to_hex(optics.patch_rgb(fil, base.linear(), n, lh, td))
+                     for n in range(1, steps + 1)]
+            s.update(hex=",".join(hexes), base_hex=cm.to_hex(base.rgb()), reversed_steps=[])
+        path = os.path.join(self.d.name, "w.readings.json")
+        wedgesheet.write(path, data)
+        return path
+
+    def test_writing_wedges_writes_a_sheet_and_clears_old_readings(self):
+        from unittest import mock
+        from PySide6.QtWidgets import QFileDialog
+        from stackforge.core import wedgesheet
+        page = self._page(self._tab())
+        page.select("polymaker-pla-pro-teal")
+        page.wedge_a.text.setPlainText("#111111,#222222,#333333")     # a previous filament's
+        out = os.path.join(self.d.name, "w.3mf")
+        with mock.patch.object(QFileDialog, "getSaveFileName", return_value=(out, "")), \
+                mock.patch.object(QMessageBox, "information"):
+            page.write_wedge()
+        self.assertEqual(page.wedge_a.text.toPlainText(), "")
+        sheet = wedgesheet.load_sheet(os.path.join(self.d.name, "w.sheet.json"))
+        self.assertEqual([s["base"]["id"] for s in sheet["strips"]],
+                         ["polymaker-pla-pro-white", "polymaker-pla-pro-black"])
+        self.assertEqual(sheet["steps"], page.steps.value())
+
+    def test_loaded_readings_fill_both_wedges_and_fit(self):
+        page = self._page(self._tab())
+        page.select("polymaker-pla-pro-red")              # loading switches to the file's filament
+        page.steps.setValue(12)
+        self.assertTrue(page.load_readings(self._readings("polymaker-pla-pro-teal", 0.3)))
+        self.assertEqual(page.fil_combo.currentData(), "polymaker-pla-pro-teal")
+        self.assertEqual(page.steps.value(), 8)
+        self.assertEqual(len(page.wedge_a.text.toPlainText().split(",")), 8)
+        self.assertTrue(page.wedge_a.base.currentText().startswith("#"))   # the measured base
+        self.assertTrue(page.wedge_b.text.toPlainText())
+        page.do_fit()
+        self.assertTrue(page.apply_btn.isEnabled())
+        self.assertIn("td      = [0.3", page.report.toPlainText())
+
+    def test_white_readings_have_one_wedge_and_b_is_emptied(self):
+        page = self._page(self._tab())
+        page.wedge_b.text.setPlainText("#010203,#040506,#070809")
+        page.load_readings(self._readings("polymaker-pla-pro-white", 0.47))
+        self.assertTrue(page.wedge_a.text.toPlainText())
+        self.assertEqual(page.wedge_b.text.toPlainText(), "")
+
+    def test_readings_printed_at_another_layer_height_fit_at_that_height(self):
+        page = self._page(self._tab())
+        page.load_readings(self._readings("polymaker-pla-pro-teal", 0.3, lh=0.08))
+        self.assertEqual(page.layer.value, 0.08)
+        self.assertIn("0.08", page.lbl_status.text())
+
+    def test_a_wedge_sheet_is_refused_as_readings(self):
+        from unittest import mock
+        page = self._page(self._tab())
+        sheet = os.path.join(self.d.name, "s.sheet.json")
+        db = DB(self.path)
+        ws = calibrate.WedgeSet([db.filaments["polymaker-pla-pro-teal"]],
+                                [db.filaments["polymaker-pla-pro-white"]], 4, 0.12, 0.2, 14.0, 14.0)
+        from stackforge.core import wedgesheet
+        wedgesheet.write(sheet, ws.sheet(sheet))
+        with mock.patch.object(QMessageBox, "warning") as warn:
+            self.assertFalse(page.load_readings(sheet))
+        self.assertIn("give it to Measure first", warn.call_args[0][2])
+
     def test_wedge_refused_without_a_slicer_project(self):
         from unittest import mock
         tab = self._tab()

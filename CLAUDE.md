@@ -31,6 +31,10 @@ clean and CI runs both. PySide6 is the `gui` extra; the CLIs need only numpy/Pil
 - **Wedge step n carries n layers of filament** (`layer_height` each): the thick first layer is
   in the base under the steps. `fit_td` models exactly that; chips (no base) are the ones on
   `first + (n-1)*layer`. Wedges and chips are written solid, like the plaque.
+- **Wedge sheet -> readings round trip** (`core/wedgesheet.py`, plain JSON): calibrate writes
+  `*.sheet.json` beside the 3MF, measure `--sheet` writes `*.readings.json`, fit `--readings` /
+  guided "Load readings" consume it. The files cross machines, so they carry labels and colours,
+  not just ids. Slot 0 of each wedge is a bare-base patch; its reading replaces the library colour.
 - **td is the reflectance-fit kind** (`tools/calibrate.py`: light crosses each layer twice). measure's
   transmission td is single-pass, ~2x for a clear absorber; never paste it in as `td_rgb`.
 
