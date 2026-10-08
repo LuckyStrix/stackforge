@@ -1,5 +1,10 @@
 # Review notes
 
+Module names below are from before the 2026-10-05 rename; today they are `tools/measure.py`
+(`munki.py`), `tools/paint.py` (`surfacecolor`), `tools/dither_compare.py` (`halftone`),
+`tools/make_samples.py` (`make_fixture.py`), `tools/plaque.py` / `stackforge-plaque`
+(`stackforge --rank`) and `tests/test_measure.py` (`tests/test_munki.py`).
+
 Findings from read-only Haiku review passes (2026-09-30) over the munki / surfacecolor / halftone
 work, triaged by hand. Agent output was treated as leads, not facts: each item was checked against
 the code first.
@@ -24,8 +29,7 @@ the code first.
   (`surfacecolor.compile_expr`) before `eval`; int literals become floats so `9**9**9` cannot hang.
 
 ## Still open
-- `stackforge --template` (layer-height inheritance, solid-infill flags) has no test: it needs a
-  slicer-exported project 3MF to use as a template, and none is committed (they contain a full
-  printer profile). Worth adding a minimal synthetic template.
+- ~~`--template` has no test~~: `tests/test_template.py` builds a synthetic template, and
+  `tests/test_slice.py` slices with the real one when Flash Studio is installed.
 - `test_smoke` / `test_cli_writes_3mf` only check that a valid 3MF is produced, not its geometry.
 - `munki.py` and the screen-transmission method have never been run on the instrument.

@@ -40,9 +40,9 @@ from datetime import date
 import numpy as np
 
 from stackforge.core import colormath
-from stackforge.core.paths import data_path
+from stackforge.core.paths import data_path, user_data_path
 
-DEFAULT_DB = os.environ.get("FILAMENT_DB") or data_path("filaments.json")
+DEFAULT_DB = os.environ.get("FILAMENT_DB") or user_data_path("filaments.json")
 SCHEMA_VERSION = 1
 
 # "matched" sits between a measurement and a guess: somebody printed the
@@ -50,6 +50,19 @@ SCHEMA_VERSION = 1
 # roughly +/-15%, which is far better than a guess and far worse than a wedge
 # read with an instrument -- so it is still dimmed and still flagged.
 PROVENANCE = ("measured", "matched", "vendor", "estimated")
+# How each reads in lists. Only "measured" came from a fitted wedge; "matched" is a by-eye
+# comparison with a printed patch (~+/-15%), "vendor" a maker's published TD converted to
+# ours, "estimated" a guess from the colour.
+PROVENANCE_LABEL = {"measured": "measured", "matched": "matched by eye",
+                    "vendor": "vendor td", "estimated": "estimate"}
+
+
+def provenance_counts(fils) -> str:
+    """'2 measured, 1 vendor td, 11 estimate' for a list of filaments."""
+    n = {p: 0 for p in PROVENANCE}
+    for f in fils:
+        n[f.provenance if f.provenance in n else "estimated"] += 1
+    return ", ".join(f"{c} {PROVENANCE_LABEL[p]}" for p, c in n.items() if c)
 
 # HueForge's TD -- and Polymaker's, who publish on the same scale -- is roughly
 # the thickness at which light stops getting through. Ours is the 1/e

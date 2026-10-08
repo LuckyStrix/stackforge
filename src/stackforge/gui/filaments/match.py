@@ -126,7 +126,7 @@ class MatchPage(QWidget):
         ctl.addWidget(editor.layer.spin())
         best = QPushButton("Best layer count")
         best.clicked.connect(self._recommend)
-        wedge = QPushButton("Write wedge…")
+        wedge = QPushButton("Calibrate with a wedge…")
         wedge.clicked.connect(self._write_wedge)
         ctl.addSpacing(12)
         ctl.addWidget(best)
@@ -184,8 +184,7 @@ class MatchPage(QWidget):
 
     def _write_wedge(self):
         """Hand the wedge writer the base and depth this page is asking about."""
-        self.ed.calibrate.prepare(steps=max(4, self.layers.value()), base_id=self.cb_base.currentText())
-        self.ed.calibrate.write_wedge()
+        self.ed.request_calibrate(steps=max(4, self.layers.value()), base_id=self.cb_base.currentText())
 
     def apply(self, td, ratio):
         fil, base = self.ed.fil(), self.base()

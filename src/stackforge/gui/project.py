@@ -10,7 +10,7 @@ import os
 
 from stackforge.core import threemf
 from stackforge.core.filamentdb import DEFAULT_DB
-from stackforge.core.paths import data_path
+from stackforge.core.paths import data_path, packaged
 from stackforge.gui.settings import Settings
 
 KEYS = ("db", "template", "catalog", "flavor", "part_type", "layer_height", "first_layer")
@@ -71,7 +71,12 @@ class Project:
     def get(self, key):
         """Value for a project-bound field as text, or None to leave the field to the user."""
         if key == "db":
-            return self.settings.get("db") or os.path.abspath(DEFAULT_DB)
+            db = self.settings.get("db")
+            # A database saved as the packaged copy predates the user copy: use the latter,
+            # so edits stop landing inside the package.
+            if db and os.path.abspath(db) == os.path.abspath(packaged("filaments.json")):
+                db = None
+            return db or os.path.abspath(DEFAULT_DB)
         if key == "catalog":
             return self.settings.get("catalog") or os.path.abspath(
                 os.environ.get("POLYMAKER_CATALOG") or data_path("polymaker_catalog.json"))

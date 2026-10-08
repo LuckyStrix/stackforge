@@ -46,6 +46,15 @@ class Cli(unittest.TestCase):
         self.assertEqual([e for st, e in parts if st == "normal_part"], ["4"])
         self.assertTrue({e for st, e in parts if st == "modifier_part"} <= {"1", "2", "3"})
 
+    def test_more_filaments_than_toolheads_with_output_builds_the_best(self):
+        out, sheet = os.path.join(self.d, "out.3mf"), os.path.join(self.d, "sheet.png")
+        r = run("--filaments", ",".join(IDS), "--base", "polymaker-pla-pro-white", "--slots", "3",
+                "--top", "1", "--rank-sheet", sheet, "--layer-height", "0.08", "-o", out,
+                img=self.img)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("with the best combination", r.stdout)
+        self.assertTrue(os.path.exists(out) and os.path.exists(sheet))
+
     def test_prusa_flavor_writes(self):
         out = os.path.join(self.d, "out.3mf")
         r = run("--filaments", ",".join(IDS[:4]), "--flavor", "prusa", "-o", out, img=self.img)

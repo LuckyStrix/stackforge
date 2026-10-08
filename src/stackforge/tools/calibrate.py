@@ -17,11 +17,11 @@ Reading the colors: a spectrophotometer is ideal, but a phone photo under flat
 indirect daylight with a white card in frame works well enough -- sample the
 middle of each step, average a patch, and white-balance against the card.
 
-    stackforge-calibrate wedge --filament teal --base white -o wedge_teal.3mf
-    stackforge-calibrate chips --filament teal -o chips_teal.3mf     # transmission, see stackforge-measure
-    stackforge-calibrate fit --filament teal --base "#F4F5F0" \
+    stackforge-calibrate wedge --filament teal --base white --template p.3mf -o wedge_teal.3mf
+    stackforge-calibrate chips --filament teal --template p.3mf -o chips_teal.3mf  # transmission
+    stackforge-calibrate fit --filament teal --base "#F4F5F0" --template p.3mf \
         --measured "#D8E6E4,#B4D2D0,#8FBEBC,#6FADAB,#54A09E,#3E9694,#2C8E8C,#1F8886"
-    stackforge-calibrate fit --filament teal --base "#F4F5F0" --from-image shot.png
+    stackforge-calibrate fit --filament teal --base "#F4F5F0" --template p.3mf --from-image shot.png
 """
 
 from __future__ import annotations

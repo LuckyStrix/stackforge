@@ -398,9 +398,19 @@ class Host(unittest.TestCase):
         from stackforge.gui.tabs.measure import HEX_LINE
         line = 'calibrate.py fit --filament <id> --base <hex or id> --measured "#AABBCC,#112233"'
         self.assertEqual(HEX_LINE.search(line).group(1), "#AABBCC,#112233")
-        self.win.tabs["Calibrate"].set_measured("#AABBCC,#112233")
-        self.assertEqual(self.win.tabs["Calibrate"].tabs.panels["fit"].form.values()["measured"],
-                         "#AABBCC,#112233")
+        cal = self.win.tabs["Calibrate"]
+        self.assertEqual(cal.set_measured("#AABBCC,#112233,#445566"), "A")
+        self.assertIs(cal.nb.currentWidget(), cal.guided)
+        self.assertEqual(cal.guided.wedge_a.text.toPlainText(), "#AABBCC,#112233,#445566")
+        self.assertEqual(cal.tabs.panels["fit"].form.values()["measured"], "#AABBCC,#112233,#445566")
+
+    def test_filament_editor_hands_over_to_calibrate(self):
+        fil = self.win.tabs["Filaments"]
+        fil.ed.select("polymaker-pla-pro-blue")
+        fil.ed.request_calibrate()
+        cal = self.win.tabs["Calibrate"]
+        self.assertIs(self.win.current(), cal)
+        self.assertEqual(cal.guided.fil_combo.currentData(), "polymaker-pla-pro-blue")
 
     def test_project_bar_derives_layers_from_template(self):
         t = os.path.join(self.d.name, "t.3mf")

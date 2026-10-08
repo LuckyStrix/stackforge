@@ -37,9 +37,11 @@ clean and CI runs both. PySide6 is the `gui` extra; the CLIs need only numpy/Pil
 ## Bite
 
 - `filaments.json` tds are mostly estimates; never present them as measured. The shipped
-  `filaments.json` and `polymaker_catalog.json` live in `src/stackforge/data/`; `core/paths.py`
-  prefers a copy in the cwd, else the packaged one (so the defaults write into the repo when run
-  from elsewhere with an editable install).
+  `filaments.json` and `polymaker_catalog.json` live in `src/stackforge/data/`. The filament
+  library users edit is `core/paths.user_data_path`: `./filaments.json` if present, else
+  `~/.config/stackforge/filaments.json`, seeded from the packaged copy (never written to).
+  `tests/conftest.py` points `XDG_CONFIG_HOME` at a temp dir. The catalogue still uses the
+  packaged copy (`data_path`).
 - `tools/polymaker.py` fetches from the network only in `refresh` (30 s timeout, 3 tries, cache
   untouched on failure); the catalogue is cached in `polymaker_catalog.json`.
 - **paint voxelisation uses a winding number from above, not parity.** Overlapping open

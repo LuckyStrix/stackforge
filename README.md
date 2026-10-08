@@ -51,7 +51,8 @@ the T1–T4 order stackforge printed, leave the layer height alone, slice and pr
 slice preview, colour should show on every layer near the top, not on alternate ones.
 
 Orca output (the default `--flavor`) is refused without `--template` unless you give
-`--layer-height` yourself (see *Caveats*). Run `pip install -e ".[dev]" && pytest` for the tests (`python3 -m unittest discover -s tests` also works).
+`--layer-height` yourself (see *Caveats*). Tests: `pip install -e ".[dev]" && pytest` (see
+*Development*).
 
 ## One GUI for everything
 
@@ -86,7 +87,8 @@ presets live in `~/.config/stackforge/`. Ctrl+Enter runs the visible form, Esc c
   (skip it with `STACKFORGE_SKIP_SLICER=1`; locations via `FLASHSTUDIO_RUN` / `FLASHSTUDIO_TEMPLATE`).
   If colours are wrong in your slicer, try `--part-type part`.
 - The optical model is single-pass alpha-over with per-filament `td`; accuracy depends on
-  calibrated `td` values (`stackforge-calibrate`). Shipped `filaments.json` (in `src/stackforge/data/`) values are mostly estimates.
+  calibrated `td` values (`stackforge-calibrate`). The shipped `filaments.json` values are mostly
+  estimates.
 - The base must be opaque (`--base-layers`); stackforge warns when it is not.
 - Slice at exactly the `--layer-height` you generated with.
 
@@ -100,7 +102,7 @@ so nothing here tries to minimize them.
 | tool | what it does |
 |---|---|
 | `stackforge-filaments` (`core/filamentdb.py`) | filament colors + optical properties, grown over time |
-| `gui/filaments/` | the library editor (details, look, match by eye, calibrate) |
+| `gui/filaments/` | the library editor (details, look, match by eye) and the guided calibration page |
 | `stackforge-polymaker` (`tools/polymaker.py`) | look a Polymaker SKU up in their published hex/TD table |
 | `stackforge-calibrate` (`tools/calibrate.py`) | step-wedge generator and td/color fitter |
 | `stackforge-top-paint` (`tools/top_paint.py`) | project an image onto the top-visible surface of any 3MF or GLB |
@@ -110,7 +112,7 @@ so nothing here tries to minimize them.
 | `stackforge-make-samples` (`tools/make_samples.py`) | generate `fabric.3mf`, `badge.3mf` and `globe.glb` sample models |
 | `stackforge-plaque` (`tools/plaque.py`) | flat full-color plaques from per-pixel filament stacks |
 | `gui/` | the Qt GUI (`stackforge`): host window (`app.py`), generated forms (`form.py`, `panel.py`), pickers, one module per tab in `tabs/`, plaque designer in `tabs/plaque.py` |
-| `data/` | shipped `filaments.json` and `polymaker_catalog.json`; a copy in the working directory wins |
+| `data/` | shipped `filaments.json` and `polymaker_catalog.json`; the filament library you edit is a copy of the first, in `~/.config/stackforge/` |
 | `core/threemf.py`, `core/colormath.py` | shared 3MF I/O and color math |
 | `gui/theme.py` | the dark theme and small layout helpers |
 | `gui/argform/` | form specs generated from each tool's `build_parser()`; no GUI toolkit needed |
@@ -126,13 +128,20 @@ Requires `numpy`, `Pillow`, `scipy`; `stackforge` also needs `PySide6` (the `gui
 
 ## stackforge-filaments
 
-One plain JSON file (`./filaments.json` if present, else the copy shipped in the package; or `$FILAMENT_DB`) so it
+One plain JSON file so it
 diffs cleanly in git and you can hand-edit it. Every entry records where its
 numbers came from, so estimated placeholders never get mistaken for measured
 values — `list` dims anything unmeasured. `provenance` runs
 `measured` (a wedge, read with an instrument) → `matched` (a wedge, compared by
 eye, good to ~±15%) → `vendor` (published by the manufacturer) → `estimated`
-(a guess). Only the first is trusted without a warning.
+(a guess). Only the first is trusted without a warning; lists show each entry's source.
+
+**Where it lives.** `$FILAMENT_DB` if set, else `./filaments.json` if the current folder has
+one, else your own copy at `~/.config/stackforge/filaments.json` (`$XDG_CONFIG_HOME` is
+honoured). That copy is made from the one shipped in the package the first time it is needed,
+so your filaments and calibrations are never written into the package, where a reinstall or
+`git pull` would clash with them. Filaments added to the shipped file later do not reach your
+copy by themselves: `stackforge-filaments seed` or the Polymaker browser adds them.
 
 ```sh
 stackforge-filaments seed                 # starter Polymaker PLA Pro set
@@ -191,11 +200,14 @@ That is what this is for.
 - **Match by eye** — no instrument needed: pick the candidate `td` whose
   patch-against-base step looks like your printed one. See
   [matching by eye](#matching-by-eye-with-no-instrument).
-- **Calibrate** — the whole loop in one place: write the step-wedge 3MF, print
-  it, type in the patches (or sample them from a photo of the wedge), fit, read
-  the per-step residuals, and commit the result to the entry.
+- **Calibrate this filament…** (under the list) opens the **Calibrate** tab on the selected
+  entry. That tab is the one place to calibrate: its *Guided* page writes the step-wedge 3MF
+  (on your slicer project's layer grid), takes the patches (from the Measure tab, typed, or
+  sampled from a cropped photo), fits, shows the per-step residuals and saves the result to
+  the library. *All options* has the raw wedge/chips/fit commands, e.g. three filaments on
+  one plate.
 
-Nothing touches disk until Save; the Editor tab carries a dot while there
+In the editor, nothing touches disk until Save; the Editor tab carries a dot while there
 are unsaved edits, and Save refuses the whole file if any entry has an unparseable
 colour or a non-positive td.
 
@@ -355,18 +367,20 @@ cached JSON keeps working in the meantime.
 
 ## stackforge-calibrate
 
-Turns estimated entries into measured ones. Every step below is also available
-inside the Filaments tab, which is usually the easier way to run it — same
-maths, same refusals, but you can see the residuals per step.
+Turns estimated entries into measured ones. The GUI's **Calibrate** tab (*Guided*) runs the
+same steps for one filament and is usually the easier way — same maths, same refusals, but
+you can see the residuals per step.
 
 ```sh
-# 1. print this
-stackforge-calibrate wedge --filament teal --base white -o wedge_teal.3mf
+# 1. print this (on your slicer project's layer grid, solid infill, opaque base)
+stackforge-calibrate wedge --filament teal --base white --template my_project.3mf -o wedge_teal.3mf
 
-# 2. read the patches, then fit
-stackforge-calibrate fit --filament teal --base "#F4F5F0" \
+# 2. read the patches, then fit (the template supplies the layer height it was printed at)
+stackforge-calibrate fit --filament teal --base "#F4F5F0" --template my_project.3mf \
     --measured "#BAC8C7,#8CA8AB,..." --write
 ```
+
+`fit` refuses to guess the layer height: give `--template` or `--layer-height`.
 
 `--from-image shot.png` samples patches from a photo instead of hand-entered
 hex. A spectrophotometer is ideal; a phone photo under flat indirect daylight
@@ -384,7 +398,7 @@ A second wedge over a contrasting base breaks the degeneracy, because both
 must be explained by one color and one td. Same data, joint fit: **0.9003**.
 
 ```sh
-stackforge-calibrate fit --filament natural \
+stackforge-calibrate fit --filament natural --template my_project.3mf \
     --base  "#F4F5F0" --measured  "..." \
     --base2 "#1A1A1C" --measured2 "..." --write
 ```
@@ -516,9 +530,8 @@ raking light.
 
 ```sh
 stackforge-plaque photo.jpg -o plaque.3mf \
-    --filaments white,black,blue,red,yellow --base white \
-    --width 150 --layer-height 0.08 --max-layers 16 \
-    --preview sim.png --gamut-preview check.png
+    --filaments white,blue,red,yellow --base white --template my_project.3mf \
+    --width 150 --preview sim.png --gamut-preview check.png
 ```
 
 ### Optical model
@@ -543,7 +556,8 @@ while allowing different effective depths.
 
 List more filaments than you have toolheads and it compares every subset that
 fits, so you can see which loadout suits the image before committing to a
-print. Ranking turns on automatically; `-o` is not needed.
+print. Ranking turns on automatically. Without `-o` it only ranks; with `-o` it ranks and
+then builds the plaque from the best combination.
 
 ```sh
 stackforge-plaque photo.jpg --base white \
@@ -552,8 +566,8 @@ stackforge-plaque photo.jpg --base white \
 ```
 
 Prints a ranked table and writes a contact sheet — target first, then the best
-few rendered with their filament swatches and dE. Then re-run with the winning
-`--filaments` and `-o` to produce the plaque.
+few rendered with their filament swatches and dE. Re-run with the winning
+`--filaments` and `-o` to produce the plaque (or pass `-o` the first time).
 
 **The base counts as one of your toolheads.** `--slots 4` means four spools
 total: the base plus three others, never five. A `--base` outside `--filaments`
@@ -825,7 +839,9 @@ grid drop out on alternate layers).
   curved model when slicing (the same open question as everything else here), and
   performance on 100 mm models with busy patterns. The default `--resolution 0.8` keeps
   box counts down.
-- No painting window and no dithering yet.
+- No interactive painting window. Dithering exists for texture and image patterns
+  (`--dither`), but its gains are simulated only: the slicer drops the one-pixel features a
+  dither is made of (see *Caveats*).
 
 ## stackforge-measure
 
@@ -849,7 +865,10 @@ plinth) and `globe.glb` (a textured globe) for trying things without real files.
 
 ## Development
 
-- `python3 -m unittest discover -s tests` runs the smoke tests (gamut, stack solve, 3MF write).
+- `pip install -e ".[dev]"`, then `pytest` runs the tests (GUI ones offscreen; the Flash Studio
+  slice test runs when Flash Studio is installed, `STACKFORGE_SKIP_SLICER=1` skips it) and
+  `ruff check src tests` lints. CI runs both. Tests keep their settings and filament library
+  in a throwaway config folder (`tests/conftest.py`).
 - `CLAUDE.md` has the load-bearing invariants (layer grid, version gate) before you change code.
 - Ideas and plans: `docs/plans/surfacecolor.md`, `docs/ideas.md`.
 

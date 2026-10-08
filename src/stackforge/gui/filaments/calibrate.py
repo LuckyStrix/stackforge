@@ -1,4 +1,6 @@
-"""Calibrate page: write a step wedge, enter what you measured, fit td and colour."""
+"""The guided calibration: pick a filament, write a step wedge, enter what you measured, fit
+td and colour, save it to the library. Hosted by the Calibrate tab; the Filaments editor and the
+Measure tab hand over to it (`CalibrateTab.start` / `set_measured`)."""
 from __future__ import annotations
 
 import os
@@ -10,9 +12,12 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QHBoxLayout, Q
                                QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
 
 from stackforge.core import optics, threemf, colormath
+from stackforge.core.filamentdb import DB, DEFAULT_DB, PROVENANCE_LABEL
 from stackforge.gui import theme
 from stackforge.gui.filaments import APP
-from stackforge.gui.filaments.common import report_box, scroll_page, section, show_lines, spin
+from stackforge.gui.filaments.common import (SharedValue, report_box, scroll_page, section,
+                                             show_lines, spin)
+from stackforge.gui.pickers import swatch_icon
 from stackforge.gui.widgets import IMAGE_FILTER
 from stackforge.tools import calibrate
 
@@ -111,7 +116,7 @@ class WedgeInputs(QWidget):
             QMessageBox.critical(self, APP, f"Could not sample that image:\n{exc}")
             return
         self.text.setPlainText(",".join(colormath.to_hex(c) for c in patches))
-        self.page.ed.status(f"sampled {n} patches from {os.path.basename(p)}", theme.OK)
+        self.page.status(f"sampled {n} patches from {os.path.basename(p)}", theme.OK)
 
     def read(self, db):
         """(measured (n,3), base rgb), or None if the patch list is empty."""
@@ -130,12 +135,31 @@ class WedgeInputs(QWidget):
 
 
 class CalibratePage(QWidget):
-    def __init__(self, editor):
+    """Works on the filament database on disk (the project's), so a fit is saved straight to
+    the library; `on_saved(fid)` lets the Filaments editor pick the change up."""
+
+    def __init__(self, project=None, db_path=None, on_saved=None):
         super().__init__()
-        self.ed = editor
+        self.project, self.on_saved = project, on_saved
+        self.db_path = db_path or (project.get("db") if project else DEFAULT_DB)
+        self.db = DB(self.db_path)
+        self.layer = SharedValue(0.08)
         self._fit = None
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
         sc, col = scroll_page()
-        QVBoxLayout(self).addWidget(sc)
+        outer.addWidget(sc, 1)
+
+        top = section(col, "Filament to calibrate",
+                      "Calibrating measures how see-through a filament really is (its td) and its "
+                      "true colour, so plaque previews match the print. Three steps: print a "
+                      "wedge, read its colours, fit.")
+        self.fil_combo = QComboBox()
+        self.fil_combo.setMinimumWidth(320)
+        self.fil_combo.currentIndexChanged.connect(lambda *_: self._fil_changed())
+        top.addRow("Filament", self.fil_combo)
+        self.fil_note = theme.hint("")
+        top.addRow("", self.fil_note)
 
         w = section(col, "1 · Print a step wedge",
                     "A staircase carrying 1..N layers of this filament over an opaque base. Print "
@@ -154,6 +178,7 @@ class CalibratePage(QWidget):
         w.addRow("Base filament", self.wbase)
         w.addRow("Steps", self.steps)
         self.grid_note = theme.hint("")
+        self.grid_note.setWordWrap(False)       # one line; wrapped, the form row clips it
         w.addRow("Layers", self.grid_note)
         w.addRow("Base layers", self.baselayers)
         w.addRow("Step width (mm)", self.stepw)
@@ -165,64 +190,147 @@ class CalibratePage(QWidget):
         self.gap.valueChanged.connect(lambda v: self.hinge.setEnabled(v > 0))
         self.hinge.setEnabled(False)
         w.addRow("Slicer flavour", self.flavor)
-        w.addRow("", theme.hint("After printing: read each step with the Measure tab (or take a "
-                                "photo, cropped to just the steps) and fill in step 2 below."))
         b = QPushButton("Write wedge 3MF…")
         b.clicked.connect(self.write_wedge)
         w.addRow("", b)
 
-        m = section(col, "2 · Measured patches",
-                    "Thinnest step first, comma separated. A spectrophotometer is ideal; a phone "
-                    "photo under flat indirect daylight with a white card in frame, white-balanced "
-                    "against the card, works well enough. Crop the photo to just the row of "
-                    "steps first: \u201cFrom photo\u201d samples evenly across the whole image.")
-        m.addRow("Layer height (mm)", editor.layer.spin())
+        m = section(col, "2 · Read the printed steps",
+                    "Thinnest step first, comma separated. Easiest: the Measure tab "
+                    "(measure-wedge) reads each step with the ColorMunki and its \u201cCopy readings "
+                    "to Calibrate\u201d button fills this in. Otherwise a phone photo under flat "
+                    "indirect daylight with a white card in frame, white-balanced against the "
+                    "card, works well enough: crop it to just the row of steps first, because "
+                    "\u201cFrom photo\u201d samples evenly across the whole image.")
+        m.addRow("Layer height (mm)", self.layer.spin())
         m.addRow("", theme.hint("The layer height the wedge was printed at; it follows your "
                                 "slicer project. A wrong one makes every td wrong."))
         self.wedge_a = WedgeInputs(self, "Wedge A", "#F4F5F0")
         self.wedge_b = WedgeInputs(self, "Wedge B (contrasting base)", "#1A1A1C")
         m.addRow(self.wedge_a)
         m.addRow(self.wedge_b)
+
+        f = section(col, "3 · Fit and save")
         self.per_channel = QCheckBox("fit td per RGB channel (needs ≥6 steps)")
-        m.addRow(self.per_channel)
+        f.addRow(self.per_channel)
         go = QHBoxLayout()
         fit = QPushButton("Fit")
         fit.setObjectName("primary")
         fit.clicked.connect(self.do_fit)
-        self.apply_btn = QPushButton("Apply to filament")
+        self.apply_btn = QPushButton("Save to filament library")
         self.apply_btn.setEnabled(False)
         self.apply_btn.clicked.connect(self.apply_fit)
         go.addWidget(fit)
         go.addWidget(self.apply_btn)
         go.addStretch(1)
-        m.addRow(go)
+        f.addRow(go)
         self.report = report_box(260)
         col.addWidget(self.report, 1)
+        self.lbl_status = QLabel()
+        outer.addWidget(self.lbl_status)
+
+        if project is not None:
+            project.subscribe(self.project_changed)
+        self.reload()
+        self.project_changed()
+
+    # -- state -----------------------------------------------------------------------------
+
+    def status(self, msg, colour=theme.FG_DIM):
+        self.lbl_status.setText(msg)
+        self.lbl_status.setStyleSheet(f"color:{colour}")
+
+    def fil(self):
+        return self.db.filaments.get(self.fil_combo.currentData() or "")
+
+    def reload(self, path=None):
+        """Re-read the database (it may have been edited elsewhere); keeps the selection."""
+        self.db_path = path or self.db_path
+        try:
+            self.db = DB(self.db_path)
+        except SystemExit as exc:
+            QMessageBox.critical(self, APP, str(exc))
+            return
+        keep = self.fil_combo.currentData()
+        self.fil_combo.blockSignals(True)
+        self.fil_combo.clear()
+        for fil in sorted(self.db.filaments.values(), key=lambda f: f.label().lower()):
+            self.fil_combo.addItem(swatch_icon(fil.color, 26, 16), fil.label(), fil.id)
+        i = self.fil_combo.findData(keep)
+        self.fil_combo.setCurrentIndex(max(i, 0))
+        self.fil_combo.blockSignals(False)
+        self.refresh_bases()
+        self._fil_changed(reset=False)
+
+    def project_changed(self):
+        if self.project is None:
+            self.refresh_grid()
+            return
+        db = self.project.get("db")
+        if db != self.db_path:
+            self.reload(db)
+        lh = self.project.layers()[0]
+        if lh:
+            self.layer.set(lh)
+        self.refresh_grid()
+
+    def select(self, fid):
+        i = self.fil_combo.findData(fid)
+        if i < 0:
+            return False
+        self.fil_combo.setCurrentIndex(i)
+        return True
+
+    def _fil_changed(self, reset=True):
+        fil = self.fil()
+        if reset:
+            self.reset_fit()
+        if fil is None:
+            self.fil_note.setText("no filaments in the library yet")
+            return
+        self.fil_note.setText(
+            f"td {fil.td:g} mm now, source: {PROVENANCE_LABEL.get(fil.provenance, fil.provenance)}"
+            + (f" (measured {fil.measured_at})" if fil.measured_at else ""))
 
     # -- wedge -----------------------------------------------------------------------------
 
     def refresh_bases(self):
-        ids = sorted(self.ed.db.filaments)
+        ids = sorted(self.db.filaments)
         keep = self.wbase.currentText()
         self.wbase.clear()
         self.wbase.addItems(ids)
         if keep not in ids:
-            keep = next((i for i in ids if "white" in i), self.ed.current or "")
+            keep = next((i for i in ids if "white" in i), ids[0] if ids else "")
         self.wbase.setCurrentText(keep)
         self.wedge_a.set_bases(ids)
         self.wedge_b.set_bases(ids)
+        if self.wedge_b.base.currentText() == "#1A1A1C":
+            dark = min(self.db.filaments.values(), key=lambda f: float(sum(f.rgb())), default=None)
+            if dark is not None:
+                self.wedge_b.base.setCurrentText(dark.id)
 
     def prepare(self, steps=None, base_id=None):
         """Preset the wedge for what the Match page is asking about."""
         if steps:
             self.steps.setValue(steps)
-        if base_id and base_id in self.ed.db.filaments:
+        if base_id and base_id in self.db.filaments:
             self.wbase.setCurrentText(base_id)
+
+    def add_measured(self, hexes: str, steps=None) -> str:
+        """Put a hex list from the Measure tab into Wedge A, or B if A is filled. Returns which."""
+        target = self.wedge_a if not self.wedge_a.text.toPlainText().strip() else self.wedge_b
+        target.text.setPlainText(hexes)
+        n = len([h for h in hexes.split(",") if h.strip()])
+        if n:
+            self.steps.setValue(n)
+        which = "A" if target is self.wedge_a else "B"
+        self.status(f"{n} measured steps put in Wedge {which}: check its base, then Fit",
+                    theme.OK)
+        return which
 
     def grid(self):
         """(layer, first layer, template) from the project bar: the wedge must sit on the
         slicer's grid, and Flash Studio needs the template to keep the extruders."""
-        proj = self.ed.project
+        proj = self.project
         if proj is None:
             return None, None, None
         lh, fl = proj.layers()
@@ -233,14 +341,14 @@ class CalibratePage(QWidget):
         self.grid_note.setText(
             f"{lh:g} mm, first layer {fl:g} mm (from the slicer project at the top)" if lh else
             "choose your slicer project at the top first: it sets the layer height")
-        if self.ed.project is not None:
-            self.flavor.setCurrentText(self.ed.project.get("flavor") or "orca")
+        if self.project is not None:
+            self.flavor.setCurrentText(self.project.get("flavor") or "orca")
 
     def write_wedge(self):
-        fil = self.ed.fil()
+        fil = self.fil()
         if fil is None:
             return
-        base = self.ed.db.filaments.get(self.wbase.currentText())
+        base = self.db.filaments.get(self.wbase.currentText())
         if base is None:
             QMessageBox.warning(self, APP, "Choose a base filament.")
             return
@@ -276,8 +384,8 @@ class CalibratePage(QWidget):
         except (Exception, SystemExit) as exc:
             QMessageBox.critical(self, APP, f"Could not write the wedge:\n{exc}")
             return
-        self.ed.layer.set(lh)
-        self.ed.status(f"wrote {os.path.basename(p)}", theme.OK)
+        self.layer.set(lh)
+        self.status(f"wrote {os.path.basename(p)}", theme.OK)
         QMessageBox.information(
             self, APP,
             f"Wrote {p}\n\n{steps} steps, 1..{steps} layers of {fil.label()} over {bl} base layers "
@@ -295,11 +403,11 @@ class CalibratePage(QWidget):
         self.report.clear()
 
     def do_fit(self):
-        fil = self.ed.fil()
+        fil = self.fil()
         if fil is None:
             return
         try:
-            datasets = [d for d in (self.wedge_a.read(self.ed.db), self.wedge_b.read(self.ed.db))
+            datasets = [d for d in (self.wedge_a.read(self.db), self.wedge_b.read(self.db))
                         if d is not None]
         except ValueError as exc:
             QMessageBox.warning(self, APP, str(exc))
@@ -311,7 +419,7 @@ class CalibratePage(QWidget):
         if steps < 3:
             QMessageBox.warning(self, APP, "Need at least 3 steps to fit anything meaningful.")
             return
-        lh, per_channel = self.ed.layer.value, self.per_channel.isChecked()
+        lh, per_channel = self.layer.value, self.per_channel.isChecked()
         try:
             fit = calibrate.fit_td(datasets, lh, per_channel, fil.rgb())
         except Exception as exc:
@@ -324,12 +432,23 @@ class CalibratePage(QWidget):
         self._fit = None if stop else {"td": td, "color": colormath.to_hex(col), "per_channel": per_channel,
                                        "layer_height": lh, "steps": int(steps), "nsets": nsets}
         self.apply_btn.setEnabled(not stop)
-        self.ed.status(f"fit dE mean {mean:.1f}" + ("  — not applicable" if stop else ""),
+        self.status(f"fit dE mean {mean:.1f}" + ("  — not applicable" if stop else
+                                                     "  — press Save to filament library"),
                        theme.ERR if stop else (theme.OK if mean <= 5 else theme.WARN))
 
     def apply_fit(self):
-        fil, r = self.ed.fil(), self._fit
-        if fil is None or not r:
+        """Write the fit into the library file (re-read first, so nothing else is lost)."""
+        fid, r = self.fil_combo.currentData(), self._fit
+        if not fid or not r:
+            return
+        try:
+            db = DB(self.db_path)
+        except SystemExit as exc:
+            QMessageBox.critical(self, APP, str(exc))
+            return
+        fil = db.filaments.get(fid)
+        if fil is None:
+            QMessageBox.warning(self, APP, f"{fid} is not in {self.db_path} any more.")
             return
         fil.color = r["color"]
         if r["per_channel"]:
@@ -342,8 +461,14 @@ class CalibratePage(QWidget):
         fil.measured_at = date.today().isoformat()
         fil.notes = (fil.notes + " | ").lstrip(" |") + (
             f"fit from {r['steps']}-step wedge" + (" over two bases" if r["nsets"] > 1 else ""))
-        self.ed.reload_fields()
-        self.ed.touch()
+        try:
+            db.save()
+        except OSError as exc:
+            QMessageBox.critical(self, APP, f"Could not write {db.path}:\n{exc}")
+            return
+        self.db = db
         self.apply_btn.setEnabled(False)
-        self.ed.status("applied — press Save to write it to disk", theme.WARN)
-        self.ed.show_page("look")        # show what those numbers look like
+        self._fil_changed(reset=False)
+        self.status(f"saved: {fil.label()} td {fil.td:g}, colour {fil.color}", theme.OK)
+        if self.on_saved:
+            self.on_saved(fid)

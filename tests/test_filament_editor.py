@@ -176,19 +176,26 @@ class Editor(unittest.TestCase):
         self.addCleanup(tab.deleteLater)
         return tab
 
+    def _page(self, tab):
+        from stackforge.gui.filaments.calibrate import CalibratePage
+        page = CalibratePage(tab.project)
+        self.addCleanup(page.deleteLater)
+        return page
+
     def test_wedge_is_written_on_the_project_grid_with_the_template(self):
         import json
         import zipfile
         from unittest import mock
         from PySide6.QtWidgets import QFileDialog
         tab = self._tab()
-        ed = tab.ed
-        self.assertEqual(ed.layer.value, 0.12)               # follows the project
-        ed.select("polymaker-pla-pro-blue")
+        self.assertEqual(tab.ed.layer.value, 0.12)           # the editor follows the project
+        page = self._page(tab)
+        self.assertEqual(page.layer.value, 0.12)             # and so does calibration
+        self.assertTrue(page.select("polymaker-pla-pro-blue"))
         out = os.path.join(self.d.name, "w.3mf")
         with mock.patch.object(QFileDialog, "getSaveFileName", return_value=(out, "")), \
                 mock.patch.object(QMessageBox, "information"):
-            ed.calibrate.write_wedge()
+            page.write_wedge()
         with zipfile.ZipFile(out) as z:
             prof = json.loads(z.read("Metadata/project_settings.config"))
             self.assertIn("Metadata/model_settings.config", z.namelist())
@@ -203,9 +210,10 @@ class Editor(unittest.TestCase):
     def test_wedge_refused_without_a_slicer_project(self):
         from unittest import mock
         tab = self._tab()
+        page = self._page(tab)
         tab.project.set("template", "")
         with mock.patch.object(QMessageBox, "warning") as warn:
-            tab.ed.calibrate.write_wedge()
+            page.write_wedge()
         self.assertIn("project", warn.call_args[0][2])
 
     def test_reload_after_a_fit_keeps_both_writes(self):
@@ -225,10 +233,42 @@ class Editor(unittest.TestCase):
         self.assertEqual(again.filaments["polymaker-pla-pro-blue"].td, 0.777)
         self.assertEqual(again.filaments["polymaker-pla-pro-red"].name, "My red")
 
+    def test_guided_fit_saves_to_the_library_and_the_editor_sees_it(self):
+        from stackforge.core import colormath as cm
+        tab = self._tab()
+        page = self._page(tab)
+        page.on_saved = lambda _fid: tab.reload_db()
+        tab.ed.select("polymaker-pla-pro-red")
+        tab.ed.e_name.setText("My red")                      # unsaved edit in the editor
+        page.select("polymaker-pla-pro-teal")
+        fil = page.fil()
+        n = np.arange(1, 9)[:, None]
+        for box, base in ((page.wedge_a, [244., 245, 240]), (page.wedge_b, [26., 26, 28])):
+            T = np.exp(-(n * 0.12) / 0.3)
+            lin = cm.srgb_to_linear(np.array(base)) * T + fil.linear() * (1 - T)
+            box.text.setPlainText(",".join(cm.to_hex(c) for c in cm.linear_to_srgb(lin)))
+            box.base.setCurrentText(cm.to_hex(base))
+        page.do_fit()
+        self.assertTrue(page.apply_btn.isEnabled())
+        page.apply_fit()
+        disk = DB(self.path).filaments["polymaker-pla-pro-teal"]
+        self.assertEqual(disk.provenance, "measured")
+        self.assertAlmostEqual(disk.td, 0.3, delta=0.02)
+        self.assertEqual(tab.ed.db.filaments["polymaker-pla-pro-teal"].provenance, "measured")
+        self.assertEqual(tab.ed.db.filaments["polymaker-pla-pro-red"].name, "My red")
+
+    def test_measured_readings_fill_wedge_a_then_b(self):
+        tab = self._tab()
+        page = self._page(tab)
+        self.assertEqual(page.add_measured("#AABBCC,#112233,#445566"), "A")
+        self.assertEqual(page.steps.value(), 3)
+        self.assertEqual(page.add_measured("#010203,#040506,#070809"), "B")
+        self.assertEqual(page.wedge_b.text.toPlainText(), "#010203,#040506,#070809")
+
     def test_every_page_paints(self):
         ed = self.ed
         ed.resize(1100, 700)
-        for name in ("details", "look", "match", "calibrate"):
+        for name in ("details", "look", "match"):
             ed.show_page(name)
             self.assertFalse(ed.grab().isNull())
 

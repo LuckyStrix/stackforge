@@ -24,7 +24,8 @@ run against the instrument yet.** Treat every section below as a checklist for t
 
 ## Reflectance (wedges and plaques)
 `stackforge-measure measure-wedge --steps 12 -o wedge.json` runs `spotread -s -i D50 -Q 1931_2` (reflective is
-the default). It prints the `calibrate.py fit --measured ...` line to run next; do this over white
+the default). It prints the `stackforge-calibrate fit ... --measured ...` line to run next (in the GUI,
+*Copy readings to Calibrate* puts them in the Calibrate tab's next empty wedge); do this over white
 *and* black bases so td and colour separate.
 
 **Patch size.** The ColorMunki samples a roughly circular area about 8 mm across (measured 7.8 x 7.95 mm
@@ -33,7 +34,7 @@ in an Argyll mailing-list test; readings were identical from 20 mm patches down 
 circle needs a patch a bit bigger than 8 mm just for the instrument; I'd allow **at least 3 mm of
 margin each side, so steps of 14 mm**, because light scatters sideways inside translucent PLA and a
 neighbouring step bleeds into the reading (this last part is my reasoning, not from a source).
-`calibrate.py wedge` now defaults to 14 mm steps (it was 10 mm, which leaves only 1 mm of margin
+`stackforge-calibrate wedge` now defaults to 14 mm steps (it was 10 mm, which leaves only 1 mm of margin
 and is at the mercy of hand placement). 12 steps at 14 mm is 168 mm long.
 
 **Light.** The ColorMunki is **UV-cut only** (white-LED illuminant; Argyll's docs say it cannot use
@@ -42,7 +43,7 @@ slightly duller or yellower than under daylight. That is a consistent bias, not 
 absorbed into the fitted colour; note it against the filament and do not compare across meters.
 
 ## Transmission with a laptop screen as the backlight
-Print `calibrate.py chips --filament <id> -o chips.3mf`, then caliper each chip.
+Print `stackforge-calibrate chips --filament <id> --template <project.3mf> -o chips.3mf`, then caliper each chip.
 `stackforge-measure transmission --thickness 0.25,0.33,...` shows white/R/G/B patches full screen, reads the
 bare screen, then each chip, then the bare screen again (drift check).
 `T = through-chip / bare` per channel, `td = -thickness / ln T`.

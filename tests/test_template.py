@@ -130,6 +130,25 @@ class BadInput(unittest.TestCase):
                 threemf.read_3mf(p)
             self.assertIn("_rels/.rels is not valid XML", str(cm.exception))
 
+    def test_model_unit_is_converted_to_mm(self):
+        ns = threemf.CORE_NS
+        tri = ('<triangles><triangle v1="0" v2="1" v3="2"/></triangles>')
+        verts = ('<vertices><vertex x="0" y="0" z="0"/><vertex x="1" y="0" z="0"/>'
+                 '<vertex x="0" y="2" z="0"/></vertices>')
+        with tempfile.TemporaryDirectory() as d:
+            for unit, want in (("inch", 25.4), ("centimeter", 10.0), (None, 1.0)):
+                p = os.path.join(d, f"{unit}.3mf")
+                attr = f' unit="{unit}"' if unit else ""
+                with zipfile.ZipFile(p, "w") as z:
+                    z.writestr("3D/3dmodel.model",
+                               f'<model xmlns="{ns}"{attr}><resources><object id="1" type="model">'
+                               f'<mesh>{verts}{tri}</mesh></object></resources>'
+                               f'<build><item objectid="1" transform="1 0 0 0 1 0 0 0 1 1 0 0"/>'
+                               f'</build></model>')
+                (it,) = threemf.read_3mf(p)
+                self.assertAlmostEqual(it.verts[:, 1].max(), 2 * want, msg=unit)
+                self.assertAlmostEqual(it.verts[:, 0].min(), 1 * want, msg=unit)  # translation too
+
     def test_transforms(self):
         self.assertTrue(np.array_equal(threemf.parse_transform(None), threemf.IDENTITY))
         m = threemf.parse_transform("1 0 0 0 1 0 0 0 1 5 6 7")

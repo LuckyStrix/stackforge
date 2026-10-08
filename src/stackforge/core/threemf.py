@@ -89,8 +89,20 @@ def read_model(path: str, scale_to=None, bed=None) -> list[Item]:
     return read_3mf(path)
 
 
+# 3MF <model unit="..."> values, in mm. The spec's default is millimeter.
+UNIT_MM = {"micron": 0.001, "millimeter": 1.0, "centimeter": 10.0, "inch": 25.4,
+           "foot": 304.8, "meter": 1000.0}
+
+
+def _unit_mm(path, mp, root) -> float:
+    unit = root.get("unit") or "millimeter"
+    if unit not in UNIT_MM:
+        raise SystemExit(f"{path}: {mp} has unknown unit {unit!r}")
+    return UNIT_MM[unit]
+
+
 def read_3mf(path: str) -> list[Item]:
-    """Load every build item as a world-space mesh."""
+    """Load every build item as a world-space mesh, in mm whatever the file's unit."""
     if not os.path.exists(path):
         raise SystemExit(f"{path}: no such file")
     with zipfile.ZipFile(path) as zf:
@@ -143,6 +155,14 @@ def read_3mf(path: str) -> list[Item]:
                     )
             objects[o.key] = o
 
+    # Components may live in other model parts; with one unit across the package the
+    # whole flattened mesh scales by it. Mixed units would need per-part scaling.
+    units = {_unit_mm(path, mp, r) for mp, r in roots.items()}
+    if len(units) > 1:
+        raise SystemExit(f"{path}: its model parts use different units; re-export it "
+                         f"from the modelling program in one unit (millimetres)")
+    scale = units.pop()
+
     build = roots[root_path].find(f"{{{CORE_NS}}}build")
     if build is None:
         raise SystemExit(f"{path}: no <build> section")
@@ -156,6 +176,8 @@ def read_3mf(path: str) -> list[Item]:
         if not parts:
             continue
         verts, tris = concat_meshes(parts)
+        if scale != 1.0:
+            verts = verts * scale
         items.append(
             Item(
                 name=objects[key].name if key in objects else f"item_{len(items)}",

@@ -30,7 +30,8 @@ class MeasureTab(QWidget):
             "<b>Reading a printed wedge</b> &nbsp; 1. Plug in the ColorMunki. &nbsp; 2. Choose <i>measure-wedge</i> below, set the number "
             "of steps, press <b>Run</b>. &nbsp; 3. Follow the prompts in the box at the bottom "
             "(type in the input line, Enter to confirm). &nbsp; 4. When it finishes, press "
-            "<b>Copy hex list to Calibrate ▸ fit</b>, choose the filament there and Run.")
+            "<b>Copy readings to Calibrate</b>: they go into the next empty wedge there; choose "
+            "the filament and the wedge's base, then Fit.")
         steps.setWordWrap(True)
         steps.setObjectName("hint")
         lay.addWidget(steps)
@@ -48,7 +49,7 @@ class MeasureTab(QWidget):
         bl.setContentsMargins(0, 0, 0, 0)
         bl.addWidget(self.term, 1)
         row = QHBoxLayout()
-        self.copy_btn = QPushButton("Copy hex list to Calibrate ▸ fit")
+        self.copy_btn = QPushButton("Copy readings to Calibrate")
         self.copy_btn.setEnabled(False)
         self.copy_btn.clicked.connect(self._to_calibrate)
         row.addWidget(self.copy_btn)
@@ -82,3 +83,4 @@ class MeasureTab(QWidget):
         if cal is not None and self._hexes:
             cal.set_measured(self._hexes)
             self.host.show_tab("Calibrate")
+            self.copy_btn.setEnabled(False)      # once per reading, so B is not filled twice

@@ -84,6 +84,14 @@ class ProjectTests(unittest.TestCase):
     def test_db_defaults_to_absolute_path(self):
         self.assertTrue(os.path.isabs(self.p.get("db")))
 
+    def test_db_is_a_user_copy_not_the_packaged_file(self):
+        from stackforge.core.paths import config_dir, packaged
+        self.p.settings.set("db", packaged("filaments.json"))     # an old setting
+        db = self.p.get("db")
+        self.assertNotEqual(os.path.abspath(db), os.path.abspath(packaged("filaments.json")))
+        self.assertTrue(db.startswith(config_dir()) or os.path.dirname(db) == os.getcwd())
+        self.assertTrue(os.path.exists(db))
+
     def test_warnings(self):
         self.assertIn("Choose your Flash Studio project", self.p.warning())  # orca, no grid
         self.p.set("flavor", "prusa")

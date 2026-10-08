@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDoubleSpinBox, QFi
                                QSpinBox, QSplitter, QTabWidget, QVBoxLayout, QWidget)
 
 from stackforge.core import colormath, threemf
-from stackforge.core.filamentdb import DB, DEFAULT_DB
+from stackforge.core.filamentdb import DB, DEFAULT_DB, PROVENANCE_LABEL, provenance_counts
 from stackforge.gui import theme
 from stackforge.gui.imageview import ImageView
 from stackforge.gui.worker import Worker, show_error
@@ -376,16 +376,14 @@ class PlaqueDesigner(QWidget):
         self.list.clear()
         rows = sorted(self.db.filaments.values(), key=lambda f: (f.brand, f.series, f.name))
         for fil in rows:
-            measured = fil.provenance == "measured"
-            it = QListWidgetItem(_swatch(fil.rgb()),
-                                 f"{fil.name}      td {fil.td:.2f}" + ("" if measured else "   est"))
+            prov = PROVENANCE_LABEL.get(fil.provenance, fil.provenance)
+            it = QListWidgetItem(_swatch(fil.rgb()), f"{fil.name}      td {fil.td:.2f} · {prov}")
             it.setData(Qt.UserRole, fil.id)
-            it.setToolTip(fil.label())
+            it.setToolTip(f"{fil.label()}\ntd source: {prov}")
             it.setFlags(it.flags() | Qt.ItemIsUserCheckable)
             on = fil.id in prev if prev else any(p == fil.name.lower() for p in prefer)
             it.setCheckState(Qt.Checked if on else Qt.Unchecked)
-            if not measured:
-                it.setForeground(QColor(theme.FG_DIM))
+            it.setForeground(QColor(theme.PROVENANCE_COLOUR.get(fil.provenance, theme.FG_DIM)))
             self.list.addItem(it)
         names = [f.id for f in self.db.filaments.values()]
         self.base.blockSignals(True)
@@ -585,8 +583,9 @@ class PlaqueDesigner(QWidget):
         if est:
             lines.append(f"unmeasured {len(est)} of {n}: colours are approximate until calibrated")
         self.lbl_measured.setText(
-            f"{len(est)} of the {n} ticked filaments are estimates (grey), not measured: the "
-            f"simulated print is approximate until they are calibrated." if est else "")
+            f"{len(est)} of the {n} ticked filaments are not measured "
+            f"({provenance_counts(f for f in sel if f.provenance != 'measured')}): the simulated "
+            f"print is approximate until they are calibrated." if est else "")
         self.lbl_measured.setVisible(bool(est))
         grid = self._grid_problem()
         if grid:

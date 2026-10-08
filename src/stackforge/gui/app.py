@@ -126,15 +126,29 @@ class HostWindow(QMainWindow):
         ev.accept()
 
 
+def build_parser():
+    import argparse
+    ap = argparse.ArgumentParser(
+        prog="stackforge",
+        description="The stackforge window: plaque designer, paint, filament library, "
+                    "calibration and measuring, over the stackforge-* command-line tools.",
+        epilog="Settings and presets live in ~/.config/stackforge/. Each tool also runs on its "
+               "own: stackforge-plaque --help, stackforge-calibrate --help, ...")
+    ap.add_argument("image", nargs="?", help="an image to open in the plaque designer")
+    return ap
+
+
 def main(argv=None):
+    args = sys.argv[1:] if argv is None else argv
+    # Parse before Qt starts, so --help prints and exits instead of opening a window.
+    # Qt's own options (-platform, -style ...) pass through untouched.
+    opts, _qt = build_parser().parse_known_args(args)
     # Qt's own file dialog asks the system icon theme for oversized SVGs and logs a harmless
     # warning for each; hide just that category
     QLoggingCategory.setFilterRules("qt.svg.draw=false")
-    app = QApplication.instance() or QApplication(sys.argv if argv is None else argv)
+    app = QApplication.instance() or QApplication(sys.argv[:1] + args)
     theme.apply(app)
-    args = sys.argv[1:] if argv is None else argv
-    image = next((a for a in args if not a.startswith("-")), None)
-    win = HostWindow(image_path=image)
+    win = HostWindow(image_path=opts.image)
     win.show()
     return app.exec()
 

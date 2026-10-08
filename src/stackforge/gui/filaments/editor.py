@@ -1,7 +1,8 @@
-"""FilamentEditor: the library list on the left; details, look, match and calibrate on the right.
+"""FilamentEditor: the library list on the left; details, look and match on the right.
 
 Every edit goes straight into the selected `Filament` in memory and marks the database dirty;
-Save validates and writes it. Pages (look/match/calibrate) refresh from the `edited` signal.
+Save validates and writes it. Pages (look/match) refresh from the `edited` signal. Calibrating
+is the Calibrate tab's job: "Calibrate this filament…" hands over through `on_calibrate`.
 """
 from __future__ import annotations
 
@@ -9,15 +10,16 @@ import os
 from copy import deepcopy
 
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QInputDialog, QLabel,
                                QLineEdit, QListWidget, QListWidgetItem, QMessageBox, QPlainTextEdit,
                                QPushButton, QSplitter, QTabWidget, QVBoxLayout, QWidget)
 
 from stackforge.core import colormath
-from stackforge.core.filamentdb import DB, PROVENANCE, TD_GUESS, Filament, seed_db, slugify
+from stackforge.core.filamentdb import (DB, PROVENANCE, PROVENANCE_LABEL, TD_GUESS, Filament,
+                                        provenance_counts, seed_db, slugify)
 from stackforge.gui import theme
 from stackforge.gui.filaments import APP
-from stackforge.gui.filaments.calibrate import CalibratePage
 from stackforge.gui.filaments.common import SharedValue, scroll_page, section, spin
 from stackforge.gui.filaments.dialogs import PhotoPicker, SkuBrowser, download_catalog
 from stackforge.gui.filaments.look import LookPage
@@ -34,7 +36,7 @@ ABOUT = (
     "An entry is only as good as its provenance. 'estimated' means nobody measured it and the "
     "colours it produces will be approximate.")
 
-PAGES = ("details", "look", "match", "calibrate")
+PAGES = ("details", "look", "match")
 
 
 class FilamentEditor(QWidget):
@@ -44,7 +46,8 @@ class FilamentEditor(QWidget):
     def __init__(self, db_path, catalog_path=polymaker.CACHE, parent=None, project=None):
         super().__init__(parent)
         self.db_path, self.catalog_path = db_path, catalog_path
-        self.project = project            # the layer grid and template for wedges
+        self.project = project            # the layer grid the previews assume
+        self.on_calibrate = None          # (fid, steps, base_id) -> open the Calibrate tab on it
         self.db = DB(db_path)
         self._disk = deepcopy(self.db.filaments)   # as last read/written: what "unsaved" is against
         self.layer = SharedValue(0.08)    # one layer height for every page
@@ -76,7 +79,23 @@ class FilamentEditor(QWidget):
         lh = self.project.layers()[0] if self.project is not None else None
         if lh:
             self.layer.set(lh)
-        self.calibrate.refresh_grid()
+
+    def request_calibrate(self, steps=None, base_id=None):
+        """Hand the selected filament to the Calibrate tab (saving first, since it reads the
+        library from disk)."""
+        fil = self.fil()
+        if fil is None:
+            return
+        if self.dirty:
+            r = QMessageBox.question(
+                self, APP, "Save your changes to the filament library first? Calibrating works "
+                           "on the saved library.", QMessageBox.Save | QMessageBox.Cancel)
+            if r != QMessageBox.Save or not self.save():
+                return
+        if self.on_calibrate is None:
+            QMessageBox.information(self, APP, "Use the Calibrate tab to calibrate a filament.")
+            return
+        self.on_calibrate(fil.id, steps, base_id)
 
     # -- left: the library ------------------------------------------------------------------
 
@@ -112,17 +131,22 @@ class FilamentEditor(QWidget):
         sku = QPushButton("Add from Polymaker SKU…")
         sku.clicked.connect(self._browse_skus)
         col.addWidget(sku)
+        cal = QPushButton("Calibrate this filament…")
+        cal.setToolTip("Measure its real td and colour with a printed step wedge (Calibrate tab)")
+        cal.clicked.connect(lambda: self.request_calibrate())
+        col.addWidget(cal)
         return w
 
     def _item_text(self, fil) -> str:
         sub = " ".join(x for x in (fil.brand, fil.series) if x)
-        est = "" if fil.provenance == "measured" else "  est"
-        return f"{fil.name or fil.id}\n{sub}   td {fil.td:.2f}{est}"
+        prov = PROVENANCE_LABEL.get(fil.provenance, fil.provenance)
+        return f"{fil.name or fil.id}\n{sub}   td {fil.td:.2f} · {prov}"
 
     def _style_item(self, it, fil):
         it.setText(self._item_text(fil))
         it.setIcon(swatch_icon(fil.color if _ok_hex(fil.color) else "#808080", 26, 18))
-        it.setForeground(Qt.white if fil.provenance == "measured" else Qt.gray)
+        it.setForeground(QColor(theme.PROVENANCE_COLOUR.get(fil.provenance, theme.FG_DIM)))
+        it.setToolTip(f"td source: {PROVENANCE_LABEL.get(fil.provenance, fil.provenance)}")
 
     def _render_list(self):
         needle = self.filter.text().strip().lower()
@@ -147,9 +171,9 @@ class FilamentEditor(QWidget):
         self.count.setText(f"{self.list.count()}/{total}" if needle else str(total))
         n = sum(f.provenance == "measured" for f in self.db.filaments.values())
         self.measured_note.setText(
-            f"{n} of {total} measured. The rest are estimates (grey): plaque colours from them "
-            f"are approximate until you calibrate them (Calibrate page or tab)."
-            if n < total else f"all {total} measured")
+            f"td: {provenance_counts(self.db.filaments.values())}. Only measured values come "
+            f"from a calibration; plaque colours from the rest are approximate until you "
+            f"calibrate them (Calibrate tab)." if n < total else f"all {total} measured")
         self.measured_note.setObjectName("warn" if n < total else "hint")
         self.measured_note.style().unpolish(self.measured_note)
         self.measured_note.style().polish(self.measured_note)
@@ -168,8 +192,7 @@ class FilamentEditor(QWidget):
         self.pages = {"details": self._build_details()}
         self.look = LookPage(self)
         self.match = MatchPage(self)
-        self.calibrate = CalibratePage(self)
-        self.pages.update(look=self.look, match=self.match, calibrate=self.calibrate)
+        self.pages.update(look=self.look, match=self.match)
         for name, title in zip(PAGES, ("Details", "Look", "Match by eye", "Calibrate")):
             self.tabs.addTab(self.pages[name], title)
         return self.tabs
@@ -340,8 +363,6 @@ class FilamentEditor(QWidget):
             self.list.setCurrentItem(it)
             self.list.blockSignals(False)
         self.pages["details"].setEnabled(True)
-        self.calibrate.reset_fit()
-        self.calibrate.refresh_bases()
         self.reload_fields()
 
     def reload_fields(self):
@@ -786,7 +807,6 @@ class FilamentEditor(QWidget):
             self.pages["details"].setEnabled(False)
             self.edited.emit()
             self.status("empty database — New, or Starter set…", theme.WARN)
-        self.calibrate.reset_fit()
         self.lbl_path.setText(path)
 
     def merge_from_disk(self) -> list[str]:

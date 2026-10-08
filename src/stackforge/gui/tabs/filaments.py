@@ -19,10 +19,11 @@ class FilamentsTab(QWidget):
 
     def __init__(self, project=None, presets=None, host=None):
         super().__init__()
-        self.project = project
+        self.project, self.host = project, host
         db = project.get("db") if project else filamentdb.DEFAULT_DB
         self.ed = FilamentEditor(db, project.get("catalog") if project else polymaker.CACHE,
                                  project=project)
+        self.ed.on_calibrate = self._calibrate if host is not None else None
         self.nb = QTabWidget()
         self.nb.addTab(self.ed, "Editor")
         self.ed.dirty_changed.connect(lambda on: self.nb.setTabText(0, "Editor •" if on else "Editor"))
@@ -34,6 +35,12 @@ class FilamentsTab(QWidget):
             cli.addTab(tt, tool)
         self.nb.addTab(cli, "Command line")
         QVBoxLayout(self).addWidget(self.nb)
+
+    def _calibrate(self, fid, steps=None, base_id=None):
+        cal = self.host.tabs.get("Calibrate")
+        if cal is not None:
+            cal.start(fid, steps, base_id)
+            self.host.show_tab("Calibrate")
 
     def _cli_done(self, panel, job):
         """A database-writing command finished: show what it wrote."""

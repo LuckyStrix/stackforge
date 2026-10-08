@@ -54,7 +54,7 @@ from scipy.spatial import cKDTree
 from stackforge.core import colormath
 from stackforge.core import optics
 from stackforge.core import threemf
-from stackforge.core.filamentdb import DEFAULT_DB, DB
+from stackforge.core.filamentdb import DEFAULT_DB, DB, PROVENANCE_LABEL, provenance_counts
 
 
 # --------------------------------------------------------------------------
@@ -682,6 +682,7 @@ def contact_sheet(path, entries, target, cols=3, thumb=280, pad=14):
 
 
 def cmd_rank(all_fils, base, args, img):
+    """Rank the subsets, write the contact sheet; returns the best combination."""
     results = rank_subsets(all_fils, base, args, img)
     top = min(args.top, len(results))
     entries = render_candidates(results, base, args, img, top)
@@ -698,7 +699,10 @@ def cmd_rank(all_fils, base, args, img):
     best = results[0]["fils"]
     print("\nBest combination:")
     print(f"  --filaments {','.join(f.id for f in best)} --base {base.id}")
-    print("\nRe-run with that and -o to produce the plaque.")
+    if not args.output:
+        print("\nRe-run with that and -o to produce the plaque (or add -o to this "
+              "command and it builds the best one straight away).")
+    return best
 
 
 # --------------------------------------------------------------------------
@@ -855,12 +859,13 @@ def main(argv=None):
     est = [f.id for f in fils if f.provenance != "measured"]
     print(f"filaments ({len(fils)}):")
     for i, f in enumerate(fils, 1):
-        flag = "" if f.provenance == "measured" else "  <- not measured"
+        flag = "" if f.provenance == "measured" else f"  <- td is {PROVENANCE_LABEL.get(f.provenance, f.provenance)}"
         td = "/".join(f"{v:.3f}" for v in f.td_vec()) if f.td_rgb else f"{f.td:.3f}"
         print(f"  T{i}  {f.color}  td={td}  {f.label()}{flag}")
     print(f"base: {base.label()}")
     if est:
-        print(f"\n  ! {len(est)} of {len(fils)} filaments have estimated optical data.")
+        print(f"\n  ! {len(est)} of {len(fils)} filaments are not measured "
+              f"({provenance_counts(f for f in fils if f.provenance != 'measured')}).")
         print("    Colors will be approximate until you run stackforge-calibrate.\n")
 
     # --- geometry grid ---
@@ -880,11 +885,12 @@ def main(argv=None):
             raise SystemExit(
                 f"--rank needs more than --slots ({args.slots}) filaments to choose between"
             )
-        if args.output:
-            print(f"  - ranking only; {args.output} is not written. Re-run with the "
-                  f"combination it recommends to produce the plaque.")
-        cmd_rank(fils, base, args, img)
-        return
+        best = cmd_rank(fils, base, args, img)
+        if not args.output:
+            return
+        fils = best
+        print(f"\nbuilding {args.output} with the best combination: "
+              f"{', '.join(f.name for f in fils)}")
     if len(fils) > args.slots:
         # The base always takes a slot, wherever it was listed.
         others = [f for f in fils if f.id != base.id][: args.slots - 1]

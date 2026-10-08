@@ -15,6 +15,9 @@ ERR = "#d65b5b"
 OK = "#6dbd7a"
 LINE = "#3a3a44"
 
+# Filament provenance (filamentdb.PROVENANCE): bright when measured, dim when guessed.
+PROVENANCE_COLOUR = {"measured": FG, "matched": OK, "vendor": ACCENT, "estimated": FG_DIM}
+
 STYLE = f"""
 QToolTip {{ background: {BG3}; color: {FG}; border: 1px solid {LINE}; }}
 QGroupBox {{ border: 1px solid {LINE}; border-radius: 4px; margin-top: 14px; padding: 8px 6px 6px 6px; }}
