@@ -551,6 +551,11 @@ def _patch_colors(settings, colors) -> None:
                 arr[i] = hexcol
 
 
+def _item_ext(base_ext, i) -> int:
+    """`base_ext` is one extruder for every item, or a sequence with one per item."""
+    return base_ext if isinstance(base_ext, int) else base_ext[i]
+
+
 def write_prusa(out_path, items, decals, base_ext, part_type="modifier",
                 template=None, colors=None, layer_height=None,
                 first_layer_height=None, solid=False, object_settings=None):
@@ -563,13 +568,14 @@ def write_prusa(out_path, items, decals, base_ext, part_type="modifier",
     vtype = "ModifierMesh" if part_type == "modifier" else "ModelPart"
     res_xml, cfg_xml, build_xml = [], [], []
     for oid, item in enumerate(items, start=1):
+        ext0 = _item_ext(base_ext, oid - 1)
         verts, tris = [item.verts], [item.tris]
         voff, toff = len(item.verts), len(item.tris)
         vols = [
             f'  <volume firstid="0" lastid="{toff - 1}">\n'
             f'   <metadata type="volume" key="name" value="{_attr(item.name)}"/>\n'
             f'   <metadata type="volume" key="volume_type" value="ModelPart"/>\n'
-            f'   <metadata type="volume" key="extruder" value="{base_ext}"/>\n'
+            f'   <metadata type="volume" key="extruder" value="{ext0}"/>\n'
             f"  </volume>\n"
         ]
         for ext, dv, dt in decals.get(oid - 1, []):
@@ -800,7 +806,8 @@ def write_orca(out_path, items, decals, base_ext, part_type="modifier",
     plate_objects = []
     next_id = 1
     for i, item in enumerate(items):
-        parts = [(base_ext, "normal_part", item.name, item.verts, item.tris)]
+        ext0 = _item_ext(base_ext, i)
+        parts = [(ext0, "normal_part", item.name, item.verts, item.tris)]
         for ext, dv, dt in decals.get(i, []):
             parts.append((ext, subtype, f"deco_e{ext}", dv, dt))
 
@@ -837,7 +844,7 @@ def write_orca(out_path, items, decals, base_ext, part_type="modifier",
         cfg_xml.append(
             f' <object id="{asm_id}">\n'
             f'  <metadata key="name" value="{_attr(item.name)}"/>\n'
-            f'  <metadata key="extruder" value="{base_ext}"/>\n'
+            f'  <metadata key="extruder" value="{ext0}"/>\n'
             + overrides
             + f'  <metadata face_count="{sum(faces.values())}"/>\n'
             + "".join(

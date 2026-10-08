@@ -291,7 +291,50 @@ class CalibrateCli(unittest.TestCase):
         log = self.run_cli("wedge", "--filament", "blue", "--base", "white", "--template",
                            self.tpl, "--steps", "3", "-o", os.path.join(self.tmp.name, "w.3mf"))
         self.assertIn("(auto: opaque)", log)
-        self.assertNotIn("pass", log.split("wrote")[1].split("Print one")[0])
+        self.assertNotIn("pass", log.split("wrote")[1])
+
+    def _extruders(self, path):
+        """(object name, base extruder, [step extruders]) per wedge in the written file."""
+        import re
+        import zipfile
+        with zipfile.ZipFile(path) as z:
+            cfg = z.read("Metadata/model_settings.config").decode()
+        out = []
+        for obj in re.findall(r'<object id="\d+">(.*?)</object>', cfg, re.S):
+            name = re.search(r'key="name" value="([^"]+)"', obj).group(1)
+            exts = re.findall(r'<part id="\d+" subtype="[^"]+">.*?key="extruder" value="(\d+)"',
+                              obj, re.S)
+            out.append((name, int(exts[0]), [int(e) for e in exts[1:]]))
+        return out
+
+    def test_one_file_holds_a_wedge_over_each_base(self):
+        out = os.path.join(self.tmp.name, "w.3mf")
+        log = self.run_cli("wedge", "--filament", "blue", "--base", "white,black",
+                           "--template", self.tpl, "--steps", "3", "-o", out)
+        objs = self._extruders(out)
+        self.assertEqual([o[0] for o in objs], ["wedge_over_polymaker-pla-pro-white",
+                                                "wedge_over_polymaker-pla-pro-black"])
+        self.assertEqual([(o[1], o[2]) for o in objs], [(1, [3]), (2, [3])])
+        self.assertIn("Extruder 3 = ", log)
+        self.assertIn("--base2", log)
+
+    def test_white_is_not_calibrated_over_itself(self):
+        out = os.path.join(self.tmp.name, "w.3mf")
+        log = self.run_cli("wedge", "--filament", "white", "--base", "white,black",
+                           "--template", self.tpl, "--steps", "3", "-o", out)
+        # extruder 1 is white (the filament under test), 2 black; only the wedge over black
+        self.assertEqual([(o[0], o[1], o[2]) for o in self._extruders(out)],
+                         [("wedge_over_polymaker-pla-pro-black", 2, [1])])
+        self.assertNotIn("Extruder 3", log)
+
+    def test_wedge_set_needs_the_slots(self):
+        from tests.test_template import make_template
+        tpl = os.path.join(self.tmp.name, "two.3mf")
+        make_template(tpl, slots=2)
+        with self.assertRaises(SystemExit) as cm:
+            self.run_cli("wedge", "--filament", "blue", "--base", "white,black",
+                         "--template", tpl, "--steps", "3", "-o", os.path.join(self.tmp.name, "w.3mf"))
+        self.assertIn("only 2 filament slot", str(cm.exception))
 
     def test_fit_takes_the_grid_from_the_template_and_never_guesses(self):
         hexes = "#D8E6E4,#B4D2D0,#8FBEBC,#6FADAB,#54A09E"

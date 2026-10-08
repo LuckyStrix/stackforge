@@ -11,7 +11,7 @@ import numpy as np
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QLabel, QMessageBox,
                                QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
 
-from stackforge.core import optics, threemf, colormath
+from stackforge.core import colormath
 from stackforge.core.filamentdb import DB, DEFAULT_DB, PROVENANCE_LABEL
 from stackforge.gui import theme
 from stackforge.gui.filaments import APP
@@ -161,11 +161,14 @@ class CalibratePage(QWidget):
         self.fil_note = theme.hint("")
         top.addRow("", self.fil_note)
 
-        w = section(col, "1 · Print a step wedge",
-                    "A staircase carrying 1..N layers of this filament over an opaque base. Print "
-                    "one over white AND one over black if you can: two backgrounds separate the "
-                    "filament's colour from its opacity, which a single background cannot do.")
+        w = section(col, "1 · Print the step wedges",
+                    "Staircases carrying 1..N layers of this filament over an opaque base: one "
+                    "over a light base and one over a dark base, both in one file. Two backgrounds "
+                    "separate the filament's colour from its opacity, which one cannot do. A wedge "
+                    "whose base is the filament itself is left out (white over white shows "
+                    "nothing), so calibrating your white gives one wedge, over the dark base.")
         self.wbase = QComboBox()
+        self.wbase2 = QComboBox()
         self.steps = spin(3, 40, 1, 12)
         self.baselayers = spin(0, 60, 1, 0)
         self.baselayers.setSpecialValueText("auto (opaque)")
@@ -175,7 +178,8 @@ class CalibratePage(QWidget):
         self.hinge = spin(1, 29, 1, 4)
         self.flavor = QComboBox()
         self.flavor.addItems(["orca", "prusa"])
-        w.addRow("Base filament", self.wbase)
+        w.addRow("Light base", self.wbase)
+        w.addRow("Dark base", self.wbase2)
         w.addRow("Steps", self.steps)
         self.grid_note = theme.hint("")
         self.grid_note.setWordWrap(False)       # one line; wrapped, the form row clips it
@@ -190,7 +194,7 @@ class CalibratePage(QWidget):
         self.gap.valueChanged.connect(lambda v: self.hinge.setEnabled(v > 0))
         self.hinge.setEnabled(False)
         w.addRow("Slicer flavour", self.flavor)
-        b = QPushButton("Write wedge 3MF…")
+        b = QPushButton("Write wedges 3MF…")
         b.clicked.connect(self.write_wedge)
         w.addRow("", b)
 
@@ -293,6 +297,8 @@ class CalibratePage(QWidget):
 
     # -- wedge -----------------------------------------------------------------------------
 
+    NO_BASE = "(none)"
+
     def refresh_bases(self):
         ids = sorted(self.db.filaments)
         keep = self.wbase.currentText()
@@ -301,6 +307,13 @@ class CalibratePage(QWidget):
         if keep not in ids:
             keep = next((i for i in ids if "white" in i), ids[0] if ids else "")
         self.wbase.setCurrentText(keep)
+        keep2 = self.wbase2.currentText()
+        self.wbase2.clear()
+        self.wbase2.addItems([self.NO_BASE] + ids)
+        if keep2 not in ids and keep2 != self.NO_BASE:
+            dark = min(self.db.filaments.values(), key=lambda f: float(sum(f.rgb())), default=None)
+            keep2 = dark.id if dark is not None else self.NO_BASE
+        self.wbase2.setCurrentText(keep2)
         self.wedge_a.set_bases(ids)
         self.wedge_b.set_bases(ids)
         if self.wedge_b.base.currentText() == "#1A1A1C":
@@ -348,8 +361,9 @@ class CalibratePage(QWidget):
         fil = self.fil()
         if fil is None:
             return
-        base = self.db.filaments.get(self.wbase.currentText())
-        if base is None:
+        bases = [self.db.filaments.get(c.currentText()) for c in (self.wbase, self.wbase2)]
+        bases = [b for i, b in enumerate(bases) if b is not None and b not in bases[:i]]
+        if not bases:
             QMessageBox.warning(self, APP, "Choose a base filament.")
             return
         lh, fl, tpl = self.grid()
@@ -364,36 +378,35 @@ class CalibratePage(QWidget):
                                            "height, and Flash Studio needs it to keep the "
                                            "extruder assignments.")
             return
-        p, _ = QFileDialog.getSaveFileName(self, "Write step wedge", f"wedge_{fil.id}.3mf", "3MF (*.3mf)")
+        p, _ = QFileDialog.getSaveFileName(self, "Write step wedges", f"wedge_{fil.id}.3mf", "3MF (*.3mf)")
         if not p:
             return
         if not p.lower().endswith(".3mf"):
             p += ".3mf"
         steps = self.steps.value()
-        bl = self.baselayers.value() or optics.opaque_layers(base, fl, lh)[0]
-        sw, sd = self.stepw.value(), self.stepd.value()
         try:
-            gap = self.gap.value()
-            hinge = min(self.hinge.value(), bl - 1) if gap > 0 else None
-            plate, decals, w, base_h = calibrate.build_wedge(
-                steps, lh, bl, sw, sd, gap, hinge_layers=hinge, first_layer_h=fl)
-            threemf.get_writer(flavor)(
-                p, [plate], {0: decals}, 1, "part", template=tpl, colors=[base.color, fil.color],
-                layer_height=lh, first_layer_height=fl, solid=True,
-                object_settings=threemf.solid_object_settings(flavor, lh))
+            ws = calibrate.WedgeSet([fil], bases, steps, lh, fl, self.stepw.value(),
+                                    self.stepd.value(), self.gap.value(),
+                                    self.baselayers.value() or None, self.hinge.value())
+            ws.write(p, flavor, tpl, lh, fl)
         except (Exception, SystemExit) as exc:
-            QMessageBox.critical(self, APP, f"Could not write the wedge:\n{exc}")
+            QMessageBox.critical(self, APP, f"Could not write the wedges:\n{exc}")
             return
         self.layer.set(lh)
+        # Each wedge's readings go in the box of the same letter, against its base.
+        for box, (b, _rows) in zip((self.wedge_a, self.wedge_b), ws.wedges):
+            box.base.setCurrentText(b.id)
         self.status(f"wrote {os.path.basename(p)}", theme.OK)
+        one = len(ws.wedges) == 1
         QMessageBox.information(
             self, APP,
-            f"Wrote {p}\n\n{steps} steps, 1..{steps} layers of {fil.label()} over {bl} base layers "
-            f"of {base.label()}.\n{w:.1f} × {sd:.1f} mm, {base_h:.2f}..{base_h + steps * lh:.2f} mm "
-            f"tall.\n\nExtruder 1 = {base.label()}\nExtruder 2 = {fil.label()}\n\n"
-            f"The file carries the {lh:g} mm layer height and {fl:g} mm first layer: don't change "
-            "them in the slicer.\n\nPrint a second wedge over a contrasting "
-            "base if you can — one background cannot separate colour from opacity.")
+            f"Wrote {p}\n\n{len(ws.wedges)} wedge{'' if one else 's'}, 1..{steps} layers of "
+            f"{fil.label()} over {ws.base_layers} base layers.\n{ws.width:.1f} × {ws.depth:.1f} "
+            f"mm, {ws.base_h:.2f}..{ws.top:.2f} mm tall.\n\n" + "\n".join(ws.describe())
+            + f"\n\nThe file carries the {lh:g} mm layer height and {fl:g} mm first layer: don't "
+            "change them in the slicer."
+            + ("\n\nOnly one wedge: choose a contrasting dark base if you can — one background "
+               "cannot separate colour from opacity." if one else ""))
 
     # -- fit -------------------------------------------------------------------------------
 

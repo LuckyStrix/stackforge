@@ -4,8 +4,8 @@
 Two steps, with a print in between.
 
   1. `wedge` builds a step-wedge 3MF: a staircase of 1..N layers of the test
-     filament, laid over an opaque base. Print it, ideally over BOTH a white
-     and a black base -- one wedge on each. Two backgrounds pin down the
+     filament, laid over an opaque base. Give it a white AND a black base and
+     the one file holds a wedge on each. Two backgrounds pin down the
      filament's own color and its opacity independently, which a single
      background cannot do.
 
@@ -17,7 +17,7 @@ Reading the colors: a spectrophotometer is ideal, but a phone photo under flat
 indirect daylight with a white card in frame works well enough -- sample the
 middle of each step, average a patch, and white-balance against the card.
 
-    stackforge-calibrate wedge --filament teal --base white --template p.3mf -o wedge_teal.3mf
+    stackforge-calibrate wedge --filament teal --base white,black --template p.3mf -o wedge_teal.3mf
     stackforge-calibrate chips --filament teal --template p.3mf -o chips_teal.3mf  # transmission
     stackforge-calibrate fit --filament teal --base "#F4F5F0" --template p.3mf \
         --measured "#D8E6E4,#B4D2D0,#8FBEBC,#6FADAB,#54A09E,#3E9694,#2C8E8C,#1F8886"
@@ -119,6 +119,69 @@ def build_chips(steps, layer_h, step_w, step_d, gap, first_layer_h=None):
     ]
 
 
+WEDGE_SPACING = 8.0     # mm between the wedges of a set, front to back
+
+
+class WedgeSet:
+    """Every wedge a calibration needs, in one file: one wedge per base, each carrying a row
+    of steps per test filament.
+
+    Extruders: the bases first, in order, then the test filaments that are not also a base.
+    A row whose filament IS its wedge's base is left out (it would be a solid block), and a
+    wedge left with no rows is dropped, so calibrating white over "white,black" gives one
+    wedge over black. Every wedge gets the same base height, opaque for the most
+    see-through base unless `base_layers` is given.
+    """
+
+    def __init__(self, fils, bases, steps, layer_h, first_layer_h, step_w, step_d, gap=0.0,
+                 base_layers=None, hinge_layers=None):
+        self.slots = list(bases) + [f for f in fils if f.id not in {b.id for b in bases}]
+        ext = {f.id: i for i, f in enumerate(self.slots, 1)}
+        self.wedges = [(b, [f for f in fils if f.id != b.id]) for b in bases]
+        self.wedges = [(b, rows) for b, rows in self.wedges if rows]
+        if not self.wedges:
+            raise ValueError("every test filament is its own base: nothing to measure")
+        if base_layers is None:
+            base_layers = max(optics.opaque_layers(b, first_layer_h, layer_h)[0]
+                              for b, _ in self.wedges)
+        self.base_layers = base_layers
+        self.hinge = None
+        if gap > 0:
+            self.hinge = min(hinge_layers or 4, base_layers - 1)
+        self.items, self.decals, self.base_ext = [], {}, []
+        y = 0.0
+        for i, (b, rows) in enumerate(self.wedges):
+            plate, decals, self.width, self.base_h = build_wedge(
+                steps, layer_h, base_layers, step_w, step_d, gap, rows=len(rows),
+                hinge_layers=self.hinge, first_layer_h=first_layer_h)
+            shift = np.array([0.0, y, 0.0])
+            self.items.append(threemf.Item(f"wedge_over_{b.id}", plate.verts + shift, plate.tris))
+            self.decals[i] = [(ext[rows[r - 2].id], v + shift, t) for r, v, t in decals]
+            self.base_ext.append(ext[b.id])
+            y += len(rows) * step_d + (len(rows) - 1) * 4.0 + WEDGE_SPACING
+        self.depth = y - WEDGE_SPACING
+        self.colors = [f.color for f in self.slots]
+        self.top = self.base_h + steps * layer_h
+
+    def write(self, path, flavor, template, layer_h, first_layer_h):
+        if template:
+            threemf.check_template_slots(template, len(self.slots))
+        threemf.get_writer(flavor)(
+            path, self.items, self.decals, self.base_ext, "part", template=template,
+            colors=self.colors, layer_height=layer_h, first_layer_height=first_layer_h,
+            solid=True, object_settings=threemf.solid_object_settings(flavor, layer_h))
+
+    def describe(self) -> list[str]:
+        """Extruder assignment and wedge order, for the user to set up the printer by."""
+        out = [f"Extruder {i} = {f.label()}" for i, f in enumerate(self.slots, 1)]
+        out.append("")
+        for n, (b, rows) in enumerate(self.wedges):
+            where = ("front" if n == 0 else "back" if n == len(self.wedges) - 1 else "middle")
+            out.append(f"Wedge {'AB'[n] if n < 2 else n + 1} ({where}): over {b.label()}, "
+                       + ", ".join(f.label() for f in rows))
+        return out
+
+
 def resolve_grid(args):
     """Fill args.layer_height / first_layer_height from --template (the profile that
     will slice the file), else the explicit flags; refuse to guess for orca."""
@@ -172,56 +235,44 @@ def cmd_wedge(args):
     resolve_grid(args)
     db = DB(args.db)
     fils = db.resolve(args.filament)
-    base = db.get(args.base)
-    if args.base_layers is None:
-        # Opaque, or every patch measures the build plate as much as the filament.
-        args.base_layers = optics.opaque_layers(base, args.first_layer_height,
-                                                args.layer_height)[0]
-        print(f"base: {args.base_layers} layers of {base.name} (auto: opaque)")
-    hinge = args.hinge_layers
-    if hinge is None and args.gap > 0:
-        hinge = min(4, args.base_layers - 1)
-    plate, decals, w, base_h = build_wedge(
-        args.steps, args.layer_height, args.base_layers,
-        args.step_width, args.step_depth, args.gap, rows=len(fils),
-        hinge_layers=hinge, first_layer_h=args.first_layer_height,
-    )
-    threemf.get_writer(args.flavor)(args.output, [plate], {0: decals}, 1, "part",
-                                    template=args.template,
-                                    colors=[base.color] + [f.color for f in fils],
-                                    layer_height=args.layer_height,
-                                    first_layer_height=args.first_layer_height, solid=True,
-                                    object_settings=threemf.solid_object_settings(
-                                        args.flavor, args.layer_height))
-    depth = len(fils) * args.step_depth + (len(fils) - 1) * 4.0
-    print(f"wedge: {args.steps} steps, 1..{args.steps} layers, "
-          f"{len(fils)} filament{'s' if len(fils) > 1 else ''}")
-    print(f"  over {args.base_layers} base layers of {base.label()}")
-    if hinge is not None:
-        print(f"  {args.gap:g} mm gaps joined by a {hinge}-layer hinge "
-              f"({hinge * args.layer_height:.2f} mm): flex a step flat onto the aperture")
-    print(f"  {w:.1f} x {depth:.1f} mm, "
-          f"{base_h:.2f}..{base_h + args.steps*args.layer_height:.2f} mm tall")
-    print(f"wrote {args.output}")
-    print(f"\nAssign extruder 1 = {base.label()}")
-    for i, f in enumerate(fils, 2):
-        print(f"         extruder {i} = {f.label()}   (row {i-1}, front to back)")
+    bases = [db.get(b.strip()) for b in args.base.split(",") if b.strip()]
+    auto = args.base_layers is None
+    try:
+        ws = WedgeSet(fils, bases, args.steps, args.layer_height, args.first_layer_height,
+                      args.step_width, args.step_depth, args.gap, args.base_layers,
+                      args.hinge_layers)
+    except ValueError as exc:
+        raise SystemExit(f"wedge: {exc}")
+    ws.write(args.output, args.flavor, args.template, args.layer_height, args.first_layer_height)
+    print(f"wedge: {len(ws.wedges)} wedge{'s' if len(ws.wedges) > 1 else ''} of {args.steps} "
+          f"steps, 1..{args.steps} layers")
+    # Opaque, or every patch measures the build plate as much as the filament.
+    print(f"  over {ws.base_layers} base layers" + (" (auto: opaque)" if auto else ""))
+    if ws.hinge is not None:
+        print(f"  {args.gap:g} mm gaps joined by a {ws.hinge}-layer hinge "
+              f"({ws.hinge * args.layer_height:.2f} mm): flex a step flat onto the aperture")
+    print(f"  {ws.width:.1f} x {ws.depth:.1f} mm, {ws.base_h:.2f}..{ws.top:.2f} mm tall")
+    print(f"wrote {args.output}\n")
+    print("\n".join(ws.describe()))
     print(_grid_note(args))
 
-    # A base that is not opaque makes every patch a measurement of the build
-    # plate as much as of the filament.
-    t = float(base.transmittance(base_h).max())
-    if t > 0.01:
-        need = optics.opaque_layers(base, args.first_layer_height, args.layer_height)[0]
-        print(f"\n  ! {args.base_layers} layers of {base.name} pass {100*t:.0f}% of "
-              f"the light reaching them, so these patches would be sitting on the "
-              f"build plate as much as on {base.name}.")
-        print(f"    Use --base-layers {need} "
-              f"({args.first_layer_height + (need-1)*args.layer_height:.2f} mm).")
-    print("\nPrint one over white and one over black if you can -- two backgrounds")
-    print("separate the filament's colour from its opacity.")
-    print(f"\nThen: stackforge-calibrate fit --filament <id> --base {base.id} "
-          f"--layer-height {args.layer_height:g} --measured \"<hex per step>\" --write")
+    for b, _ in ws.wedges:
+        t = float(b.transmittance(ws.base_h).max())
+        if t > 0.01:
+            need = optics.opaque_layers(b, args.first_layer_height, args.layer_height)[0]
+            print(f"\n  ! {ws.base_layers} layers of {b.name} pass {100*t:.0f}% of "
+                  f"the light reaching them, so these patches would be sitting on the "
+                  f"build plate as much as on {b.name}.")
+            print(f"    Use --base-layers {need} "
+                  f"({args.first_layer_height + (need-1)*args.layer_height:.2f} mm).")
+    if len(ws.wedges) < 2:
+        print("\nOne base only: give a contrasting second one (--base white,black) -- two "
+              "backgrounds separate the filament's colour from its opacity.")
+    fit = f"\nThen: stackforge-calibrate fit --filament <id> --base {ws.wedges[0][0].id} "
+    fit += "--measured \"<hex per step>\""
+    if len(ws.wedges) > 1:
+        fit += f" --base2 {ws.wedges[1][0].id} --measured2 \"<hex per step>\""
+    print(fit + f" --layer-height {args.layer_height:g} --write")
 
 
 # --------------------------------------------------------------------------
@@ -435,7 +486,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--filament", required=True,
                    help="comma-separated; one staircase row per filament, each "
                         "on its own extruder")
-    p.add_argument("--base", required=True, help="opaque backing filament id")
+    p.add_argument("--base", required=True,
+                   help="opaque backing filament id(s), comma-separated: one wedge per base, all "
+                        "in one file (e.g. white,black; a test filament is skipped over itself)")
     p.add_argument("-o", "--output", required=True)
     p.add_argument("--steps", type=int, default=12)
     p.add_argument("--layer-height", type=float, default=None,

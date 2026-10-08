@@ -207,6 +207,28 @@ class Editor(unittest.TestCase):
         # base top and every step edge on first + k*layer
         self.assertTrue(np.allclose(((z[z > 0] - 0.2) / 0.12 + 1e-6) % 1, 0, atol=1e-4))
 
+    def test_white_gets_one_wedge_over_the_dark_base(self):
+        import re
+        import zipfile
+        from unittest import mock
+        from PySide6.QtWidgets import QFileDialog
+        page = self._page(self._tab())
+        self.assertEqual(page.wbase.currentText(), "polymaker-pla-pro-white")
+        self.assertEqual(page.wbase2.currentText(), "polymaker-pla-pro-black")
+        page.select("polymaker-pla-pro-white")
+        out = os.path.join(self.d.name, "w.3mf")
+        with mock.patch.object(QFileDialog, "getSaveFileName", return_value=(out, "")), \
+                mock.patch.object(QMessageBox, "information") as info:
+            page.write_wedge()
+        with zipfile.ZipFile(out) as z:
+            cfg = z.read("Metadata/model_settings.config").decode()
+        self.assertEqual(set(re.findall(r'key="name" value="(wedge_over_[^"]+)"', cfg)),
+                         {"wedge_over_polymaker-pla-pro-black"})
+        msg = info.call_args[0][2]
+        self.assertIn("Extruder 1 = ", msg)
+        self.assertNotIn("Extruder 3", msg)
+        self.assertEqual(page.wedge_a.base.currentText(), "polymaker-pla-pro-black")
+
     def test_wedge_refused_without_a_slicer_project(self):
         from unittest import mock
         tab = self._tab()
