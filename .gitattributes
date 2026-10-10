@@ -1,0 +1,2 @@
+# The CIE tables are byte-exact copies of the CIE files (md5-tested): never convert line endings.
+src/stackforge/data/cie/*.csv -text
