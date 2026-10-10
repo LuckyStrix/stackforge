@@ -126,8 +126,10 @@ class Gamut:
                     print(f"  depth {d}: converged, no new colors")
                 break
             seen = np.union1d(seen, keys[fresh])
-            states.append(cand_state[keep])
-            colors.append(cand[keep])
+            kept = cand_state[keep]
+            states.append(kept)
+            # RGB states are their colours: one copy, not two.
+            colors.append(kept if cand is cand_state else cand[keep])
             parent.append(frontier[keep % m])
             fil.append(keep // m)
             depth.append(np.full(len(keep), d))
@@ -242,8 +244,17 @@ class SpectralGamut(Gamut):
         return spectral.r_inf(*spectral.ks(self.base))[None, :].astype(np.float32)
 
     def _add_layer(self, fc):
-        R0, T2 = self.R0[:, None], self.T2[:, None]
-        out = R0 + T2 * fc[None] / (1.0 - R0 * fc[None])
+        # R0 + T2 fc / (1 - R0 fc), one filament at a time and in place: the frontier can be
+        # hundreds of thousands of spectra, and whole-array temporaries peaked near 1 GB.
+        out = np.empty((self.n, len(fc), spectral.NB), dtype=np.float32)
+        den = np.empty((len(fc), spectral.NB), dtype=np.float32)
+        for i in range(self.n):
+            np.multiply(fc, self.R0[i], out=den)
+            np.subtract(1.0, den, out=den)
+            o = out[i]
+            np.multiply(fc, self.T2[i], out=o)
+            np.divide(o, den, out=o)
+            np.add(o, self.R0[i], out=o)
         return out.reshape(-1, spectral.NB)
 
     def _linear(self, states):
@@ -513,6 +524,8 @@ def base_warning(base, args):
     msg = (f"{args.base_layers} base layers of {base.name} ({base_height(args):.2f} mm) "
            f"still let {100 * t:.0f}% of the light through, so the print picks up "
            f"whatever is under it. ")
+    if not np.isfinite(opaque):
+        return msg + f"{base.name} never becomes opaque: choose a more opaque base."
     if opaque > OPAQUE_MAX_MM:
         return msg + f"{base.name} would need {opaque:.0f} mm: choose a more opaque base."
     return msg + (f"Use {need} base layers "
@@ -702,6 +715,8 @@ def _font(size):
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
         "/usr/share/fonts/TTF/DejaVuSans.ttf",
+        "DejaVuSans.ttf",
+        "arial.ttf",
     ):
         try:
             return ImageFont.truetype(p, size)
@@ -952,6 +967,8 @@ def main(argv=None):
                   f"{sp.get('measured_at') or '(no date)'} from {sp.get('source') or '?'}  "
                   f"{f.label()}")
         print(f"base: {base.label()}")
+        for w in spectral.layer_mismatch(fils, args.layer_height):
+            print(f"  ! {w}")
     est = [] if args.optics == "spectral" else [f.id for f in fils if f.provenance != "measured"]
     if args.optics != "spectral":
         print(f"filaments ({len(fils)}):")

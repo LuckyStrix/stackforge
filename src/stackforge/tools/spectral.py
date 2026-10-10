@@ -31,7 +31,7 @@ import sys
 from datetime import date
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 from scipy.optimize import least_squares
 from scipy.sparse import lil_matrix
 
@@ -39,6 +39,7 @@ from stackforge.core import colormath
 from stackforge.core import spectral as sp
 from stackforge.core import wedgesheet
 from stackforge.core.filamentdb import DEFAULT_DB, DB
+from stackforge.tools import plaque
 
 MIN_STEPS = 4
 MIN_BASE_CONTRAST = 0.25     # mean |R_white - R_black| over the bands
@@ -182,22 +183,13 @@ def base_contrast(datasets) -> float:
 # --------------------------------------------------------------------------
 
 
-def _font(size):
-    for p in ("DejaVuSans.ttf", "arial.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"):
-        try:
-            return ImageFont.truetype(p, size)
-        except OSError:
-            continue
-    return ImageFont.load_default()
-
-
 def plot_curves(path, curves, title, swatches=None, note=None, points=None):
     """curves: [(label, R (36,), rgb tuple, width)]; swatches: [(label, [hex...], current)]."""
     W, H, L, R, T, B = 900, 560, 70, 20, 50, 70
     sw_h = 26 * len(swatches or [])
     img = Image.new("RGB", (W, H + sw_h + 10), (30, 30, 34))
     d = ImageDraw.Draw(img)
-    f, fs = _font(16), _font(12)
+    f, fs = plaque._font(16), plaque._font(12)
     pw, ph = W - L - R, H - T - B
     x = lambda nm: L + (nm - sp.NM_FROM) / (sp.NM_TO - sp.NM_FROM) * pw  # noqa: E731
     y = lambda v: T + (1 - v) * ph  # noqa: E731
@@ -232,11 +224,6 @@ def plot_curves(path, curves, title, swatches=None, note=None, points=None):
     img.save(path)
 
 
-def _rgb(hexs):
-    h = hexs.lstrip("#")
-    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
-
-
 # --------------------------------------------------------------------------
 # commands
 # --------------------------------------------------------------------------
@@ -258,6 +245,9 @@ def cmd_fit(args):
           f"layer {layer_h:g} mm; spectra on a 0..{scale:g} scale")
     if synthetic:
         print("  (SYNTHETIC readings from demo-readings: this is a test of the fit, not a calibration)")
+    note = sp.scale_note(scale)
+    if note:
+        print(f"  ! {note}")
     for w in warnings:
         print(f"  ! {w}")
 
@@ -299,7 +289,7 @@ def cmd_fit(args):
         for (bid, Rb, M, L) in data:
             P = predict(K, S, Rb, L, layer_h)
             for i, Pi in enumerate(P):
-                col = _rgb(sp.spectrum_to_hex(Pi))
+                col = tuple(colormath.parse_hex(sp.spectrum_to_hex(Pi)))
                 curves.append((f"{i}", Pi, col, 1))
                 pts.append((col, M[i]))
         curves.append(("R_inf", rinf, (232, 232, 238), 2))
@@ -324,9 +314,7 @@ def cmd_fit(args):
         bases=[bid for bid, _, _, _ in data], de_mean=round(float(allde.mean()), 3),
         de_held_out=round(float(ho.mean()), 3) if ho is not None else None,
         **({"synthetic": True} if synthetic else {}))
-    if fil.provenance != "measured":
-        # An RGB-measured colour is that fit's own; otherwise the spectral one is better.
-        fil.color = sp.spectrum_to_hex(rinf)
+    # `color` is an input of the RGB model; a spectral fit leaves it alone.
     db.save()
     print(f"\nwrote the spectral calibration of {fil.id} to {db.path}")
     return 0
@@ -377,7 +365,7 @@ def cmd_show(args):
         R = sp.stack_spectra(f, Rb, args.layers, args.layer_height)
         hexes = [sp.spectrum_to_hex(r, args.illuminant) for r in R]
         print(f"  {f.label():32} " + " ".join(hexes))
-        col = _rgb(sp.colour_of(f, args.illuminant))
+        col = tuple(colormath.parse_hex(sp.colour_of(f, args.illuminant)))
         for i, r in enumerate(R[1:], 1):
             curves.append((f"{f.name} {i}", r, tuple(int(c * (0.35 + 0.65 * i / args.layers)) for c in col),
                            2 if i == args.layers else 1))

@@ -61,6 +61,8 @@ OVERRIDES: dict = {
     ("make_samples", "*", "out_dir"): "file_out",
     ("spectral", "fit", "filament"): "filament_id",
     ("spectral", "fit", "readings"): "file_in",
+    # The wedge readings carry their own layer height; the project's must not override it.
+    ("spectral", "fit", "layer_height"): "float",
     ("spectral", "show", "filaments"): "filament_ids",
     ("spectral", "show", "base"): "filament_or_hex",
 }

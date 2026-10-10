@@ -130,6 +130,29 @@ class Viewer(unittest.TestCase):
         self.assertIn("No spectrally calibrated", self.v.chart.empty)
         self.assertEqual(self.v.chart.series, [])
 
+    def test_stack_builder_survives_a_reload(self):
+        self.v.stack_box.setChecked(True)
+        for r in list(self.v.rows):
+            self.v.remove_row(r)
+        self.v.add_row("demo-white", 7)
+        self.v.reload()                                  # what switching back to the tab does
+        self.assertEqual([(r.combo.currentData(), r.count.value()) for r in self.v.rows],
+                         [("demo-white", 7)])
+
+    def test_readings_model_uses_the_wedge_layer_height(self):
+        path = os.path.join(self.tmp.name, "w.readings.json")
+        tool.main(["demo-readings", "-o", path, "--steps", "5", "--layer-height", "0.08"])
+        self.tick("demo-orange")
+        self.v.lh.setValue(0.2)                          # the Layer box differs from the wedge
+        self.assertTrue(self.v.load_readings(path))
+        self.v.slider.setValue(3)
+        pump()
+        s = next(s for s in self.v.chart.series if s.points is not None)
+        f = self.v.pool["demo-orange"]
+        data = tool.wedgesheet.load_readings(path)
+        Rb = sp.reading_spectrum(data["strips"][0]["base_reading"], 100.0)
+        self.assertTrue(np.allclose(s.curves[0], sp.layer(Rb, *sp.ks(f), 3 * 0.08)))
+
     def test_readings_overlay_and_export(self):
         path = os.path.join(self.tmp.name, "w.readings.json")
         tool.main(["demo-readings", "-o", path, "--steps", "5"])
@@ -142,6 +165,18 @@ class Viewer(unittest.TestCase):
         png = os.path.join(self.tmp.name, "chart.png")
         self.assertTrue(self.v.export_png(png))
         self.assertGreater(os.path.getsize(png), 1000)
+
+
+class NoProject(unittest.TestCase):
+    def test_viewer_without_a_project_reads_the_default_library(self):
+        v = SpectraViewer(None)
+        try:
+            self.assertIsNotNone(v.db)
+            self.assertGreater(v.list.count(), 0)
+        finally:
+            v.close()
+            v.deleteLater()
+            pump()
 
 
 class Chart(unittest.TestCase):
@@ -192,6 +227,55 @@ class DesignerOptics(unittest.TestCase):
                 rows = {des.list.item(i).data(Qt.UserRole): des.list.item(i) for i in range(des.list.count())}
                 self.assertTrue(rows["demo-red"].flags() & Qt.ItemIsEnabled)   # rgb takes any filament
                 self.assertFalse(des.c_illum.isEnabled())
+            finally:
+                des.close()
+                des.deleteLater()
+                pump()
+
+    def designer(self, d, uncalibrated):
+        from stackforge.gui.tabs.plaque import PlaqueDesigner
+        path = os.path.join(d, "f.json")
+        db = DB(path)
+        for f in sp.demo_filaments():
+            if f.id in uncalibrated:
+                f.spectral = None
+            db.filaments[f.id] = f
+        db.save()
+        des = PlaqueDesigner(FakeProject(path))
+        des.db_path = path
+        des._reload_filaments()
+        return des
+
+    def test_uncalibrated_base_does_not_break_the_estimate(self):
+        with tempfile.TemporaryDirectory() as d:
+            des = self.designer(d, {"demo-white"})
+            try:
+                des._set_base("demo-white")
+                des.c_optics.setCurrentText("spectral")
+                pump()
+                bases = [des.base.itemData(i) for i in range(des.base.count())]
+                self.assertNotIn("demo-white", bases)            # only calibrated bases offered
+                self.assertIn("grid", des.lbl_est.text())        # the panel still updates
+                self.assertEqual(des.lbl_measured.text(), "")    # no RGB "not measured" warning
+                des.c_optics.setCurrentText("rgb")
+                pump()
+                self.assertEqual(des._base_id(), "demo-white")   # the base comes back
+            finally:
+                des.close()
+                des.deleteLater()
+                pump()
+
+    def test_optics_round_trip_keeps_the_ticked_filaments(self):
+        with tempfile.TemporaryDirectory() as d:
+            des = self.designer(d, {"demo-red"})
+            try:
+                des._set_checked({"demo-white", "demo-red", "demo-blue"})
+                des.c_optics.setCurrentText("spectral")
+                pump()
+                self.assertEqual(des._checked(), {"demo-white", "demo-blue"})
+                des.c_optics.setCurrentText("rgb")
+                pump()
+                self.assertEqual(des._checked(), {"demo-white", "demo-red", "demo-blue"})
             finally:
                 des.close()
                 des.deleteLater()

@@ -61,8 +61,11 @@ The fit reports:
 - when the readings' own XYZ disagrees with the Y of their spectra (see "Unverified" below)
 
 A fit stores a `spectral` block on the filament (`Filament.spectral`: K, S, date, source file,
-bases, dE). It also refreshes `color` from R∞, unless the RGB colour was itself measured. It never
-touches `td`, `td_rgb` or `provenance`: those belong to the RGB model.
+layer height, bases, dE). It never touches `color`, `td`, `td_rgb` or `provenance`: those belong to
+the RGB model. The spectral colour (R∞) is shown wherever spectral optics are in use.
+
+K and S are effective values for the layer height the wedge was printed at. The plaque (CLI and
+Designer) warns when a calibrated filament is used on a different layer grid.
 
 ## Using it
 
@@ -94,8 +97,10 @@ round-trip test of the fit (`tests/test_spectral.py`).
 ## Unverified
 
 - **The spectrum scale.** Real spotread spectra have never been parsed (`measure.py`, "not verified
-  against hardware"). The scale (0..1 vs 0..100) is decided over a whole readings file, never per
-  patch: a very dark patch on the 0..100 scale reads below 1. The fit then cross-checks each base
+  against hardware"). Argyll documents reflective spectra as percent (0..100, 10 nm bands by
+  default, 3.3 nm with `-H`), so that is the expected scale, and the fit warns when a file looks
+  like 0..1 instead. The scale is decided over a whole readings file, never per patch: a very dark
+  patch on the 0..100 scale reads below 1. The fit then cross-checks each base
   patch's own XYZ against the Y of its spectrum, and refuses to write on a mismatch. The first real
   wedge set is also the first test of this path.
 - **Printed accuracy of `--optics spectral`.** Nothing has been printed from it yet. The demo

@@ -315,10 +315,14 @@ def raw_spectrum(reading):
     sp = (reading or {}).get("spectrum")
     if not sp:
         raise SpectralError("reading has no spectrum (was spotread run with -s?)")
-    vals = np.asarray(sp.get("values", []), dtype=np.float64)
+    try:
+        vals = np.asarray(sp.get("values", []), dtype=np.float64)
+        lo, hi = float(sp["nm_from"]), float(sp["nm_to"])
+    except (AttributeError, KeyError, TypeError, ValueError):
+        raise SpectralError("reading's spectrum is malformed (needs nm_from, nm_to and values)")
     if vals.ndim != 1 or len(vals) < 2 or not np.isfinite(vals).all():
         raise SpectralError("reading's spectrum is malformed")
-    wl = np.linspace(float(sp["nm_from"]), float(sp["nm_to"]), len(vals))
+    wl = np.linspace(lo, hi, len(vals))
     if wl[0] > NM_FROM + 0.5 or wl[-1] < NM_TO - 0.5:
         raise SpectralError(f"spectrum covers {wl[0]:g}-{wl[-1]:g} nm; need "
                             f"{NM_FROM:g}-{NM_TO:g}")
@@ -328,12 +332,33 @@ def raw_spectrum(reading):
 def spectrum_scale(readings) -> float:
     """100 if these readings are on spotread's 0..100 scale, else 1.
 
-    Decided over the whole set, never per patch: a very dark patch on the 0..100 scale reads
-    below 1 and would otherwise be taken as a 0..1 value 100 times too bright. Unverified on
-    hardware, so the readings' own XYZ is used as a cross-check (`scale_check`).
+    Argyll documents reflective spectra as percent (0..100), so that is expected; 1 is taken only
+    when no value in the whole set exceeds 1.5, and `scale_note` then says so. Decided over the
+    whole set, never per patch: a very dark patch on the 0..100 scale reads below 1 and would
+    otherwise be taken as a 0..1 value 100 times too bright. Unverified on hardware, so the
+    readings' own XYZ is used as a cross-check (`scale_check`).
     """
     top = max(float(raw_spectrum(r)[1].max()) for r in readings)
     return 100.0 if top > 1.5 else 1.0
+
+
+def scale_note(scale: float):
+    """A warning when the readings are not on spotread's documented 0..100 scale, else None."""
+    if scale == 100.0:
+        return None
+    return ("no spectrum value exceeds 1.5, so these readings were taken as 0..1, not the 0..100 "
+            "percent spotread documents for reflective spectra")
+
+
+def layer_mismatch(fils, layer_h: float):
+    """Why each filament's K/S may not hold at `layer_h` (fitted on another layer grid)."""
+    out = []
+    for f in fils:
+        ref = (getattr(f, "spectral", None) or {}).get("layer_height_ref")
+        if ref and abs(float(ref) - layer_h) > 1e-6:
+            out.append(f"{f.id} was calibrated on {float(ref):g} mm layers, not {layer_h:g} mm: "
+                       f"its K and S are effective values for that grid")
+    return out
 
 
 def reading_spectrum(reading, scale: float) -> np.ndarray:

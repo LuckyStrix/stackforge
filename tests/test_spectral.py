@@ -151,6 +151,9 @@ class Readings(unittest.TestCase):
         self.assertEqual(scale, 100.0)
         self.assertAlmostEqual(float(sp.reading_spectrum(dark, scale)[0]), 0.008)
         self.assertEqual(sp.spectrum_scale([self.reading(np.full(36, 0.5))]), 1.0)
+        # spotread documents 0..100: that is silent, 0..1 is called out.
+        self.assertIsNone(sp.scale_note(100.0))
+        self.assertIn("0..100", sp.scale_note(1.0))
 
     def test_resampled_onto_the_grid(self):
         r = self.reading(np.linspace(0, 100, 351), nm=(380, 730))     # 1 nm data
@@ -159,7 +162,10 @@ class Readings(unittest.TestCase):
         self.assertAlmostEqual(float(R[1]), 10 / 350, places=6)      # 390 nm
 
     def test_refused(self):
-        for bad in ({}, self.reading([0.0] * 36), self.reading([1] * 36, nm=(400, 700))):
+        no_range = {"spectrum": {"values": [50.0] * 36}}
+        not_a_dict = {"spectrum": [50.0] * 36}
+        for bad in ({}, self.reading([0.0] * 36), self.reading([1] * 36, nm=(400, 700)),
+                    no_range, not_a_dict):
             with self.assertRaises(sp.SpectralError):
                 sp.reading_spectrum(bad, 1.0)
 
@@ -216,8 +222,10 @@ class FitCli(unittest.TestCase):
         self.assertTrue(sp.is_calibrated(after))
         self.assertTrue(after.spectral["synthetic"])
         self.assertEqual(after.spectral["bases"], ["demo-white", "demo-black"])
-        self.assertEqual((after.td, after.td_rgb, after.provenance),
-                         (before.td, before.td_rgb, before.provenance))
+        # `color` is an RGB-model input too: a spectral fit must not move RGB plaques.
+        self.assertEqual((after.color, after.td, after.td_rgb, after.provenance),
+                         (before.color, before.td, before.td_rgb, before.provenance))
+        self.assertEqual(after.spectral["layer_height_ref"], 0.08)
         self.assertTrue(os.path.exists(png))
 
     def test_one_base_is_refused(self):
@@ -284,6 +292,37 @@ class SpectralPlaque(unittest.TestCase):
         R = sp.stack(Rb, [(*sp.ks(fils[k]), 0.08) for k in st])
         self.assertTrue(np.allclose(R, g.spectra(i), atol=1e-4))
         self.assertTrue(np.allclose(sp.spectrum_to_linear(R), g.colors[i], atol=1e-4))
+
+    def test_in_place_layer_is_the_km_formula(self):
+        fils = self.fils("demo-white", "demo-orange", "demo-blue")
+        g = plaque.SpectralGamut(fils, fils[0], 0.08, 1, verbose=False)
+        fc = np.random.default_rng(0).uniform(0.02, 0.95, (7, sp.NB)).astype(np.float32)
+        R0, T2 = g.R0[:, None], g.T2[:, None]
+        ref = (R0 + T2 * fc[None] / (1.0 - R0 * fc[None])).reshape(-1, sp.NB)
+        self.assertTrue(np.array_equal(g._add_layer(fc), ref))
+
+    def test_rgb_gamut_keeps_one_copy_of_its_states(self):
+        fils = self.fils("demo-white", "demo-orange")
+        g = plaque.Gamut(fils, fils[0], 0.08, 3, verbose=False)
+        self.assertIs(g.states, g.colors)
+
+    def test_layer_height_mismatch_is_reported(self):
+        fils = self.fils("demo-white", "demo-orange")
+        fils[1].spectral["layer_height_ref"] = 0.12
+        self.assertEqual(sp.layer_mismatch(fils, 0.12), [])
+        msg = sp.layer_mismatch(fils, 0.08)
+        self.assertEqual(len(msg), 1)
+        self.assertIn("demo-orange", msg[0])
+        self.assertIn("0.12", msg[0])
+
+    def test_a_base_that_never_goes_opaque_says_so(self):
+        from types import SimpleNamespace
+        clear = Filament(id="clear", brand="t", series="t", name="clear", color="#FFFFFF", td=50.0)
+        clear.spectral = sp.record(np.full(sp.NB, 1e-5), np.full(sp.NB, 1e-3))
+        a = SimpleNamespace(optics="spectral", first_layer_height=0.2, layer_height=0.08, base_layers=3)
+        msg = plaque.base_warning(clear, a)
+        self.assertIn("never becomes opaque", msg)
+        self.assertNotIn("inf", msg)
 
     def test_uncalibrated_filament_is_refused(self):
         fils = self.fils("demo-white", "demo-orange")

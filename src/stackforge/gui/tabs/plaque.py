@@ -156,6 +156,7 @@ class PlaqueDesigner(QWidget):
         bl.addWidget(QLabel("Base (opaque backing)"))
         self.base = QComboBox()
         self.base.currentTextChanged.connect(lambda _t: self._inputs_changed())
+        self.base.activated.connect(lambda *_: setattr(self, "_held_base", ""))   # the user chose
         bl.addWidget(self.base)
         bl.addWidget(theme.hint("The base takes one toolhead and is a full colour too: short stacks pad "
                                 "against it. Usually white or black."))
@@ -385,7 +386,10 @@ class PlaqueDesigner(QWidget):
             return
         # Keep whatever was ticked across a reload: editing the database should not silently
         # throw away the loadout being worked on.
-        prev = self._checked()
+        # Spectral optics unticks uncalibrated filaments; _held remembers them so switching back
+        # to RGB restores the loadout.
+        prev = self._checked() | getattr(self, "_held", set())
+        held = set()
         prefer = ("white", "black", "blue", "red")
         self._loading = True
         self.list.clear()
@@ -407,17 +411,27 @@ class PlaqueDesigner(QWidget):
             on = fil.id in prev if prev else any(p == fil.name.lower() for p in prefer)
             if spec and not cal:
                 # Spectral optics refuses uncalibrated filaments; say so here, not at Generate.
+                if on:
+                    held.add(fil.id)
                 on = False
                 it.setFlags(it.flags() & ~Qt.ItemIsEnabled)
             it.setCheckState(Qt.Checked if on else Qt.Unchecked)
             it.setForeground(QColor(theme.OK if spec and cal else theme.FG_DIM if spec else
                                     theme.PROVENANCE_COLOUR.get(fil.provenance, theme.FG_DIM)))
             self.list.addItem(it)
-        names = [f.id for f in self.db.filaments.values()]
+        self._held = held
+        # Under spectral optics the base must be calibrated too: offer only those.
+        bases = [f for f in self.db.filaments.values() if not spec or spectral.is_calibrated(f)]
+        names = [f.id for f in bases]
         self.base.blockSignals(True)
-        cur = self._base_id()
+        # A base dropped for being uncalibrated comes back when it is offered again.
+        cur = getattr(self, "_held_base", "") or self._base_id()
+        if cur in names:
+            self._held_base = ""
+        elif cur:
+            self._held_base = cur
         self.base.clear()
-        for fil in self.db.filaments.values():
+        for fil in bases:
             self.base.addItem(_swatch(fil.rgb()), fil.label(), fil.id)
         if names:
             self._set_base(cur if cur in names else next((n for n in names if "white" in n), names[0]))
@@ -592,6 +606,9 @@ class PlaqueDesigner(QWidget):
         n, slots = len(sel), a.slots
         base = self.db.filaments.get(base_id)
         auto = a.base_layers is None
+        spec = self._spectral()
+        if base is not None and spec and not spectral.is_calibrated(base):
+            base = None                        # no K/S to judge it by; _validate refuses it
         if base is not None:
             plaque.resolve_base_layers(a, base, log=lambda _m: None)
         else:
@@ -613,17 +630,28 @@ class PlaqueDesigner(QWidget):
         if base is not None:
             try:
                 warn = plaque.base_warning(base, a)
-            except SystemExit:
+            except (SystemExit, spectral.SpectralError):
                 warn = None
             if warn:
                 lines.append("base       not opaque: " + warn)
-        est = [f.id for f in sel if f.provenance != "measured"]
-        if est:
-            lines.append(f"unmeasured {len(est)} of {n}: colours are approximate until calibrated")
-        self.lbl_measured.setText(
-            f"{len(est)} of the {n} ticked filaments are not measured "
-            f"({provenance_counts(f for f in sel if f.provenance != 'measured')}): the simulated "
-            f"print is approximate until they are calibrated." if est else "")
+        if spec:
+            # Spectral optics judges filaments by their spectral calibration, not the RGB td.
+            est = [f.id for f in sel if not spectral.is_calibrated(f)]
+            if est:
+                lines.append(f"spectral   {len(est)} of {n} have no spectral calibration: "
+                             f"Generate will refuse them")
+            for w in spectral.layer_mismatch([f for f in sel if f.id not in est], a.layer_height):
+                lines.append("spectral   " + w)
+            self.lbl_measured.setText("")
+            est = []
+        else:
+            est = [f.id for f in sel if f.provenance != "measured"]
+            if est:
+                lines.append(f"unmeasured {len(est)} of {n}: colours are approximate until calibrated")
+            self.lbl_measured.setText(
+                f"{len(est)} of the {n} ticked filaments are not measured "
+                f"({provenance_counts(f for f in sel if f.provenance != 'measured')}): the simulated "
+                f"print is approximate until they are calibrated." if est else "")
         self.lbl_measured.setVisible(bool(est))
         grid = self._grid_problem()
         if grid:

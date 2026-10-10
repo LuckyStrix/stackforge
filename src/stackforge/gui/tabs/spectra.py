@@ -24,8 +24,9 @@ from PySide6.QtWidgets import (QComboBox, QDoubleSpinBox, QFileDialog, QGroupBox
 
 from stackforge.core import colormath, wedgesheet
 from stackforge.core import spectral as sp
-from stackforge.core.filamentdb import DB
+from stackforge.core.filamentdb import DB, DEFAULT_DB
 from stackforge.gui import theme
+from stackforge.gui.pickers import swatch_icon
 from stackforge.gui.spectrum_chart import Axis, Series, SpectrumChart, SwatchStrip, visible
 from stackforge.gui.tabs.common import ToolTabs
 from stackforge.tools import spectral as spectral_tool
@@ -38,13 +39,6 @@ IDEAL = {"white": np.full(sp.NB, 0.9), "black": np.full(sp.NB, 0.03)}
 WATERMARK = "SYNTHETIC — not measurements"
 
 
-def _swatch_icon(hexcol):
-    from PySide6.QtGui import QIcon, QPixmap
-    pm = QPixmap(18, 14)
-    pm.fill(QColor(hexcol))
-    return QIcon(pm)
-
-
 class StackRow(QWidget):
     """One group in the stack builder: n layers of a filament."""
 
@@ -54,7 +48,7 @@ class StackRow(QWidget):
         lay.setContentsMargins(0, 0, 0, 0)
         self.combo = QComboBox()
         for f in fils:
-            self.combo.addItem(_swatch_icon(sp.colour_of(f)), f.name, f.id)
+            self.combo.addItem(swatch_icon(sp.colour_of(f)), f.name, f.id)
         if fid is not None and self.combo.findData(fid) >= 0:
             self.combo.setCurrentIndex(self.combo.findData(fid))
         self.count = QSpinBox()
@@ -78,7 +72,7 @@ class SpectraViewer(QWidget):
         self.project = project
         self.db = None
         self.demo = False
-        self.readings = None           # (path, data, scale)
+        self.readings = None           # (path, data, scale, layer height of the wedges)
         self.pool: dict = {}
         self.rows: list[StackRow] = []
         self._timer = QTimer(self)
@@ -235,9 +229,9 @@ class SpectraViewer(QWidget):
 
     def reload(self, path=None):
         if not self.demo:
-            db_path = path or (self.project.get("db") if self.project else None)
+            db_path = path or (self.project.get("db") if self.project else None) or DEFAULT_DB
             try:
-                self.db = DB(db_path) if db_path else None
+                self.db = DB(db_path)
             except SystemExit as exc:
                 QMessageBox.critical(self, APP, str(exc))
                 self.db = None
@@ -251,7 +245,7 @@ class SpectraViewer(QWidget):
         self.list.clear()
         for f in cal + other:
             ok = f in cal
-            it = QListWidgetItem(_swatch_icon(sp.colour_of(f) if ok else f.color),
+            it = QListWidgetItem(swatch_icon(sp.colour_of(f) if ok else f.color),
                                  f.name if ok else f"{f.name}  (no spectral calibration)")
             it.setData(Qt.UserRole, f.id)
             it.setFlags((it.flags() | Qt.ItemIsUserCheckable) if ok else
@@ -275,18 +269,24 @@ class SpectraViewer(QWidget):
         self.base.addItem("ideal white (R = 0.9)", "white")
         self.base.addItem("ideal black (R = 0.03)", "black")
         for f in cal:
-            self.base.addItem(_swatch_icon(sp.colour_of(f)), f.label(), f.id)
+            self.base.addItem(swatch_icon(sp.colour_of(f)), f.label(), f.id)
         want = cur if cur is not None and self.base.findData(cur) >= 0 else \
             ("demo-white" if self.demo else "white")
         self.base.setCurrentIndex(max(0, self.base.findData(want)))
         self.base.blockSignals(False)
 
+        # Rebuild the stack builder against the new pool, keeping the stack being worked on.
+        keep = [(r.combo.currentData(), r.count.value()) for r in self.rows]
         for r in list(self.rows):
             self.remove_row(r, refresh=False)
-        if cal:
+        ids = {f.id for f in cal}
+        keep = [(fid, n) for fid, n in keep if fid in ids]
+        if not keep and cal:
             pick = [f.id for f in cal]
-            self.add_row(next((i for i in pick if "orange" in i), pick[0]), 2, refresh=False)
-            self.add_row(next((i for i in pick if "blue" in i), pick[-1]), 3, refresh=False)
+            keep = [(next((i for i in pick if "orange" in i), pick[0]), 2),
+                    (next((i for i in pick if "blue" in i), pick[-1]), 3)]
+        for fid, n in keep:
+            self.add_row(fid, n, refresh=False)
         self.btn_demo.setText("Back to my library" if self.demo else "Load demo spectra")
         self._apply_filter()
         self.refresh()
@@ -384,7 +384,11 @@ class SpectraViewer(QWidget):
         except (OSError, ValueError) as exc:
             QMessageBox.warning(self, APP, f"{path}: {exc}")
             return False
-        self.readings = (path, data, scale)
+        try:
+            wedge_lh = float(data.get("layer_height") or 0)
+        except (TypeError, ValueError):
+            wedge_lh = 0.0
+        self.readings = (path, data, scale, wedge_lh)
         ids = sorted({s["filament"]["id"] for s in data["strips"]})
         self.lbl_readings.setText(f"readings: {len(data['strips'])} wedge(s) of {', '.join(ids)}")
         self.refresh()
@@ -428,7 +432,7 @@ class SpectraViewer(QWidget):
             series.append(Series(f.name, col, curves, ghosts=view != "ks"))
             info.append(self._info_line(f, R[min(layer, N)]))
             if self.readings and view == "reflectance":
-                series += self._measured(f, layer, lh, col)
+                series += self._measured(f, layer, col)
 
         if self.stack_box.isChecked():
             st = self.built_stack()
@@ -475,9 +479,13 @@ class SpectraViewer(QWidget):
         b = colormath.linear_to_lab(np.clip(sp.spectrum_to_linear(R, "A"), 0, 1))
         return float(np.linalg.norm(a - b))
 
-    def _measured(self, f, layer, lh, col):
-        """Measured wedge steps of `f` at this layer count, with the model over the same base."""
-        _, data, scale = self.readings
+    def _measured(self, f, layer, col):
+        """Measured wedge steps of `f` at this layer count, with the model over the same base.
+
+        The model is drawn at the wedge's own layer height, not the Layer box's: step n of the
+        wedge is n of *its* layers."""
+        _, data, scale, wedge_lh = self.readings
+        lh = wedge_lh or self.lh.value()
         out = []
         for s in data["strips"]:
             if s["filament"]["id"] != f.id or not s.get("base_reading"):
