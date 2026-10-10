@@ -58,10 +58,8 @@ def datasets_from_readings(readings: dict, filament_id: str):
     if not strips:
         have = sorted({s["filament"]["id"] for s in readings["strips"]})
         raise SystemExit(f"no wedge of {filament_id} in the readings; it has: {', '.join(have)}")
-    every = [r for s in readings["strips"] for r in s.get("readings", [])] + \
-            [s["base_reading"] for s in readings["strips"] if s.get("base_reading")]
     try:
-        scale = sp.spectrum_scale(every)
+        scale = sp.readings_scale(readings)
     except sp.SpectralError as exc:
         raise SystemExit(f"readings have no usable spectra: {exc}. Measure with "
                          f"stackforge-measure (it runs spotread with -s).")
@@ -83,6 +81,18 @@ def datasets_from_readings(readings: dict, filament_id: str):
                             f"if that is wrong every K and S is wrong.")
         out.append((s["base"]["id"], Rb, M, np.arange(1, len(M) + 1, dtype=float)))
     return out, scale, warnings
+
+
+def reversed_notes(readings: dict, filament_id: str) -> list:
+    """measure's wedge-reversal check for this filament's strips: steps whose lightness ran
+    against the wedge (a swapped patch or a misplaced aperture). Fitting them bakes the error
+    into K and S, so --write is refused while any are flagged."""
+    out = []
+    for s in readings["strips"]:
+        if s["filament"]["id"] == filament_id and s.get("reversed_steps"):
+            out.append(f"{wedgesheet.strip_title(s)}: step(s) {s['reversed_steps']} ran against the "
+                       f"wedge when measured; re-measure them before fitting")
+    return out
 
 
 # --------------------------------------------------------------------------
@@ -155,15 +165,16 @@ def step_de(K, S, datasets, layer_h):
     return out
 
 
-def held_out_de(datasets, layer_h, smooth, x0):
-    """Each step predicted by a fit that never saw it: the honest accuracy."""
+def held_out_de(datasets, layer_h, smooth):
+    """Each step predicted by a fit that never saw it: the honest accuracy. Every sub-fit starts
+    from its own initial guess, not the full fit (which already saw the held-out step)."""
     out = []
     for i, (bid, Rb, M, L) in enumerate(datasets):
         des = []
         for j in range(len(M)):
             keep = np.arange(len(M)) != j
             sub = [d if k != i else (bid, Rb, M[keep], L[keep]) for k, d in enumerate(datasets)]
-            K, S, _ = fit_ks(sub, layer_h, smooth, x0)
+            K, S, _ = fit_ks(sub, layer_h, smooth)
             P = predict(K, S, Rb, L[j:j + 1], layer_h)
             des.append(float(np.linalg.norm(sp.spectrum_to_lab(P[0], "D50")
                                             - sp.spectrum_to_lab(M[j], "D50"))))
@@ -250,8 +261,11 @@ def cmd_fit(args):
         print(f"  ! {note}")
     for w in warnings:
         print(f"  ! {w}")
+    rev = reversed_notes(readings, args.filament)
+    for w in rev:
+        print(f"  ! {w}")
 
-    K, S, x = fit_ks(data, layer_h, args.smooth)
+    K, S, _ = fit_ks(data, layer_h, args.smooth)
     des = step_de(K, S, data, layer_h)
     allde = np.concatenate(des)
     rinf = sp.r_inf(K, S)
@@ -267,7 +281,7 @@ def cmd_fit(args):
     ho = None
     if not args.no_holdout:
         print("\nheld-out check (each step predicted by a fit that never saw it)...")
-        ho = np.concatenate(held_out_de(data, layer_h, args.smooth, x))
+        ho = np.concatenate(held_out_de(data, layer_h, args.smooth))
         print(f"  held-out dE: mean {ho.mean():.2f}, max {ho.max():.2f}"
               + ("   <- the fit does not generalise; re-measure or check the wedge" if ho.mean() > 3 else ""))
 
@@ -283,6 +297,8 @@ def cmd_fit(args):
         refuse.append(f"fewer than {MIN_STEPS} steps on a wedge")
     if warnings:
         refuse.append("the spectrum scale does not match the readings' own XYZ (see above)")
+    if rev:
+        refuse.append("steps were measured against the wedge (see above)")
 
     if args.preview:
         curves, pts = [], []
@@ -333,10 +349,8 @@ def _resolve(db, ids, demo):
 
 
 def _base_spectrum(arg, pool):
-    if arg in (None, "white"):
-        return np.full(sp.NB, 0.9), "ideal white"
-    if arg == "black":
-        return np.full(sp.NB, 0.03), "ideal black"
+    if arg in (None, "white", "black"):
+        return sp.ideal_base(arg or "white"), f"ideal {arg or 'white'}"
     f = pool.get(arg)
     if f is None:
         try:

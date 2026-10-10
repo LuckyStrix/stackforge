@@ -121,6 +121,25 @@ class Viewer(unittest.TestCase):
         self.assertEqual(self.v.chart.watermark, "")
         self.assertEqual(open(self.db).read(), before)
 
+    def test_demo_toggle_ticks_the_demo_defaults(self):
+        self.tick("demo-orange")                         # a library filament is ticked
+        self.v.toggle_demo()
+        pump()
+        self.assertEqual(set(self.v.checked()), {"demo-orange", "demo-blue"})
+        self.v.toggle_demo()
+
+    def test_tab_switch_reloads_only_when_the_library_changed(self):
+        calls = []
+        real = self.v.reload
+        self.v.reload = lambda *a: (calls.append(1), real(*a))
+        self.v.reload_if_changed()
+        self.assertEqual(calls, [])
+        db = DB(self.db)
+        db.save()
+        os.utime(self.db, (1, 1))                        # a different mtime
+        self.v.reload_if_changed()
+        self.assertEqual(calls, [1])
+
     def test_empty_library_explains_how_to_calibrate(self):
         db = DB(self.db)
         for f in db.filaments.values():
@@ -260,6 +279,38 @@ class DesignerOptics(unittest.TestCase):
                 des.c_optics.setCurrentText("rgb")
                 pump()
                 self.assertEqual(des._base_id(), "demo-white")   # the base comes back
+            finally:
+                des.close()
+                des.deleteLater()
+                pump()
+
+    def test_preset_never_ticks_a_disabled_filament(self):
+        with tempfile.TemporaryDirectory() as d:
+            des = self.designer(d, {"demo-red"})
+            try:
+                des.c_optics.setCurrentText("spectral")
+                pump()
+                des._set_checked({"demo-white", "demo-red"})     # what _apply_preset does
+                self.assertEqual(des._checked(), {"demo-white"})
+                des.c_optics.setCurrentText("rgb")
+                pump()
+                self.assertEqual(des._checked(), {"demo-white", "demo-red"})
+            finally:
+                des.close()
+                des.deleteLater()
+                pump()
+
+    def test_clearing_forgets_what_spectral_mode_held(self):
+        with tempfile.TemporaryDirectory() as d:
+            des = self.designer(d, {"demo-red"})
+            try:
+                des._set_checked({"demo-white", "demo-red"})
+                des.c_optics.setCurrentText("spectral")
+                pump()
+                des._set_all(False)
+                des.c_optics.setCurrentText("rgb")
+                pump()
+                self.assertEqual(des._checked(), set())
             finally:
                 des.close()
                 des.deleteLater()

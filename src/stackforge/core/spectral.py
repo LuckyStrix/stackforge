@@ -222,6 +222,26 @@ def transmittance(K, S, h):
     return layer_rt(K, S, h)[1]
 
 
+def backing(K, S, h):
+    """How much of what lies under a layer still shows, per band: the reflectance over a
+    perfect white backing minus over a black one, T^2 / (1 - R0).
+
+    This is what the RGB model's `T <= 1%` opacity rule means (its td is the reflectance-fit
+    kind, so the round trip is already in it). KM's own T is one pass; the backing shows
+    through T twice and bounces off the layer's underside, so testing T alone is far stricter.
+    """
+    R0, T = layer_rt(K, S, h)
+    return T * T / (1.0 - R0)
+
+
+IDEAL_BASES = {"white": 0.9, "black": 0.03}
+
+
+def ideal_base(name: str) -> np.ndarray:
+    """A flat reflectance standing in for a white or black backing (`IDEAL_BASES`)."""
+    return np.full(NB, IDEAL_BASES[name])
+
+
 # --------------------------------------------------------------------------
 # filament records
 # --------------------------------------------------------------------------
@@ -290,15 +310,16 @@ def stack_spectra(fil, Rbase, n_layers: int, layer_h: float) -> np.ndarray:
 
 
 def opaque_layers(fil, first_layer: float, layer_h: float, t_max: float = 0.01, max_mm=50.0):
-    """(layers, mm) for the worst band of `fil` to pass at most `t_max`."""
+    """(layers, mm) for what is under `fil` to show by at most `t_max` in its worst band
+    (`backing`, the same meaning as the RGB rule)."""
     K, S = ks(fil)
     lo, hi = 0.0, max_mm
-    if transmittance(K, S, hi).max() > t_max:
+    if backing(K, S, hi).max() > t_max:
         mm = float("inf")
     else:
         for _ in range(60):
             mid = 0.5 * (lo + hi)
-            lo, hi = (mid, hi) if transmittance(K, S, mid).max() > t_max else (lo, mid)
+            lo, hi = (mid, hi) if backing(K, S, mid).max() > t_max else (lo, mid)
         mm = hi
     if not np.isfinite(mm):
         return 10 ** 6, mm
@@ -340,6 +361,13 @@ def spectrum_scale(readings) -> float:
     """
     top = max(float(raw_spectrum(r)[1].max()) for r in readings)
     return 100.0 if top > 1.5 else 1.0
+
+
+def readings_scale(data) -> float:
+    """`spectrum_scale` over every step and bare-base reading of a readings file."""
+    every = [r for s in data["strips"] for r in s.get("readings", [])] + \
+            [s["base_reading"] for s in data["strips"] if s.get("base_reading")]
+    return spectrum_scale(every)
 
 
 def scale_note(scale: float):

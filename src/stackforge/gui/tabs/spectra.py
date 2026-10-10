@@ -14,6 +14,8 @@ the stackforge-spectral commands (fit, show, demo-readings).
 """
 from __future__ import annotations
 
+import os
+
 import numpy as np
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor
@@ -35,8 +37,15 @@ APP = "stackforge"
 VIEWS = [("reflectance", "Reflectance: layers over the base"),
          ("transmittance", "Transmittance: light through the layers"),
          ("ks", "K/S: absorption over scattering (per filament)")]
-IDEAL = {"white": np.full(sp.NB, 0.9), "black": np.full(sp.NB, 0.03)}
+IDEAL = {k: sp.ideal_base(k) for k in sp.IDEAL_BASES}
 WATERMARK = "SYNTHETIC — not measurements"
+
+
+def _mtime(path):
+    try:
+        return os.path.getmtime(path)
+    except OSError:
+        return None
 
 
 class StackRow(QWidget):
@@ -75,6 +84,7 @@ class SpectraViewer(QWidget):
         self.readings = None           # (path, data, scale, layer height of the wedges)
         self.pool: dict = {}
         self.rows: list[StackRow] = []
+        self._ticks: dict = {}          # demo? -> ids ticked when that pool was left
         self._timer = QTimer(self)
         self._timer.setInterval(380)
         self._timer.timeout.connect(self._tick)
@@ -227,9 +237,10 @@ class SpectraViewer(QWidget):
             lh = 0.0
         return lh if lh > 0 else 0.08
 
-    def reload(self, path=None):
+    def reload(self, path=None, ticks=None):
         if not self.demo:
             db_path = path or (self.project.get("db") if self.project else None) or DEFAULT_DB
+            self.db_path, self._mtime = db_path, _mtime(db_path)
             try:
                 self.db = DB(db_path)
             except SystemExit as exc:
@@ -238,7 +249,9 @@ class SpectraViewer(QWidget):
         fils = sp.demo_filaments() if self.demo else \
             (list(self.db.filaments.values()) if self.db else [])
         self.pool = {f.id: f for f in fils}
-        prev = self.checked()
+        # `ticks` is what was ticked when this pool was last shown (library and demo each keep
+        # their own); [] means "the defaults".
+        prev = [i for i in (self.checked() if ticks is None else ticks) if i in self.pool]
         cal = sorted((f for f in fils if sp.is_calibrated(f)), key=lambda f: f.label())
         other = sorted((f for f in fils if not sp.is_calibrated(f)), key=lambda f: f.label())
         self.list.blockSignals(True)
@@ -266,8 +279,8 @@ class SpectraViewer(QWidget):
         cur = self.base.currentData()
         self.base.blockSignals(True)
         self.base.clear()
-        self.base.addItem("ideal white (R = 0.9)", "white")
-        self.base.addItem("ideal black (R = 0.03)", "black")
+        for k, r in sp.IDEAL_BASES.items():
+            self.base.addItem(f"ideal {k} (R = {r:g})", k)
         for f in cal:
             self.base.addItem(swatch_icon(sp.colour_of(f)), f.label(), f.id)
         want = cur if cur is not None and self.base.findData(cur) >= 0 else \
@@ -291,9 +304,18 @@ class SpectraViewer(QWidget):
         self._apply_filter()
         self.refresh()
 
+    def reload_if_changed(self):
+        """Reload only when the library file (or which file) changed, as the Plaque tab does."""
+        if self.demo:
+            return
+        path = (self.project.get("db") if self.project else None) or DEFAULT_DB
+        if path != getattr(self, "db_path", None) or _mtime(path) != getattr(self, "_mtime", None):
+            self.reload()
+
     def toggle_demo(self):
+        self._ticks[self.demo] = self.checked()
         self.demo = not self.demo
-        self.reload()
+        self.reload(ticks=self._ticks.get(self.demo, []))
 
     def checked(self) -> list:
         return [self.list.item(i).data(Qt.UserRole) for i in range(self.list.count())
@@ -378,9 +400,7 @@ class SpectraViewer(QWidget):
     def load_readings(self, path):
         try:
             data = wedgesheet.load_readings(path)
-            every = [r for s in data["strips"] for r in s.get("readings", [])] + \
-                    [s["base_reading"] for s in data["strips"] if s.get("base_reading")]
-            scale = sp.spectrum_scale(every)
+            scale = sp.readings_scale(data)
         except (OSError, ValueError) as exc:
             QMessageBox.warning(self, APP, f"{path}: {exc}")
             return False
@@ -523,7 +543,7 @@ class SpectraTab(QWidget):
         lay.addWidget(self.nb)
 
     def on_show(self):
-        self.viewer.reload()            # a fit in another tab may have added a calibration
+        self.viewer.reload_if_changed()     # a fit in another tab may have added a calibration
 
     def reload_db(self, path=None):
         self.viewer.reload(path)

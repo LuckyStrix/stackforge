@@ -151,6 +151,8 @@ class Readings(unittest.TestCase):
         self.assertEqual(scale, 100.0)
         self.assertAlmostEqual(float(sp.reading_spectrum(dark, scale)[0]), 0.008)
         self.assertEqual(sp.spectrum_scale([self.reading(np.full(36, 0.5))]), 1.0)
+        data = {"strips": [{"readings": [dark], "base_reading": white}]}
+        self.assertEqual(sp.readings_scale(data), 100.0)
         # spotread documents 0..100: that is silent, 0..1 is called out.
         self.assertIsNone(sp.scale_note(100.0))
         self.assertIn("0..100", sp.scale_note(1.0))
@@ -188,8 +190,7 @@ class Fit(unittest.TestCase):
     def test_held_out_is_reported(self):
         data = tool.demo_readings("demo-blue", steps=5, noise=0.002, seed=2)
         ds, _, _ = tool.datasets_from_readings(data, "demo-blue")
-        _, _, x = tool.fit_ks(ds, 0.08)
-        ho = np.concatenate(tool.held_out_de(ds, 0.08, tool.SMOOTH, x))
+        ho = np.concatenate(tool.held_out_de(ds, 0.08, tool.SMOOTH))
         self.assertEqual(len(ho), 10)
         self.assertTrue(np.isfinite(ho).all())
 
@@ -236,6 +237,16 @@ class FitCli(unittest.TestCase):
                         "--no-holdout", "--write"])
         self.assertEqual(rc, 1)
         self.assertFalse(sp.is_calibrated(DB(self.db).filaments["demo-orange"]))
+
+    def test_steps_measured_against_the_wedge_are_refused(self):
+        data = json.load(open(self.readings))
+        data["strips"][0]["reversed_steps"] = [4]
+        wedgesheet.write(self.readings, data)
+        rc = tool.main(["fit", "--readings", self.readings, "--filament", "demo-orange", "--db", self.db,
+                        "--no-holdout", "--write"])
+        self.assertEqual(rc, 1)
+        self.assertFalse(sp.is_calibrated(DB(self.db).filaments["demo-orange"]))
+        self.assertIn("[4]", tool.reversed_notes(data, "demo-orange")[0])
 
     def test_inconsistent_scale_is_refused(self):
         data = json.load(open(self.readings))
@@ -364,6 +375,35 @@ class SpectralPlaque(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("demo-red", r.stdout + r.stderr)
         self.assertIn("spectral", r.stdout + r.stderr)
+
+    def test_backing_is_white_minus_black_backing(self):
+        K, S = sp.ks(demo("demo-white"))
+        R0, T = sp.layer_rt(K, S, 0.5)
+        diff = sp.over(np.ones(sp.NB), R0, T) - sp.over(np.zeros(sp.NB), R0, T)
+        self.assertTrue(np.allclose(sp.backing(K, S, 0.5), diff))
+
+    def test_spectral_base_opacity_means_what_the_rgb_rule_means(self):
+        """The backing may show by 1%, as in RGB; one-pass T <= 1% asked for 22 layers."""
+        white = demo("demo-white")
+        n, mm = sp.opaque_layers(white, 0.2, 0.08, plaque.OPAQUE_T)
+        self.assertEqual(n, 13)
+        h = 0.2 + (n - 1) * 0.08
+        R0, T = sp.layer_rt(*sp.ks(white), h)
+        self.assertLessEqual((sp.over(np.ones(sp.NB), R0, T) - sp.over(np.zeros(sp.NB), R0, T)).max(),
+                             plaque.OPAQUE_T + 1e-9)
+
+    def test_padding_solves_to_the_bare_base(self):
+        """Transparent pixels must land on state 0 even when the base's RGB `color` is stale."""
+        from types import SimpleNamespace
+        fils = self.fils("demo-white", "demo-black", "demo-orange", "demo-blue")
+        fils[0].color = "#E8E8E8"                              # not its spectral colour
+        a = SimpleNamespace(optics="spectral", illuminant="D65", layer_height=0.08, max_layers=4)
+        pad = plaque.pad_colour(fils[0], a)
+        self.assertEqual("#%02X%02X%02X" % pad, sp.colour_of(fils[0]))
+        g = plaque.make_gamut(fils, fils[0], a)
+        self.assertEqual(int(g.query(np.array([[pad]], float))[0, 0]), 0)
+        a.optics = "rgb"
+        self.assertEqual(plaque.pad_colour(fils[0], a), (0xE8, 0xE8, 0xE8))
 
     def test_base_check_uses_km_transmittance(self):
         from types import SimpleNamespace

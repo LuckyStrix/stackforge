@@ -390,6 +390,7 @@ class PlaqueDesigner(QWidget):
         # to RGB restores the loadout.
         prev = self._checked() | getattr(self, "_held", set())
         held = set()
+        first = self.list.count() == 0 and not prev      # the starter loadout, once
         prefer = ("white", "black", "blue", "red")
         self._loading = True
         self.list.clear()
@@ -408,7 +409,7 @@ class PlaqueDesigner(QWidget):
             it.setData(Qt.UserRole, fil.id)
             it.setToolTip(tip)
             it.setFlags(it.flags() | Qt.ItemIsUserCheckable)
-            on = fil.id in prev if prev else any(p == fil.name.lower() for p in prefer)
+            on = any(p == fil.name.lower() for p in prefer) if first else fil.id in prev
             if spec and not cal:
                 # Spectral optics refuses uncalibrated filaments; say so here, not at Generate.
                 if on:
@@ -449,6 +450,7 @@ class PlaqueDesigner(QWidget):
 
     def _set_all(self, on):
         self._loading = True
+        self._held = set()
         for i in range(self.list.count()):
             it = self.list.item(i)
             if not it.isHidden() and it.flags() & Qt.ItemIsEnabled:
@@ -458,6 +460,7 @@ class PlaqueDesigner(QWidget):
 
     def _select_measured(self):
         self._loading = True
+        self._held = set()
         for i in range(self.list.count()):
             it = self.list.item(i)
             fil = self.db.filaments[it.data(Qt.UserRole)]
@@ -472,11 +475,22 @@ class PlaqueDesigner(QWidget):
         if i >= 0:
             self.base.setCurrentIndex(i)
 
-    def _set_checked(self, ids: set):
+    def _set_checked(self, ids: set, replace_held=True):
+        """Tick exactly `ids`. A disabled row (uncalibrated under spectral optics) is never
+        ticked, since it could not be unticked again; with `replace_held` it is held for RGB
+        instead, replacing what was held before."""
         self._loading = True
+        held = set()
         for i in range(self.list.count()):
             it = self.list.item(i)
-            it.setCheckState(Qt.Checked if it.data(Qt.UserRole) in ids else Qt.Unchecked)
+            fid = it.data(Qt.UserRole)
+            on = fid in ids
+            if on and not it.flags() & Qt.ItemIsEnabled:
+                held.add(fid)
+                on = False
+            it.setCheckState(Qt.Checked if on else Qt.Unchecked)
+        if replace_held:
+            self._held = held
         self._loading = False
 
     def selected(self):
@@ -533,7 +547,7 @@ class PlaqueDesigner(QWidget):
                 QMessageBox.warning(self, APP, str(exc))
                 return None
         if base.id not in {f.id for f in sel}:
-            self._set_checked(self._checked() | {base.id})
+            self._set_checked(self._checked() | {base.id}, replace_held=False)
         sel = [base] + [f for f in sel if f.id != base.id]
         return sel, base
 
@@ -564,7 +578,7 @@ class PlaqueDesigner(QWidget):
         a = self.config_ns()
         w_px, h_px = plaque.pixel_grid(a, self.source_img.width, self.source_img.height)
         base = self.db.filaments.get(self._base_id())
-        pad = tuple(int(v) for v in base.rgb()) if base else (255, 255, 255)
+        pad = plaque.pad_colour(base, a) if base else (255, 255, 255)
         self.fitted = colormath.fit_image(self.image_path, w_px, h_px, a.fit, pad=pad)
         self.view[0].set_image(self.fitted)
         self.views.setCurrentIndex(0)
@@ -893,7 +907,11 @@ class PlaqueDesigner(QWidget):
         if want - set(self.db.filaments):
             notes.append(f"{len(want - set(self.db.filaments))} filament(s) no longer in the database")
         if p.get("base") in self.db.filaments:
-            self._set_base(p["base"])
+            self._held_base = ""
+            if self.base.findData(p["base"]) >= 0:
+                self._set_base(p["base"])
+            else:
+                self._held_base = p["base"]      # uncalibrated under spectral: back under RGB
         self._loading = False
         self._refresh_fit()
         self._refresh_estimate()

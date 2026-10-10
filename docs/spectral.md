@@ -51,13 +51,15 @@ stackforge-spectral fit --readings wedge.readings.json --filament orange --write
 
 The fit reports:
 - in-sample dE per step
-- **held-out dE**: each step predicted by a fit that never saw it. This is the honest accuracy
+- **held-out dE**: each step predicted by a fit that never saw it (each refit starts from scratch,
+  not from the full fit). This is the honest accuracy
   number. Above ~3 the model is not describing the print; re-measure, or suspect the print.
 - K, S and R∞ at every fifth band
 
 `--write` is refused:
 - with one base, or two bases that differ by less than 0.25 in mean reflectance
 - with fewer than 4 steps
+- when measure flagged steps that ran against the wedge (`reversed_steps`)
 - when the readings' own XYZ disagrees with the Y of their spectra (see "Unverified" below)
 
 A fit stores a `spectral` block on the filament (`Filament.spectral`: K, S, date, source file,
@@ -72,8 +74,11 @@ Designer) warns when a calibrated filament is used on a different layer grid.
 - **Plaque:** `stackforge-plaque … --optics spectral [--illuminant D65|D50|A]`. The Designer has the
   same switch under Colour > Optics. Only spectrally calibrated filaments are accepted, base
   included. The CLI lists the missing ones and refuses; the Designer greys them out. Everything
-  downstream (ranking, dithering, export, the opaque-base check) is unchanged. The base check uses
-  the KM transmittance of the worst band.
+  downstream (ranking, dithering, export, the opaque-base check) is unchanged. The base check asks
+  the same question as the RGB one: how much does what is under the base still show? In KM that
+  is the reflectance over a white backing minus over a black one, T²/(1 − R0), in the worst band;
+  KM's own T is one pass, and testing it alone asked for about twice the base. Transparent and
+  margin pixels are padded with the base's spectral colour, so they solve to bare base.
 - **Spectra tab:** pick calibrated filaments (several overlay) and a base, then drag the layer
   slider. The tab has:
   - three views: reflectance over the base; transmittance through the layers; K/S on a log scale

@@ -64,7 +64,7 @@ def main(argv=None):
     w = max(1, round(args.width / args.resolution))
     im = colormath.open_image(args.image)
     h = max(1, round(w * im.height / im.width))
-    img = colormath.fit_image(args.image, w, h, "cover", pad=tuple(int(v) for v in base.rgb()))
+    img = colormath.fit_image(args.image, w, h, "cover", pad=plaque.pad_colour(base, args))
     gamut = plaque.make_gamut(fils, base, args)
 
     rows, tiles = [], [("target", img)]

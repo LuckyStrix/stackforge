@@ -496,10 +496,19 @@ def opaque_base_layers(base, first_layer, layer, args=None):
 
 
 def base_transmittance(base, mm, args) -> float:
-    """Worst-channel (or worst-band) transmittance of `mm` of the base."""
+    """How much of what is under `mm` of the base shows through, worst channel (or band)."""
     if _spectral(args):
-        return float(spectral.transmittance(*spectral.ks(base), mm).max())
+        return float(spectral.backing(*spectral.ks(base), mm).max())
     return float(base.transmittance(mm).max())
+
+
+def pad_colour(base, args) -> tuple:
+    """The sRGB that transparent and margin pixels take: the gamut's bare-base colour, so they
+    solve to "nothing printed". Under spectral optics that is the base's spectral colour, not
+    its RGB `color`, which the spectral fit leaves alone."""
+    if _spectral(args) and spectral.is_calibrated(base):
+        return tuple(colormath.parse_hex(spectral.colour_of(base, getattr(args, "illuminant", "D65"))))
+    return tuple(int(v) for v in base.rgb())
 
 
 def resolve_base_layers(args, base, log=print):
@@ -959,6 +968,7 @@ def main(argv=None):
     resolve_layers(args, args.template)
     resolve_base_layers(args, base)
 
+    est = []
     if args.optics == "spectral":
         print(f"filaments ({len(fils)}), spectral optics under {args.illuminant}:")
         for i, f in enumerate(fils, 1):
@@ -969,8 +979,8 @@ def main(argv=None):
         print(f"base: {base.label()}")
         for w in spectral.layer_mismatch(fils, args.layer_height):
             print(f"  ! {w}")
-    est = [] if args.optics == "spectral" else [f.id for f in fils if f.provenance != "measured"]
-    if args.optics != "spectral":
+    else:
+        est = [f.id for f in fils if f.provenance != "measured"]
         print(f"filaments ({len(fils)}):")
         for i, f in enumerate(fils, 1):
             flag = ("" if f.provenance == "measured"
@@ -987,8 +997,7 @@ def main(argv=None):
     im = colormath.open_image(args.image)
     w_px, h_px = pixel_grid(args, im.width, im.height)
     # Transparent pixels (and contain-padding) become base: nothing printed.
-    img = colormath.fit_image(args.image, w_px, h_px, args.fit,
-                            pad=tuple(int(v) for v in base.rgb()))
+    img = colormath.fit_image(args.image, w_px, h_px, args.fit, pad=pad_colour(base, args))
     print(f"image: {w_px} x {h_px} px  ->  "
           f"{w_px*args.resolution:.1f} x {h_px*args.resolution:.1f} mm")
     check_bed(args.template, w_px * args.resolution, h_px * args.resolution)
