@@ -112,6 +112,10 @@ class Filament:
     layer_height_ref: float = 0.0  # layer height the measurement was made at
     notes: str = ""
     tags: list = field(default_factory=list)
+    # Kubelka-Munk K and S per 10 nm band, fitted from measured wedge spectra
+    # (core/spectral.py, `stackforge-spectral fit`). Its own measurement: td/td_rgb and
+    # provenance describe the RGB model and are left alone by a spectral fit.
+    spectral: dict | None = None
 
     # -- derived ---------------------------------------------------------
 

@@ -20,7 +20,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 from stackforge.tools import plaque
-from stackforge.core import colormath
+from stackforge.core import colormath, spectral
 from stackforge.core.filamentdb import DEFAULT_DB, DB
 
 MODES = ["none", "ordered", "blue", "floyd"]
@@ -41,6 +41,10 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--blur", type=float, default=None,
                     help=f"eye low-pass sigma, px (default {plaque.BLUR_MM} mm / --resolution)")
     ap.add_argument("--sheet", help="contact sheet PNG")
+    ap.add_argument("--optics", choices=["rgb", "spectral"], default="rgb",
+                    help="colour model, as in stackforge-plaque (spectral: calibrated filaments only)")
+    ap.add_argument("--illuminant", choices=list(spectral.ILLUMINANTS), default="D65",
+                    help="with --optics spectral: the light the plaque is matched under")
     return ap
 
 
@@ -55,11 +59,13 @@ def main(argv=None):
     base = db.get(args.base) if args.base else fils[0]
     if base.id not in {f.id for f in fils}:
         raise SystemExit(f"--base {base.id} must also appear in --filaments")
+    if args.optics == "spectral":
+        spectral.require_calibrated(list(fils) + [base])
     w = max(1, round(args.width / args.resolution))
     im = colormath.open_image(args.image)
     h = max(1, round(w * im.height / im.width))
     img = colormath.fit_image(args.image, w, h, "cover", pad=tuple(int(v) for v in base.rgb()))
-    gamut = plaque.Gamut(fils, base, args.layer_height, args.max_layers, verbose=False)
+    gamut = plaque.make_gamut(fils, base, args)
 
     rows, tiles = [], [("target", img)]
     for mode in MODES:

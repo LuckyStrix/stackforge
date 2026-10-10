@@ -20,6 +20,7 @@ TOOL_MODULES = {
     "measure": "stackforge.tools.measure", "polymaker": "stackforge.tools.polymaker",
     "dither_compare": "stackforge.tools.dither_compare",
     "make_samples": "stackforge.tools.make_samples", "filamentdb": "stackforge.core.filamentdb",
+    "spectral": "stackforge.tools.spectral",
 }
 
 KILL_AFTER = 3.0

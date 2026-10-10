@@ -37,6 +37,17 @@ clean and CI runs both. PySide6 is the `gui` extra; the CLIs need only numpy/Pil
   not just ids. Slot 0 of each wedge is a bare-base patch; its reading replaces the library colour.
 - **td is the reflectance-fit kind** (`tools/calibrate.py`: light crosses each layer twice). measure's
   transmission td is single-pass, ~2x for a clear absorber; never paste it in as `td_rgb`.
+- **Spectral optics take calibrated filaments only** (`core/spectral.py`, `docs/spectral.md`).
+  `plaque --optics spectral` and `SpectralGamut` refuse any filament or base without a
+  `Filament.spectral` block (Kubelka-Munk K, S per 10 nm band, 380-730), which only
+  `stackforge-spectral fit` writes, from two contrasting bases. It never touches td/td_rgb/provenance.
+  `Gamut` is split into `_setup`/`_add_layer`/`_linear` hooks: the RGB path must stay byte-identical
+  (checked against the pre-refactor build). CIE tables in `data/cie/` are the CIE's files, md5-tested.
+- **Spectrum scale is unverified on hardware**: decided per readings file (never per patch: a dark
+  patch on 0..100 reads below 1), cross-checked against each base patch's XYZ; mismatch refuses
+  `--write`. `demo-*` filaments are SYNTHETIC: watermarked, never written to a library by the viewer.
+- **No exception may escape a `paintEvent`**: on Windows PySide it kills the process (access
+  violation). `gui/spectrum_chart.py` draws the error instead. numpy 2 keeps `ceil()` of an int integral.
 
 ## Bite
 

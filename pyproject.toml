@@ -25,6 +25,7 @@ stackforge-calibrate = "stackforge.tools.calibrate:main"
 stackforge-measure = "stackforge.tools.measure:main"
 stackforge-filaments = "stackforge.core.filamentdb:main"
 stackforge-polymaker = "stackforge.tools.polymaker:main"
+stackforge-spectral = "stackforge.tools.spectral:main"
 stackforge-dither-compare = "stackforge.tools.dither_compare:main"
 stackforge-make-samples = "stackforge.tools.make_samples:main"
 
@@ -33,7 +34,7 @@ where = ["src"]
 
 # the shipped filament database and Polymaker catalogue (src/stackforge/data/)
 [tool.setuptools.package-data]
-stackforge = ["data/*.json"]
+stackforge = ["data/*.json", "data/cie/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

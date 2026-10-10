@@ -67,9 +67,10 @@ class HostWindow(QMainWindow):
         from stackforge.gui.tabs.plaque import PlaqueArea
         from stackforge.gui.tabs.measure import MeasureTab
         from stackforge.gui.tabs.paint import PaintTab
+        from stackforge.gui.tabs.spectra import SpectraTab
         from stackforge.gui.tabs.tools import ToolsTab
         self.add_tab(PlaqueArea(self.project, self.presets, host=self, image_path=self._image))
-        for cls in (PaintTab, FilamentsTab, CalibrateTab, MeasureTab, ToolsTab):
+        for cls in (PaintTab, FilamentsTab, CalibrateTab, MeasureTab, SpectraTab, ToolsTab):
             self.add_tab(cls(self.project, self.presets, host=self))
 
     def add_tab(self, tab):

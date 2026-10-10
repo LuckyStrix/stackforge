@@ -53,6 +53,7 @@ from scipy.spatial import cKDTree
 
 from stackforge.core import colormath
 from stackforge.core import optics
+from stackforge.core import spectral
 from stackforge.core import threemf
 from stackforge.core.filamentdb import DEFAULT_DB, DB, PROVENANCE_LABEL, provenance_counts
 
@@ -83,19 +84,18 @@ class Gamut:
         self.max_layers = max_layers
         self.n = len(filaments)
 
-        cols = np.array([f.linear() for f in filaments])            # (n,3)
-        trans = np.array([f.transmittance(layer_h) for f in filaments])  # (n,3)
-        self.cols, self.trans = cols, trans
+        start = self._setup()
 
-        base_lin = base.linear()
-
-        # colors[i], parent[i], fil[i], depth[i] -- parent chain rebuilds stacks.
-        # Kept as one chunk per depth; the newest chunk is the frontier.
-        colors = [base_lin[None, :]]
+        # states[i], parent[i], fil[i], depth[i] -- parent chain rebuilds stacks.
+        # Kept as one chunk per depth; the newest chunk is the frontier. A state is
+        # whatever the optics composite (linear RGB here, a spectrum in SpectralGamut);
+        # deduping always happens on its linear sRGB colour.
+        states = [start]
+        colors = [self._linear(start)]
         parent = [np.array([-1])]
         fil = [np.array([-1])]
         depth = [np.array([0])]
-        seen = self._keys(base_lin[None, :], grid)          # sorted packed cell keys
+        seen = self._keys(colors[0], grid)                  # sorted packed cell keys
         frontier = np.array([0])
         total = 1
 
@@ -104,8 +104,9 @@ class Gamut:
         for d in range(1, max_layers + 1):
             fc = colors[-1]                                           # (m,3)
             m = len(fc)
-            # Every filament over every frontier state, filament-major: (n*m, 3).
-            cand = (fc[None] * trans[:, None] + cols[:, None] * (1.0 - trans[:, None])).reshape(-1, 3)
+            # Every filament over every frontier state, filament-major: (n*m, ...).
+            cand_state = self._add_layer(states[-1])
+            cand = self._linear(cand_state)
             keys = self._keys(cand, grid)
             fkeys = np.tile(self._keys(fc, grid), self.n)
             moved = (np.abs(cand.reshape(self.n, m, 3) - fc[None]).max(-1) > CARRY_EPS).ravel()
@@ -125,6 +126,7 @@ class Gamut:
                     print(f"  depth {d}: converged, no new colors")
                 break
             seen = np.union1d(seen, keys[fresh])
+            states.append(cand_state[keep])
             colors.append(cand[keep])
             parent.append(frontier[keep % m])
             fil.append(keep // m)
@@ -143,6 +145,7 @@ class Gamut:
                 break
 
         self.colors = np.concatenate(colors)
+        self.states = np.concatenate(states) if states[0] is not colors[0] else self.colors
         self.parent = np.concatenate(parent)
         self.fil = np.concatenate(fil)
         self.depth = np.concatenate(depth)
@@ -150,6 +153,23 @@ class Gamut:
         self.tree = cKDTree(self.lab)
         if verbose:
             print(f"  gamut: {len(self.colors)} colors, built in {time.time()-t0:.1f}s")
+
+    # -- optics: the three hooks SpectralGamut overrides ------------------------
+
+    def _setup(self):
+        """Precompute per-filament optics; return the base's state, shape (1, ...)."""
+        self.cols = np.array([f.linear() for f in self.filaments])                 # (n,3)
+        self.trans = np.array([f.transmittance(self.layer_h) for f in self.filaments])  # (n,3)
+        return self.base.linear()[None, :]
+
+    def _add_layer(self, fc):
+        """(m, ...) states -> (n*m, ...): every filament over every state, filament-major."""
+        trans, cols = self.trans, self.cols
+        return (fc[None] * trans[:, None] + cols[:, None] * (1.0 - trans[:, None])).reshape(-1, 3)
+
+    def _linear(self, states):
+        """States -> (k, 3) linear sRGB, the space everything downstream works in."""
+        return states
 
     # Dedup quantizes the sRGB *encoding*, not linear light. A linear grid is
     # perceptually lopsided: its first cell spans L* 0..5 at grid 192, so
@@ -194,6 +214,54 @@ class Gamut:
         flat = lab.reshape(-1, 3)
         _, idx = self.tree.query(flat, workers=-1)
         return idx.reshape(lab.shape[:-1])
+
+
+class SpectralGamut(Gamut):
+    """Gamut under the Kubelka-Munk model, one reflectance spectrum per state.
+
+    Only spectrally calibrated filaments (`Filament.spectral`) are accepted. Each layer is
+    laid over the state's spectrum band by band (`spectral.over`), so a filament filters what
+    is under it instead of fading towards its own colour: orange over blue goes dark olive
+    because orange stops the blue light the blue layer would have sent back. States are
+    deduped, matched and exported exactly as in the RGB gamut, on their linear sRGB colour
+    as seen under `illuminant`.
+    """
+
+    def __init__(self, filaments, base, layer_h, max_layers, grid=192, cap=400_000,
+                 verbose=True, progress=None, illuminant="D65"):
+        spectral.require_calibrated(list(filaments) + [base])
+        self.illuminant = illuminant
+        super().__init__(filaments, base, layer_h, max_layers, grid, cap, verbose, progress)
+
+    def _setup(self):
+        rt = [spectral.layer_rt(*spectral.ks(f), self.layer_h) for f in self.filaments]
+        self.R0 = np.array([r for r, _ in rt], dtype=np.float32)          # (n,36)
+        self.T2 = np.array([t * t for _, t in rt], dtype=np.float32)      # (n,36)
+        self._M = spectral._linear_matrix(self.illuminant).astype(np.float32)
+        # The base is an opaque backing, as in the RGB model: its bulk reflectance.
+        return spectral.r_inf(*spectral.ks(self.base))[None, :].astype(np.float32)
+
+    def _add_layer(self, fc):
+        R0, T2 = self.R0[:, None], self.T2[:, None]
+        out = R0 + T2 * fc[None] / (1.0 - R0 * fc[None])
+        return out.reshape(-1, spectral.NB)
+
+    def _linear(self, states):
+        return (states @ self._M).astype(np.float64)
+
+    def spectra(self, idx) -> np.ndarray:
+        """Reflectance spectra of states `idx`."""
+        return self.states[idx].astype(np.float64)
+
+
+def make_gamut(fils, base, args, verbose=False, progress=None):
+    """The gamut for --optics (rgb or spectral); every solver path goes through this."""
+    kw = dict(grid=getattr(args, "grid", 192), cap=getattr(args, "cap", 400_000),
+              verbose=verbose, progress=progress)
+    if getattr(args, "optics", "rgb") == "spectral":
+        return SpectralGamut(fils, base, args.layer_height, args.max_layers,
+                             illuminant=getattr(args, "illuminant", "D65"), **kw)
+    return Gamut(fils, base, args.layer_height, args.max_layers, **kw)
 
 
 # --------------------------------------------------------------------------
@@ -405,16 +473,29 @@ def base_height(args):
     return args.first_layer_height + (args.base_layers - 1) * args.layer_height
 
 
-def opaque_base_layers(base, first_layer, layer):
+def _spectral(args) -> bool:
+    return getattr(args, "optics", "rgb") == "spectral"
+
+
+def opaque_base_layers(base, first_layer, layer, args=None):
     """(layers, mm of base) for the base to pass at most OPAQUE_T of the light."""
+    if args is not None and _spectral(args):
+        return spectral.opaque_layers(base, first_layer, layer, OPAQUE_T)
     return optics.opaque_layers(base, first_layer, layer, OPAQUE_T)
+
+
+def base_transmittance(base, mm, args) -> float:
+    """Worst-channel (or worst-band) transmittance of `mm` of the base."""
+    if _spectral(args):
+        return float(spectral.transmittance(*spectral.ks(base), mm).max())
+    return float(base.transmittance(mm).max())
 
 
 def resolve_base_layers(args, base, log=print):
     """--base-layers auto (None): the fewest layers that make the base opaque."""
     if args.base_layers is not None:
         return
-    need, opaque = opaque_base_layers(base, args.first_layer_height, args.layer_height)
+    need, opaque = opaque_base_layers(base, args.first_layer_height, args.layer_height, args)
     cap = 1 + int(np.ceil(max(0.0, OPAQUE_MAX_MM - args.first_layer_height) / args.layer_height))
     args.base_layers = min(need, cap)
     log(f"base: {args.base_layers} layers of {base.name} ({base_height(args):.2f} mm), "
@@ -425,10 +506,10 @@ def resolve_base_layers(args, base, log=print):
 
 def base_warning(base, args):
     """Why the base is not an opaque backing, or None if it is."""
-    t = float(base.transmittance(base_height(args)).max())
+    t = base_transmittance(base, base_height(args), args)
     if t <= OPAQUE_T:
         return None
-    need, opaque = opaque_base_layers(base, args.first_layer_height, args.layer_height)
+    need, opaque = opaque_base_layers(base, args.first_layer_height, args.layer_height, args)
     msg = (f"{args.base_layers} base layers of {base.name} ({base_height(args):.2f} mm) "
            f"still let {100 * t:.0f}% of the light through, so the print picks up "
            f"whatever is under it. ")
@@ -446,8 +527,7 @@ def solve(fils, base, args, img, progress=None, verbose=False):
     def prog(f, m):
         if progress:
             progress(f, m)
-    g = Gamut(fils, base, args.layer_height, args.max_layers, args.grid, args.cap,
-              verbose=verbose, progress=lambda f, m: prog(0.7 * f, m))
+    g = make_gamut(fils, base, args, verbose=verbose, progress=lambda f, m: prog(0.7 * f, m))
     prog(0.7, "matching pixels to reachable colours")
     t0 = time.time()
     state = solve_image(g, img, getattr(args, "dither", "none"))
@@ -549,8 +629,7 @@ def score_subset(fils, base, args, rgb):
     what gets scored; ranking on the undithered nearest match picked different
     winners. floyd has no per-colour equivalent and is scored undithered.
     """
-    g = Gamut(fils, base, args.layer_height, args.max_layers,
-              args.grid, args.cap, verbose=False)
+    g = make_gamut(fils, base, args)
     lab = colormath.srgb_to_lab(rgb)
     if getattr(args, "dither", "none") in ("ordered", "blue"):
         a, b, al = mix_pairs(g, rgb[:, None, :])
@@ -610,8 +689,7 @@ def render_candidates(results, base, args, img, top, progress=None):
     """Re-solve the full image for the best few so they can be looked at."""
     out = []
     for i, r in enumerate(results[:top], 1):
-        g = Gamut(r["fils"], base, args.layer_height, args.max_layers,
-                  args.grid, args.cap, verbose=False)
+        g = make_gamut(r["fils"], base, args)
         state = solve_image(g, img, getattr(args, "dither", "none"))
         out.append(dict(r, image=np.round(g.srgb()[state]).astype(np.uint8)))
         if progress:
@@ -770,6 +848,14 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--base-layers", type=int, default=None,
                     help="layers of base filament under the colour (default: auto, the "
                          "fewest that block 99%% of the light for the base's td)")
+    ap.add_argument("--optics", choices=["rgb", "spectral"], default="rgb",
+                    help="colour model. rgb: td / td_rgb per filament (works with estimates). "
+                         "spectral: Kubelka-Munk per 10 nm band from measured wedge spectra; "
+                         "only spectrally calibrated filaments are accepted "
+                         "(stackforge-spectral fit)")
+    ap.add_argument("--illuminant", choices=list(spectral.ILLUMINANTS), default="D65",
+                    help="with --optics spectral: the light the plaque is matched under "
+                         "(D65 daylight, D50 print-viewing, A incandescent)")
     ap.add_argument("--dither", choices=["none", "ordered", "blue", "floyd"], default="none",
                     help="spatial mixing of two stacks per pixel. 'blue' (blue-noise "
                          "screen) and 'ordered' (Bayer) only help when stacks are "
@@ -853,16 +939,28 @@ def main(argv=None):
     if base.id not in {f.id for f in fils}:
         raise SystemExit(f"--base {base.id} must also appear in --filaments")
 
+    if args.optics == "spectral":
+        spectral.require_calibrated(list(fils) + [base])
     resolve_layers(args, args.template)
     resolve_base_layers(args, base)
 
-    est = [f.id for f in fils if f.provenance != "measured"]
-    print(f"filaments ({len(fils)}):")
-    for i, f in enumerate(fils, 1):
-        flag = "" if f.provenance == "measured" else f"  <- td is {PROVENANCE_LABEL.get(f.provenance, f.provenance)}"
-        td = "/".join(f"{v:.3f}" for v in f.td_vec()) if f.td_rgb else f"{f.td:.3f}"
-        print(f"  T{i}  {f.color}  td={td}  {f.label()}{flag}")
-    print(f"base: {base.label()}")
+    if args.optics == "spectral":
+        print(f"filaments ({len(fils)}), spectral optics under {args.illuminant}:")
+        for i, f in enumerate(fils, 1):
+            sp = f.spectral
+            print(f"  T{i}  {spectral.colour_of(f, args.illuminant)}  K/S fitted "
+                  f"{sp.get('measured_at') or '(no date)'} from {sp.get('source') or '?'}  "
+                  f"{f.label()}")
+        print(f"base: {base.label()}")
+    est = [] if args.optics == "spectral" else [f.id for f in fils if f.provenance != "measured"]
+    if args.optics != "spectral":
+        print(f"filaments ({len(fils)}):")
+        for i, f in enumerate(fils, 1):
+            flag = ("" if f.provenance == "measured"
+                    else f"  <- td is {PROVENANCE_LABEL.get(f.provenance, f.provenance)}")
+            td = "/".join(f"{v:.3f}" for v in f.td_vec()) if f.td_rgb else f"{f.td:.3f}"
+            print(f"  T{i}  {f.color}  td={td}  {f.label()}{flag}")
+        print(f"base: {base.label()}")
     if est:
         print(f"\n  ! {len(est)} of {len(fils)} filaments are not measured "
               f"({provenance_counts(f for f in fils if f.provenance != 'measured')}).")

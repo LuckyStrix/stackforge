@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDoubleSpinBox, QFi
                                QListWidgetItem, QMessageBox, QProgressBar, QPushButton, QScrollArea,
                                QSpinBox, QSplitter, QTabWidget, QVBoxLayout, QWidget)
 
-from stackforge.core import colormath, threemf
+from stackforge.core import colormath, spectral, threemf
 from stackforge.core.filamentdb import DB, DEFAULT_DB, PROVENANCE_LABEL, provenance_counts
 from stackforge.gui import theme
 from stackforge.gui.imageview import ImageView
@@ -219,6 +219,12 @@ class PlaqueDesigner(QWidget):
                                 "base; a see-through base makes every colour wrong."))
 
         c = section("Colour")
+        self.c_optics = _combo(["rgb", "spectral"], "rgb")
+        self.c_illum = _combo(list(spectral.ILLUMINANTS), "D65")
+        c.addRow("Optics", self.c_optics)
+        c.addRow("", theme.hint("spectral: Kubelka-Munk per wavelength from measured wedge spectra. "
+                                "Only spectrally calibrated filaments can be ticked."))
+        c.addRow("Viewing light", self.c_illum)
         self.c_fit = _combo(["cover", "contain", "stretch"], "cover")
         self.c_dither = _combo(["none", "ordered", "blue", "floyd"], "none")
         self.s_grid = _spin(48, 384, 16, 192)
@@ -267,9 +273,18 @@ class PlaqueDesigner(QWidget):
                     self.s_slots, self.s_top, self.s_samples):
             wdg.valueChanged.connect(lambda *_: self._inputs_changed())
         self.c_fit.currentTextChanged.connect(lambda *_: (self._refresh_fit(), self._inputs_changed()))
-        for wdg in (self.c_dither, self.c_rankby):
+        for wdg in (self.c_dither, self.c_rankby, self.c_illum):
             wdg.currentTextChanged.connect(lambda *_: self._inputs_changed())
+        self.c_illum.setEnabled(False)
+        self.c_optics.currentTextChanged.connect(lambda *_: self._optics_changed())
         return scroll
+
+    def _spectral(self) -> bool:
+        return self.c_optics.currentText() == "spectral"
+
+    def _optics_changed(self):
+        self.c_illum.setEnabled(self._spectral())
+        self._reload_filaments()
 
     def _build_bar(self):
         bar = QHBoxLayout()
@@ -375,15 +390,28 @@ class PlaqueDesigner(QWidget):
         self._loading = True
         self.list.clear()
         rows = sorted(self.db.filaments.values(), key=lambda f: (f.brand, f.series, f.name))
+        spec = self._spectral()
         for fil in rows:
             prov = PROVENANCE_LABEL.get(fil.provenance, fil.provenance)
-            it = QListWidgetItem(_swatch(fil.rgb()), f"{fil.name}      td {fil.td:.2f} · {prov}")
+            cal = spectral.is_calibrated(fil)
+            if spec:
+                text = f"{fil.name}      " + ("spectral" if cal else "no spectral calibration")
+                tip = (f"{fil.label()}\nK/S fitted {fil.spectral.get('measured_at') or '?'}" if cal else
+                       f"{fil.label()}\nno spectral calibration: fit one with stackforge-spectral fit")
+            else:
+                text, tip = f"{fil.name}      td {fil.td:.2f} · {prov}", f"{fil.label()}\ntd source: {prov}"
+            it = QListWidgetItem(_swatch(fil.rgb()), text)
             it.setData(Qt.UserRole, fil.id)
-            it.setToolTip(f"{fil.label()}\ntd source: {prov}")
+            it.setToolTip(tip)
             it.setFlags(it.flags() | Qt.ItemIsUserCheckable)
             on = fil.id in prev if prev else any(p == fil.name.lower() for p in prefer)
+            if spec and not cal:
+                # Spectral optics refuses uncalibrated filaments; say so here, not at Generate.
+                on = False
+                it.setFlags(it.flags() & ~Qt.ItemIsEnabled)
             it.setCheckState(Qt.Checked if on else Qt.Unchecked)
-            it.setForeground(QColor(theme.PROVENANCE_COLOUR.get(fil.provenance, theme.FG_DIM)))
+            it.setForeground(QColor(theme.OK if spec and cal else theme.FG_DIM if spec else
+                                    theme.PROVENANCE_COLOUR.get(fil.provenance, theme.FG_DIM)))
             self.list.addItem(it)
         names = [f.id for f in self.db.filaments.values()]
         self.base.blockSignals(True)
@@ -408,8 +436,9 @@ class PlaqueDesigner(QWidget):
     def _set_all(self, on):
         self._loading = True
         for i in range(self.list.count()):
-            if not self.list.item(i).isHidden():
-                self.list.item(i).setCheckState(Qt.Checked if on else Qt.Unchecked)
+            it = self.list.item(i)
+            if not it.isHidden() and it.flags() & Qt.ItemIsEnabled:
+                it.setCheckState(Qt.Checked if on else Qt.Unchecked)
         self._loading = False
         self._inputs_changed()
 
@@ -417,8 +446,10 @@ class PlaqueDesigner(QWidget):
         self._loading = True
         for i in range(self.list.count()):
             it = self.list.item(i)
-            it.setCheckState(Qt.Checked if self.db.filaments[it.data(Qt.UserRole)].provenance == "measured"
-                             else Qt.Unchecked)
+            fil = self.db.filaments[it.data(Qt.UserRole)]
+            # Under spectral optics "measured" means a spectral calibration, not an RGB td fit.
+            ok = spectral.is_calibrated(fil) if self._spectral() else fil.provenance == "measured"
+            it.setCheckState(Qt.Checked if ok else Qt.Unchecked)
         self._loading = False
         self._inputs_changed()
 
@@ -447,7 +478,8 @@ class PlaqueDesigner(QWidget):
             width=self.s_width.value(), height=self.s_height.value(), grid=self.s_grid.value(),
             cap=400_000, dither=self.c_dither.currentText(), fit=self.c_fit.currentText(),
             slots=self.s_slots.value(), top=self.s_top.value(), rank_by=self.c_rankby.currentText(),
-            rank_samples=self.s_samples.value())
+            rank_samples=self.s_samples.value(), optics=self.c_optics.currentText(),
+            illuminant=self.c_illum.currentText())
 
     def _inputs_changed(self):
         if self._loading:
@@ -480,6 +512,12 @@ class PlaqueDesigner(QWidget):
             QMessageBox.warning(self, APP, str(exc))
             return None
         base = self.db.filaments[base_id]
+        if self._spectral():
+            try:
+                spectral.require_calibrated(list(sel) + [base], "Spectral optics")
+            except SystemExit as exc:
+                QMessageBox.warning(self, APP, str(exc))
+                return None
         if base.id not in {f.id for f in sel}:
             self._set_checked(self._checked() | {base.id})
         sel = [base] + [f for f in sel if f.id != base.id]
@@ -779,6 +817,7 @@ class PlaqueDesigner(QWidget):
                 "dither": self.c_dither.currentText(), "grid": self.s_grid.value(),
                 "slots": self.s_slots.value(), "top": self.s_top.value(),
                 "rankby": self.c_rankby.currentText(), "samples": self.s_samples.value(),
+                "optics": self.c_optics.currentText(), "illuminant": self.c_illum.currentText(),
                 "filaments": sorted(f.id for f in self.selected()), "base": self._base_id()}
 
     def _refresh_presets(self, select=""):
@@ -816,7 +855,8 @@ class PlaqueDesigner(QWidget):
                             ("slots", self.s_slots), ("top", self.s_top), ("samples", self.s_samples)):
             if key in p:
                 widget.setValue(p[key])
-        for key, widget in (("fit", self.c_fit), ("dither", self.c_dither), ("rankby", self.c_rankby)):
+        for key, widget in (("fit", self.c_fit), ("dither", self.c_dither), ("rankby", self.c_rankby),
+                            ("optics", self.c_optics), ("illuminant", self.c_illum)):
             if key in p:
                 widget.setCurrentText(p[key])
         want = set(p.get("filaments", []))

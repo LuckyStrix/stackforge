@@ -6,12 +6,12 @@ from stackforge.gui.argform import argv as av
 from stackforge.gui.argform import overrides
 from stackforge.gui.argform.spec import introspect
 from stackforge.tools import (calibrate, dither_compare, make_samples, measure, polymaker,
-                           plaque, paint, top_paint)
+                           plaque, paint, spectral, top_paint)
 
 TOOLS = {"plaque": plaque, "top_paint": top_paint, "paint": paint,
          "calibrate": calibrate, "measure": measure, "polymaker": polymaker,
          "dither_compare": dither_compare, "make_samples": make_samples,
-         "filamentdb": filamentdb}
+         "filamentdb": filamentdb, "spectral": spectral}
 
 
 def specs():

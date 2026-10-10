@@ -351,7 +351,7 @@ class Host(unittest.TestCase):
         app.processEvents()
 
     def test_builds_switches_and_saves_settings(self):
-        self.assertEqual(set(self.win.tabs), {"Plaque", "Paint", "Filaments", "Calibrate", "Measure", "Tools"})
+        self.assertEqual(set(self.win.tabs), {"Plaque", "Paint", "Filaments", "Calibrate", "Measure", "Spectra", "Tools"})
         self.win.show_tab("Tools")
         self.assertIs(self.win.current(), self.win.tabs["Tools"])
         self.win.close()

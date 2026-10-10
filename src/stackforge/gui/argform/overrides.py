@@ -59,6 +59,10 @@ OVERRIDES: dict = {
     ("filamentdb", "set", "color"): "color",
     ("polymaker", "guess-td", "filament"): "filament_ids",
     ("make_samples", "*", "out_dir"): "file_out",
+    ("spectral", "fit", "filament"): "filament_id",
+    ("spectral", "fit", "readings"): "file_in",
+    ("spectral", "show", "filaments"): "filament_ids",
+    ("spectral", "show", "base"): "filament_or_hex",
 }
 
 # (tool, dest) -> (controlling dest, values of it for which this field applies). argparse does

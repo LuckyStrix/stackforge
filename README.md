@@ -111,12 +111,14 @@ so nothing here tries to minimize them.
 | `stackforge-dither-compare` (`tools/dither_compare.py`) | score the plaque's dither modes by blurred dE |
 | `stackforge-make-samples` (`tools/make_samples.py`) | generate `fabric.3mf`, `badge.3mf` and `globe.glb` sample models |
 | `stackforge-plaque` (`tools/plaque.py`) | flat full-color plaques from per-pixel filament stacks |
+| `stackforge-spectral` (`tools/spectral.py`) | Kubelka-Munk K and S per 10 nm band from measured wedge spectra; spectra plots |
 | `gui/` | the Qt GUI (`stackforge`): host window (`app.py`), generated forms (`form.py`, `panel.py`), pickers, one module per tab in `tabs/`, plaque designer in `tabs/plaque.py` |
 | `data/` | shipped `filaments.json` and `polymaker_catalog.json`; the filament library you edit is a copy of the first, in `~/.config/stackforge/` |
 | `core/threemf.py`, `core/colormath.py` | shared 3MF I/O and color math |
 | `gui/theme.py` | the dark theme and small layout helpers |
 | `gui/argform/` | form specs generated from each tool's `build_parser()`; no GUI toolkit needed |
 | `core/optics.py` | what layers of a filament look like over a base (previews, best layer count) |
+| `core/spectral.py`, `data/cie/` | CIE 1931 observer + D65/D50/A, the Kubelka-Munk layer model, spectral records |
 
 `stackforge-paint` is built to the first three steps of `docs/plans/surfacecolor.md`
 (patterns, wrapped images, shell masking); the interactive painting window is not.
@@ -548,6 +550,11 @@ moves the colour by less than one cell is still followed, so translucent
 filaments keep accumulating. The state is just the composited color — what's underneath stops mattering
 once obscured — so the search stays 3-dimensional however deep it goes.
 
+`--optics spectral` swaps this for Kubelka-Munk per 10 nm band (K and S per filament, fitted
+from measured wedge spectra), so a layer filters what is under it instead of fading towards its
+own colour: orange over blue goes olive, as printed, not purple. Only spectrally calibrated
+filaments are accepted. See [stackforge-spectral](#stackforge-spectral) and `docs/spectral.md`.
+
 Short stacks pad at the **bottom** with base filament, which is optically
 identical to the base plate. That's what keeps every pixel the same height
 while allowing different effective depths.
@@ -857,6 +864,34 @@ stackforge-measure measure-wedge --steps 12 -o wedge.json
 stackforge-calibrate chips --filament teal -o chips.3mf
 stackforge-measure transmission --thickness 0.25,0.33,0.41,0.49
 ```
+
+## stackforge-spectral
+
+Per-wavelength calibration and the Spectra tab. A filament printed as a wedge over a white **and**
+a black base, measured with spectra (`stackforge-measure measure-wedge --sheet`), gets an
+absorption K and a scattering S for every 10 nm band from 380 to 730 nm. `stackforge-plaque
+--optics spectral` then predicts stacks wavelength by wavelength. Model, limits and the
+calibration walk-through: `docs/spectral.md`.
+
+```sh
+stackforge-spectral fit --readings wedge.readings.json --filament orange --preview fit.png
+stackforge-spectral fit --readings wedge.readings.json --filament orange --write
+stackforge-spectral show --filaments orange,blue --base white --layers 8 --preview spectra.png
+stackforge-spectral demo-readings -o demo.readings.json     # SYNTHETIC, to try the fit
+```
+
+The fit reports a held-out dE (each step predicted by a fit that never saw it). It refuses to
+write from one base, two similar bases, under 4 steps, or spectra whose scale disagrees with the
+reading's own XYZ.
+
+![Spectra tab (synthetic demo filaments)](docs/spectra_viewer.png)
+
+The **Spectra** tab overlays calibrated filaments. It has a layer slider (with play), ghost curves
+for every other layer count, reflectance / transmittance / K-S views, and a stack builder
+("2 orange over 3 blue over white"). A D65 / D50 / A light switch shows the dE each stack shifts
+under a lamp. "Load readings…" dots measured wedge steps over the model. "Load demo spectra"
+explores with watermarked synthetic filaments that are never saved. **Not yet verified on a real
+meter or a print** (`docs/spectral.md`, "Unverified").
 
 ## stackforge-make-samples
 
