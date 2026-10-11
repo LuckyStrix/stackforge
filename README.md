@@ -369,44 +369,30 @@ cached JSON keeps working in the meantime.
 
 ## stackforge-calibrate
 
-Turns estimated entries into measured ones. The GUI's **Calibrate** tab (*Guided*) runs the
-same steps for one filament and is usually the easier way — same maths, same refusals, but
-you can see the residuals per step.
+Prints the step wedges a filament is calibrated from. The GUI's **Calibrate** tab (*Guided*)
+does the same for one filament.
 
 ```sh
-# 1. print this (on your slicer project's layer grid, solid infill, opaque base)
-stackforge-calibrate wedge --filament teal --base white --template my_project.3mf -o wedge_teal.3mf
+# 1. print this (on your slicer project's layer grid, solid infill, opaque bases)
+stackforge-calibrate wedge --filament teal --base white,black --template my_project.3mf -o wedge_teal.3mf
 
-# 2. read the patches, then fit (the template supplies the layer height it was printed at)
-stackforge-calibrate fit --filament teal --base "#F4F5F0" --template my_project.3mf \
-    --measured "#BAC8C7,#8CA8AB,..." --write
+# 2. read every patch with the ColorMunki, then fit the spectra
+stackforge-measure measure-wedge --sheet wedge_teal.sheet.json
+stackforge-spectral fit --readings wedge_teal.readings.json --filament teal --write
 ```
 
-`fit` refuses to guess the layer height: give `--template` or `--layer-height`.
-
-`--from-image shot.png` samples patches from a photo instead of hand-entered
-hex. A spectrophotometer is ideal; a phone photo under flat indirect daylight
-with a white card in frame, white-balanced against the card, works well enough.
+**Calibration is spectral only on this branch.** The RGB td fit (`stackforge-calibrate fit`,
+from typed hex colours or a photo) is gone: the command exits with a pointer to
+`stackforge-spectral fit`, and the Guided page hands a readings file to the Spectra tab instead
+of fitting. `stackforge-plaque` defaults to `--optics spectral`, so a filament with no spectral
+calibration is refused unless you ask for `--optics rgb`.
 
 ### Print two wedges, over contrasting bases
 
-**A good fit does not imply a trustworthy td.** If the filament's own color is
-close to the background, every step looks nearly the same, and td trades off
-against color — the solver returns a tight residual on a badly wrong answer.
-On synthetic data a translucent filament with a true td of 0.90 fit to 1.72
-with a convincing dE of 0.9 from a single light-base wedge.
-
-A second wedge over a contrasting base breaks the degeneracy, because both
-must be explained by one color and one td. Same data, joint fit: **0.9003**.
-
-```sh
-stackforge-calibrate fit --filament natural --template my_project.3mf \
-    --base  "#F4F5F0" --measured  "..." \
-    --base2 "#1A1A1C" --measured2 "..." --write
-```
-
-The tool warns when a single wedge spans less than dE 25 end to end, and
-refuses `--write` in that case.
+One base cannot separate what a filament absorbs from what it scatters, so the spectral fit
+refuses `--write` from a single base, or from two that differ by less than 0.25 in mean
+reflectance. A wedge whose base is the filament itself is left out, so to calibrate your white,
+use a different light filament as the light base. See [stackforge-spectral](#stackforge-spectral).
 
 ### Matching by eye, with no instrument
 
@@ -477,14 +463,6 @@ default 4). Each step keeps the full `--base-layers` pad, so opacity is unchange
 one step flat onto the aperture while the wedge stays one piece. Mind the plate width: 12 steps
 at 14 mm + 8 mm gaps is 256 mm.
 
-### Per-channel td
-
-Pigmented filaments often need it — a red that passes red but blocks green and
-blue cannot be described by one number. Synthetic red with true
-`[0.45, 0.11, 0.09]`: scalar fit gives dE 19.7 and flags itself as poor;
-`--per-channel` recovers `[0.4482, 0.11, 0.09]`. If a scalar fit reports a bad
-residual on clean measurements, that's the signal to switch.
-
 ---
 
 ## stackforge-top-paint
@@ -550,7 +528,7 @@ moves the colour by less than one cell is still followed, so translucent
 filaments keep accumulating. The state is just the composited color — what's underneath stops mattering
 once obscured — so the search stays 3-dimensional however deep it goes.
 
-`--optics spectral` swaps this for Kubelka-Munk per 10 nm band (K and S per filament, fitted
+That is `--optics rgb`, which has to be asked for. The default, `--optics spectral`, swaps this for Kubelka-Munk per 10 nm band (K and S per filament, fitted
 from measured wedge spectra), so a layer filters what is under it instead of fading towards its
 own colour: orange over blue goes olive, as printed, not purple. Only spectrally calibrated
 filaments are accepted. See [stackforge-spectral](#stackforge-spectral) and `docs/spectral.md`.

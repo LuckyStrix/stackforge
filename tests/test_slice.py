@@ -29,7 +29,7 @@ class HeadlessSlice(unittest.TestCase):
             f3 = os.path.join(d, "plaque.3mf")
             plaque.main([os.path.join(ROOT, "docs", "plaque_target.png"), "--filaments", FILS,
                      "--template", TEMPLATE, "--width", "20", "--base-layers", str(BASE_LAYERS),
-                     "--max-layers", str(COLOUR_LAYERS), "-o", f3])
+                     "--max-layers", str(COLOUR_LAYERS), "--optics", "rgb", "-o", f3])
             out = os.path.join(d, "out")
             os.mkdir(out)
             p = subprocess.run(

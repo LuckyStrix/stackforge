@@ -32,11 +32,16 @@ clean and CI runs both. PySide6 is the `gui` extra; the CLIs need only numpy/Pil
   in the base under the steps. `fit_td` models exactly that; chips (no base) are the ones on
   `first + (n-1)*layer`. Wedges and chips are written solid, like the plaque.
 - **Wedge sheet -> readings round trip** (`core/wedgesheet.py`, plain JSON): calibrate writes
-  `*.sheet.json` beside the 3MF, measure `--sheet` writes `*.readings.json`, fit `--readings` /
-  guided "Load readings" consume it. The files cross machines, so they carry labels and colours,
-  not just ids. Slot 0 of each wedge is a bare-base patch; its reading replaces the library colour.
+  `*.sheet.json` beside the 3MF, measure `--sheet` writes `*.readings.json`, `stackforge-spectral fit
+  --readings` consumes it (guided "Load readings" opens that fit in the Spectra tab). The files
+  cross machines, so they carry labels and colours, not just ids. Slot 0 of each wedge is a bare-base patch; its reading replaces the library colour.
 - **td is the reflectance-fit kind** (`tools/calibrate.py`: light crosses each layer twice). measure's
   transmission td is single-pass, ~2x for a clear absorber; never paste it in as `td_rgb`.
+- **Calibration is spectral only on this branch.** `stackforge-calibrate fit` (the RGB td fit) is
+  gone from the CLI and the Guided page: `main` exits with a pointer to `stackforge-spectral fit`.
+  `fit_td` stays as a tested library function with no entry point; do not wire it back in.
+  `plaque --optics` and the Designer default to `spectral`; `rgb` has to be asked for (the RGB
+  tests pass `--optics rgb`).
 - **Spectral optics take calibrated filaments only** (`core/spectral.py`, `docs/spectral.md`).
   `plaque --optics spectral` and `SpectralGamut` refuse any filament or base without a
   `Filament.spectral` block (Kubelka-Munk K, S per 10 nm band, 380-730), which only

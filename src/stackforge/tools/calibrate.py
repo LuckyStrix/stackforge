@@ -1,27 +1,20 @@
 #!/usr/bin/env python3
-"""calibrate -- measure a filament's real color and transmission distance.
+"""calibrate -- print the step wedges a filament is calibrated from.
 
-Two steps, with a print in between.
+  `wedge` builds a step-wedge 3MF: a staircase of 1 to N layers of the test
+  filament, laid over an opaque base. Give it a white AND a black base and
+  the one file holds a wedge on each. Two backgrounds separate what the
+  filament absorbs from what it scatters, which a single background cannot do.
 
-  1. `wedge` builds a step-wedge 3MF: a staircase of 1 to N layers of the test
-     filament, laid over an opaque base. Give it a white AND a black base and
-     the one file holds a wedge on each. Two backgrounds pin down the
-     filament's own color and its opacity independently, which a single
-     background cannot do.
+  `chips` builds standalone filament-only chips, for transmission readings.
 
-  2. `fit` takes the colors you read off the printed wedge and solves for the
-     td (and, if you give it enough steps, the per-channel td_rgb) that best
-     explains them, then writes the result into the filament database.
-
-Reading the colors: a spectrophotometer is ideal, but a phone photo under flat
-indirect daylight with a white card in frame works well enough -- sample the
-middle of each step, average a patch, and white-balance against the card.
+The fit is spectral and lives elsewhere: read the printed wedge with
+`stackforge-measure measure-wedge --sheet`, then `stackforge-spectral fit`.
+The RGB td fit that used to be `stackforge-calibrate fit` is not on this
+branch (`fit_td` stays as a library function only).
 
     stackforge-calibrate wedge --filament teal --base white,black --template p.3mf -o wedge_teal.3mf
     stackforge-calibrate chips --filament teal --template p.3mf -o chips_teal.3mf  # transmission
-    stackforge-calibrate fit --filament teal --base "#F4F5F0" --template p.3mf \
-        --measured "#D8E6E4,#B4D2D0,#8FBEBC,#6FADAB,#54A09E,#3E9694,#2C8E8C,#1F8886"
-    stackforge-calibrate fit --filament teal --base "#F4F5F0" --template p.3mf --from-image shot.png
 """
 
 from __future__ import annotations
@@ -326,32 +319,16 @@ def cmd_wedge(args):
             print(f"    Use --base-layers {need} "
                   f"({args.first_layer_height + (need-1)*args.layer_height:.2f} mm).")
     if len(ws.wedges) < 2:
-        print("\nOne base only: give a contrasting second one (--base white,black) -- two "
-              "backgrounds separate the filament's colour from its opacity.")
+        print("\nOne base only: give a contrasting second one (--base white,black) -- the "
+              "spectral fit needs both and refuses to save from one.")
     print(f"\nThen: stackforge-measure measure-wedge --sheet {sheet}")
-    print(f"      stackforge-calibrate fit --filament <id> "
+    print(f"      stackforge-spectral fit --filament <id> "
           f"--readings {wedgesheet.readings_path_for(sheet)} --write")
 
 
 # --------------------------------------------------------------------------
 # fitting
 # --------------------------------------------------------------------------
-
-
-def sample_image(path, n, axis="x"):
-    """Average n evenly spaced patches along the wedge from a photo."""
-    im = np.asarray(colormath.open_image(path), dtype=np.float64)
-    h, w = im.shape[:2]
-    out = []
-    for i in range(n):
-        if axis == "x":
-            x0, x1 = int(w * (i + 0.30) / n), int(w * (i + 0.70) / n)
-            patch = im[int(h * 0.35): int(h * 0.65), x0:x1]
-        else:
-            y0, y1 = int(h * (i + 0.30) / n), int(h * (i + 0.70) / n)
-            patch = im[y0:y1, int(w * 0.35): int(w * 0.65)]
-        out.append(patch.reshape(-1, 3).mean(0))
-    return np.array(out)
 
 
 def _predict(base_lin, col, td, depth):
@@ -429,145 +406,6 @@ def _conditioning(prepped):
     return max(spans), len(prepped)
 
 
-def _resolve_base(db, spec):
-    try:
-        return np.array(colormath.parse_hex(spec), float)
-    except ValueError:
-        return db.get(spec).rgb()
-
-
-def fit_layer_height(args):
-    """The wedge's layer height: --layer-height, else --template's. Never a guess:
-    a wrong one scales every td by the same wrong factor and the fit still looks tight."""
-    if args.layer_height is None and args.template:
-        threemf.check_template(args.template)
-        args.layer_height = threemf.template_layer_settings(args.template)[0]
-        if args.layer_height:
-            print(f"layer height {args.layer_height:g} mm (from template)")
-    if args.layer_height is None:
-        raise SystemExit("fit needs the layer height the wedge was printed at: give "
-                         "--template (your slicer project) or --layer-height")
-
-
-def apply_readings(args):
-    """Fill --measured/--base (and the second wedge) from a measure readings file, for
-    --filament's strips. A measured bare-base patch is the base colour; the wedge's own
-    layer height wins over --template's."""
-    try:
-        data = wedgesheet.load_readings(args.readings)
-    except ValueError as exc:
-        raise SystemExit(str(exc))
-    fid = DB(args.db).get(args.filament).id
-    strips = [s for s in data["strips"] if s["filament"]["id"] == fid]
-    if not strips:
-        have = sorted({s["filament"]["id"] for s in data["strips"]})
-        raise SystemExit(f"{args.readings} has no wedge of {fid} (it has: {', '.join(have)})")
-    for n, s in enumerate(strips[:2]):
-        base = s.get("base_hex") or s["base"]["id"]
-        if n == 0:
-            args.measured, args.base = s["hex"], base
-        else:
-            args.measured2, args.base2 = s["hex"], base
-        print(f"{wedgesheet.strip_title(s)}: base {base}"
-              + (" (measured)" if s.get("base_hex") else " (from the library)"))
-        if s.get("reversed_steps"):
-            print(f"  ! step(s) {s['reversed_steps']} ran against the wedge when measured")
-    if args.layer_height is None:
-        args.layer_height = data["layer_height"]
-        print(f"layer height {args.layer_height:g} mm (from the readings file)")
-    elif abs(args.layer_height - data["layer_height"]) > 1e-9:
-        print(f"  ! the wedge was printed at {data['layer_height']:g} mm layers, not "
-              f"{args.layer_height:g}")
-
-
-def cmd_fit(args):
-    if args.readings:
-        apply_readings(args)
-    fit_layer_height(args)
-    db = DB(args.db)
-    fil = db.get(args.filament)
-
-    def load(measured, from_image, base):
-        if from_image:
-            m = sample_image(from_image, args.steps, args.axis)
-            print(f"sampled {args.steps} patches from {from_image}")
-        elif measured:
-            m = np.array([colormath.parse_hex(t) for t in measured.split(",")], float)
-        else:
-            return None
-        return m, _resolve_base(db, base)
-
-    if (args.measured or args.from_image) and not args.base:
-        raise SystemExit("--base is required with --measured or --from-image")
-    datasets = [load(args.measured, args.from_image, args.base)]
-    if args.measured2 or args.from_image2:
-        if not args.base2:
-            raise SystemExit("--base2 is required alongside a second wedge")
-        datasets.append(load(args.measured2, args.from_image2, args.base2))
-    datasets = [d for d in datasets if d is not None]
-    if not datasets:
-        raise SystemExit("give either --measured or --from-image")
-
-    for m, _ in datasets:
-        if len(m) < 3:
-            raise SystemExit("need at least 3 steps to fit anything meaningful")
-    if args.per_channel and min(len(m) for m, _ in datasets) < 6:
-        print("  ! fewer than 6 steps for a 6-parameter per-channel fit; "
-              "treat the result with suspicion", file=sys.stderr)
-
-    td, col, des, preds, (span, nsets) = fit_td(
-        datasets, args.layer_height, args.per_channel, fil.rgb()
-    )
-
-    for (meas, base_rgb), pred, de in zip(datasets, preds, des):
-        print(f"\n{fil.label()}  over base {colormath.to_hex(base_rgb)} "
-              f"at {args.layer_height} mm layers")
-        print(f"{'step':>4} {'layers':>6} {'measured':>9} {'model':>9} {'dE':>5}")
-        for i, (m, p, d) in enumerate(zip(meas, pred, de)):
-            print(f"{i+1:4d} {i+1:6d} {colormath.to_hex(m):>9} "
-                  f"{colormath.to_hex(colormath.linear_to_srgb(p)):>9} {d:5.1f}")
-
-    all_de = np.concatenate(des)
-    print(f"\n  td      = {np.round(td, 4).tolist()}")
-    print(f"  colour  = {colormath.to_hex(col)}  (was {fil.color})")
-    print(f"  fit dE  : mean {all_de.mean():.1f}, max {all_de.max():.1f}")
-    if all_de.mean() > 5:
-        print("  ! poor fit. Check your lighting/white balance, confirm the wedge")
-        print("    sliced at the stated layer height, and that --base is right.")
-
-    # A good fit does not imply a trustworthy td. If the wedge barely changes
-    # from thinnest to thickest step, td and colour are trading off and the
-    # solver will still report a tight residual on a wrong answer.
-    if nsets < 2 and span < 25:
-        print(f"\n  !! WARNING: this wedge only spans dE {span:.0f} end to end.")
-        print("     td and colour are under-determined at that contrast -- the fit")
-        print("     above may look tight and still be badly wrong. Print a second")
-        print("     wedge over a CONTRASTING base and pass --measured2/--base2.")
-        if args.write:
-            print("     Refusing --write on a single low-contrast wedge.")
-            return
-
-    if not args.write:
-        print("\n(dry run -- pass --write to save this into the database)")
-        return
-
-    fil.color = colormath.to_hex(col)
-    if args.per_channel:
-        fil.td_rgb = [round(float(v), 4) for v in td]
-        fil.td = round(float(td.mean()), 4)
-    else:
-        fil.td = round(float(td[0]), 4)
-        fil.td_rgb = None
-    fil.provenance = "measured"
-    fil.layer_height_ref = args.layer_height
-    from datetime import date
-
-    fil.measured_at = date.today().isoformat()
-    fil.notes = (fil.notes + " | ").lstrip(" |") + f"fit from {len(meas)}-step wedge"
-    db.save()
-    print(f"\nwrote {fil.id} to {db.path}")
-
-
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -626,31 +464,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--flavor", choices=["orca", "prusa"], default="orca")
     p.set_defaults(fn=cmd_chips)
 
-    p = sub.add_parser("fit", help="fit td + colour from measured patches")
-    p.add_argument("--filament", required=True)
-    p.add_argument("--readings", help="readings file from stackforge-measure measure-wedge "
-                   "--sheet: fills the measured colours, bases and layer height")
-    p.add_argument("--base", help="base colour as hex, or a filament id")
-    p.add_argument("--measured", help="comma-separated hex, one per step, thinnest first")
-    p.add_argument("--from-image", help="photo of the wedge to sample instead")
-    p.add_argument("--base2", help="second wedge's base colour (hex or filament id)")
-    p.add_argument("--measured2", help="second wedge's patches, over a contrasting base")
-    p.add_argument("--from-image2", help="photo of the second wedge")
-    p.add_argument("--steps", type=int, default=12, help="patch count when using --from-image")
-    p.add_argument("--axis", choices=["x", "y"], default="x")
-    p.add_argument("--layer-height", type=float, default=None,
-                   help="the layer height the wedge was printed at (default: from --template)")
-    p.add_argument("--template", help="the slicer project the wedge was printed with; "
-                   "supplies the layer height")
-    p.add_argument("--per-channel", action="store_true",
-                   help="fit td separately per RGB channel (needs >=6 steps)")
-    p.add_argument("--write", action="store_true", help="save into the database")
-    p.set_defaults(fn=cmd_fit)
-
     return ap
 
 
+FIT_GONE = """stackforge-calibrate fit (the RGB td fit) is not on this branch: calibration is spectral only.
+  stackforge-measure measure-wedge --sheet <wedge>.sheet.json
+  stackforge-spectral fit --readings <wedge>.readings.json --filament <id> [--write]"""
+
+
 def main(argv=None):
+    argv = sys.argv[1:] if argv is None else list(argv)
+    sub = argv[2:] if argv[:1] == ["--db"] else argv[1:] if argv[:1] and argv[0].startswith("--db=") else argv
+    if sub[:1] == ["fit"]:
+        raise SystemExit(FIT_GONE)
     ap = build_parser()
     args = ap.parse_args(argv)
     args.fn(args)

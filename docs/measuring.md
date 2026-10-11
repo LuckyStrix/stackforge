@@ -31,13 +31,14 @@ run against the instrument yet.** Treat every section below as a checklist for t
    one base) in print order, with labels and colours since the measuring machine may have no library.
 2. `stackforge-measure measure-wedge --sheet wedge_teal.sheet.json` reads, strip by strip, the bare-base
    patch at the left end of each wedge and then steps 1..N, and writes `wedge_teal.readings.json`.
-3. `stackforge-calibrate fit --filament teal --readings wedge_teal.readings.json --write` (or *Load
-   readings* on the guided page) fits with the **measured** base colours and the wedge's own layer
-   height. The bare patch exists because the library's base colour is an estimate, and every step is a
+3. `stackforge-spectral fit --filament teal --readings wedge_teal.readings.json --write` (or *Load
+   readings* on the guided page, which opens the same fit in the Spectra tab) fits the spectra with
+   the **measured** base and the wedge's own layer height. The bare patch exists because the library's base colour is an estimate, and every step is a
    blend towards it.
 
-Without a sheet, `measure-wedge --steps 12 [--base-patch] -o wedge.json` reads one strip and prints the
-`fit ... --measured ...` line (in the GUI, *Copy readings to Calibrate* fills the next empty wedge).
+Without a sheet, `measure-wedge --steps 12 [--base-patch] -o wedge.json` reads one strip for a look at
+its colours; nothing fits from it (the RGB td fit is not on this branch). In the GUI, *Fit these
+readings* hands a sheet run's readings file to the spectral fit.
 
 **Patch size.** The ColorMunki samples a roughly circular area about 8 mm across (measured 7.8 x 7.95 mm
 in an Argyll mailing-list test; readings were identical from 20 mm patches down to 7 mm, nearly so at

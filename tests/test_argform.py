@@ -27,7 +27,7 @@ class SpecTests(unittest.TestCase):
 
     def test_subcommands_found(self):
         _, _, cal = [s for s in specs() if s[0] == "calibrate"][0]
-        self.assertEqual(set(cal.subs), {"wedge", "chips", "fit"})
+        self.assertEqual(set(cal.subs), {"wedge", "chips"})
 
     def test_help_unescaped(self):
         _, _, sf = [s for s in specs() if s[0] == "plaque"][0]

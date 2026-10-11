@@ -15,8 +15,6 @@ from stackforge.gui.terminal import TerminalView
 from stackforge.gui.tabs.common import ToolTabs
 from stackforge.tools import measure
 
-HEX_LINE = re.compile(r'--measured\s+"([^"]+)"')
-BASE_LINE = re.compile(r'--base\s+"(#[0-9A-Fa-f]{6})"')
 READINGS_LINE = re.compile(r"^readings file: (.+?)\s*$", re.M)
 
 
@@ -26,7 +24,7 @@ class MeasureTab(QWidget):
     def __init__(self, project=None, presets=None, host=None):
         super().__init__()
         self.host = host
-        self._hexes = self._base = self._readings = None
+        self._readings = None
         lay = QVBoxLayout(self)
         steps = QLabel(
             "<b>Reading printed wedges</b> &nbsp; 1. Plug in the ColorMunki. &nbsp; 2. Choose "
@@ -34,8 +32,8 @@ class MeasureTab(QWidget):
             "the 3MF, then press <b>Run</b>. &nbsp; 3. Follow the prompts in the box at the bottom "
             "(type in the input line, Enter to confirm): the bare base first, then each step, "
             "wedge by wedge. &nbsp; 4. It writes a <b>readings file</b> next to the sheet. On "
-            "this computer press <b>Copy readings to Calibrate</b>; on another, take the file "
-            "there and use <i>Load readings…</i> in Calibrate.")
+            "this computer press <b>Fit these readings</b> (the spectral fit, in Spectra); on "
+            "another, take the file there and use <i>Load readings…</i> in Calibrate.")
         steps.setWordWrap(True)
         steps.setObjectName("hint")
         lay.addWidget(steps)
@@ -53,9 +51,9 @@ class MeasureTab(QWidget):
         bl.setContentsMargins(0, 0, 0, 0)
         bl.addWidget(self.term, 1)
         row = QHBoxLayout()
-        self.copy_btn = QPushButton("Copy readings to Calibrate")
+        self.copy_btn = QPushButton("Fit these readings")
         self.copy_btn.setEnabled(False)
-        self.copy_btn.clicked.connect(self._to_calibrate)
+        self.copy_btn.clicked.connect(self._to_fit)
         row.addWidget(self.copy_btn)
         row.addStretch(1)
         bl.addLayout(row)
@@ -78,27 +76,15 @@ class MeasureTab(QWidget):
                 f"{measure.NOSPOS_WRAPPER} wrapper: measuring will fail until one is installed.")
 
     def _done(self, panel, job):
-        self._hexes = self._base = self._readings = None
+        self._readings = None
         if job.returncode == 0 and panel.command == ("measure-wedge",):
-            text = self.term.screen.text
-            r = READINGS_LINE.findall(text)
-            if r:
-                self._readings = r[-1]
-            else:
-                m, b = HEX_LINE.findall(text), BASE_LINE.findall(text)
-                self._hexes = m[-1] if m else None
-                self._base = b[-1] if b and self._hexes else None
-        self.copy_btn.setEnabled(bool(self._hexes or self._readings))
+            r = READINGS_LINE.findall(self.term.screen.text)
+            self._readings = r[-1] if r else None       # only a --sheet run writes one
+        self.copy_btn.setEnabled(bool(self._readings))
 
-    def _to_calibrate(self):
+    def _to_fit(self):
         cal = self.host.tabs.get("Calibrate") if self.host else None
-        if cal is None:
+        if cal is None or not self._readings:
             return
-        if self._readings:
-            cal.load_readings(self._readings)
-        elif self._hexes:
-            cal.set_measured(self._hexes, self._base)
-        else:
-            return
-        self.host.show_tab("Calibrate")
-        self.copy_btn.setEnabled(False)          # once per run, so B is not filled twice
+        if cal.load_readings(self._readings):
+            self.copy_btn.setEnabled(False)

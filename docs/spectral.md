@@ -71,8 +71,8 @@ Designer) warns when a calibrated filament is used on a different layer grid.
 
 ## Using it
 
-- **Plaque:** `stackforge-plaque … --optics spectral [--illuminant D65|D50|A]`. The Designer has the
-  same switch under Colour > Optics. Only spectrally calibrated filaments are accepted, base
+- **Plaque:** `stackforge-plaque … [--illuminant D65|D50|A]`: spectral is the default (`--optics rgb`
+  has to be asked for). The Designer has the same switch under Colour > Optics. Only spectrally calibrated filaments are accepted, base
   included. The CLI lists the missing ones and refuses; the Designer greys them out. Everything
   downstream (ranking, dithering, export, the opaque-base check) is unchanged. The base check asks
   the same question as the RGB one: how much does what is under the base still show? In KM that

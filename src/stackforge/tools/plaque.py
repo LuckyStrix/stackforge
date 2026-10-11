@@ -872,11 +872,11 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--base-layers", type=int, default=None,
                     help="layers of base filament under the colour (default: auto, the "
                          "fewest that block 99%% of the light for the base's td)")
-    ap.add_argument("--optics", choices=["rgb", "spectral"], default="rgb",
-                    help="colour model. rgb: td / td_rgb per filament (works with estimates). "
-                         "spectral: Kubelka-Munk per 10 nm band from measured wedge spectra; "
-                         "only spectrally calibrated filaments are accepted "
-                         "(stackforge-spectral fit)")
+    ap.add_argument("--optics", choices=["rgb", "spectral"], default="spectral",
+                    help="colour model. spectral (default): Kubelka-Munk per 10 nm band from "
+                         "measured wedge spectra; only spectrally calibrated filaments are "
+                         "accepted (stackforge-spectral fit). rgb: td / td_rgb per filament "
+                         "(works with estimates); it has to be asked for")
     ap.add_argument("--illuminant", choices=list(spectral.ILLUMINANTS), default="D65",
                     help="with --optics spectral: the light the plaque is matched under "
                          "(D65 daylight, D50 print-viewing, A incandescent)")

@@ -548,6 +548,14 @@ class SpectraTab(QWidget):
     def reload_db(self, path=None):
         self.viewer.reload(path)
 
+    def fit_readings(self, path, fid=None):
+        """A readings file from Calibrate or Measure: fill the fit form and show it. Saving
+        stays a choice on the form; the tool refuses a fit it cannot stand behind."""
+        panel = self.tools.panels["fit"]
+        panel.form.set_values({"readings": path, **({"filament": fid} if fid else {})})
+        self.tools.select(panel)
+        self.nb.setCurrentWidget(self.tools)
+
     def _done(self, panel, job):
         if job.returncode == 0 and panel.command == ("fit",) and panel.form.values().get("write"):
             self.viewer.reload()

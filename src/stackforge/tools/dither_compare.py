@@ -41,7 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--blur", type=float, default=None,
                     help=f"eye low-pass sigma, px (default {plaque.BLUR_MM} mm / --resolution)")
     ap.add_argument("--sheet", help="contact sheet PNG")
-    ap.add_argument("--optics", choices=["rgb", "spectral"], default="rgb",
+    ap.add_argument("--optics", choices=["rgb", "spectral"], default="spectral",
                     help="colour model, as in stackforge-plaque (spectral: calibrated filaments only)")
     ap.add_argument("--illuminant", choices=list(spectral.ILLUMINANTS), default="D65",
                     help="with --optics spectral: the light the plaque is matched under")

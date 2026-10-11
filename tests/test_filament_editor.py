@@ -13,7 +13,6 @@ from stackforge.core import optics  # noqa: E402
 from stackforge.core.filamentdb import DB  # noqa: E402
 from stackforge.core.paths import packaged  # noqa: E402
 from stackforge.gui import theme  # noqa: E402
-from stackforge.gui.filaments.calibrate import blocked, fit_lines  # noqa: E402
 from stackforge.gui.filaments.editor import FilamentEditor  # noqa: E402
 from stackforge.tools import calibrate  # noqa: E402
 
@@ -43,28 +42,6 @@ class Optics(unittest.TestCase):
         lines = optics.optics_lines(self.fil, 0.08)
         self.assertEqual(lines[0][1], "head")
         self.assertIn("warn", [k for _, k in lines])      # provenance is not 'measured'
-
-
-class Calibration(unittest.TestCase):
-    def test_single_low_contrast_wedge_is_blocked(self):
-        self.assertTrue(blocked(10, 1))
-        self.assertFalse(blocked(10, 2))
-        self.assertFalse(blocked(30, 1))
-
-    def test_fit_report_round_trip(self):
-        fil = DB(packaged("filaments.json")).filaments["polymaker-pla-pro-red"]
-        lh, steps = 0.08, 8
-        base = np.array([244.0, 245.0, 240.0])
-        n = np.arange(1, steps + 1)[:, None]
-        T = np.exp(-(n * lh) / 0.2)
-        from stackforge.core import colormath
-        lin = colormath.srgb_to_linear(base) * T + colormath.srgb_to_linear(fil.rgb()) * (1 - T)
-        meas = colormath.linear_to_srgb(lin)
-        fit = calibrate.fit_td([(meas, base)], lh, False, fil.rgb())
-        lines = fit_lines(fil, [(meas, base)], lh, False, fit)
-        text = "\n".join(t for t, _ in lines)
-        self.assertIn("fit dE", text)
-        self.assertAlmostEqual(float(np.ravel(fit[0])[0]), 0.2, delta=0.03)
 
 
 class Editor(unittest.TestCase):
@@ -190,7 +167,6 @@ class Editor(unittest.TestCase):
         tab = self._tab()
         self.assertEqual(tab.ed.layer.value, 0.12)           # the editor follows the project
         page = self._page(tab)
-        self.assertEqual(page.layer.value, 0.12)             # and so does calibration
         self.assertTrue(page.select("polymaker-pla-pro-blue"))
         out = os.path.join(self.d.name, "w.3mf")
         with mock.patch.object(QFileDialog, "getSaveFileName", return_value=(out, "")), \
@@ -227,7 +203,7 @@ class Editor(unittest.TestCase):
         msg = info.call_args[0][2]
         self.assertIn("Extruder 1 = ", msg)
         self.assertNotIn("Extruder 3", msg)
-        self.assertEqual(page.wedge_a.base.currentText(), "polymaker-pla-pro-black")
+        self.assertIn("refuses", msg)                        # one base cannot be fitted
 
     def test_wedge_settings_saved_as_default_load_next_time(self):
         from stackforge.gui.filaments.calibrate import CalibratePage
@@ -271,49 +247,45 @@ class Editor(unittest.TestCase):
         wedgesheet.write(path, data)
         return path
 
-    def test_writing_wedges_writes_a_sheet_and_clears_old_readings(self):
+    def test_writing_wedges_writes_a_sheet(self):
         from unittest import mock
         from PySide6.QtWidgets import QFileDialog
         from stackforge.core import wedgesheet
         page = self._page(self._tab())
         page.select("polymaker-pla-pro-teal")
-        page.wedge_a.text.setPlainText("#111111,#222222,#333333")     # a previous filament's
         out = os.path.join(self.d.name, "w.3mf")
         with mock.patch.object(QFileDialog, "getSaveFileName", return_value=(out, "")), \
                 mock.patch.object(QMessageBox, "information"):
             page.write_wedge()
-        self.assertEqual(page.wedge_a.text.toPlainText(), "")
         sheet = wedgesheet.load_sheet(os.path.join(self.d.name, "w.sheet.json"))
         self.assertEqual([s["base"]["id"] for s in sheet["strips"]],
                          ["polymaker-pla-pro-white", "polymaker-pla-pro-black"])
         self.assertEqual(sheet["steps"], page.steps.value())
 
-    def test_loaded_readings_fill_both_wedges_and_fit(self):
+    def test_loaded_readings_go_to_the_spectral_fit(self):
         page = self._page(self._tab())
+        got = []
+        page.on_readings = lambda path, fid: got.append((path, fid)) or True
         page.select("polymaker-pla-pro-red")              # loading switches to the file's filament
-        page.steps.setValue(12)
-        self.assertTrue(page.load_readings(self._readings("polymaker-pla-pro-teal", 0.3)))
+        path = self._readings("polymaker-pla-pro-teal", 0.3)
+        self.assertTrue(page.load_readings(path))
         self.assertEqual(page.fil_combo.currentData(), "polymaker-pla-pro-teal")
-        self.assertEqual(page.steps.value(), 8)
-        self.assertEqual(len(page.wedge_a.text.toPlainText().split(",")), 8)
-        self.assertTrue(page.wedge_a.base.currentText().startswith("#"))   # the measured base
-        self.assertTrue(page.wedge_b.text.toPlainText())
-        page.do_fit()
-        self.assertTrue(page.apply_btn.isEnabled())
-        self.assertIn("td      = [0.3", page.report.toPlainText())
+        self.assertEqual(got, [(path, "polymaker-pla-pro-teal")])
+        self.assertNotIn("only one base", page.lbl_status.text())
+        self.assertFalse(hasattr(page, "do_fit"))         # the RGB td fit is gone from the page
 
-    def test_white_readings_have_one_wedge_and_b_is_emptied(self):
+    def test_one_base_readings_are_flagged(self):
         page = self._page(self._tab())
-        page.wedge_b.text.setPlainText("#010203,#040506,#070809")
-        page.load_readings(self._readings("polymaker-pla-pro-white", 0.47))
-        self.assertTrue(page.wedge_a.text.toPlainText())
-        self.assertEqual(page.wedge_b.text.toPlainText(), "")
+        page.on_readings = lambda path, fid: True
+        self.assertTrue(page.load_readings(self._readings("polymaker-pla-pro-white", 0.47)))
+        self.assertIn("only one base", page.lbl_status.text())
 
-    def test_readings_printed_at_another_layer_height_fit_at_that_height(self):
+    def test_readings_with_no_fit_to_hand_to_name_the_command(self):
+        from unittest import mock
         page = self._page(self._tab())
-        page.load_readings(self._readings("polymaker-pla-pro-teal", 0.3, lh=0.08))
-        self.assertEqual(page.layer.value, 0.08)
-        self.assertIn("0.08", page.lbl_status.text())
+        with mock.patch.object(QMessageBox, "information") as info:
+            self.assertFalse(page.load_readings(self._readings("polymaker-pla-pro-teal", 0.3)))
+        self.assertIn("stackforge-spectral fit", info.call_args[0][2])
 
     def test_a_wedge_sheet_is_refused_as_readings(self):
         from unittest import mock
@@ -353,38 +325,6 @@ class Editor(unittest.TestCase):
         again = DB(self.path)
         self.assertEqual(again.filaments["polymaker-pla-pro-blue"].td, 0.777)
         self.assertEqual(again.filaments["polymaker-pla-pro-red"].name, "My red")
-
-    def test_guided_fit_saves_to_the_library_and_the_editor_sees_it(self):
-        from stackforge.core import colormath as cm
-        tab = self._tab()
-        page = self._page(tab)
-        page.on_saved = lambda _fid: tab.reload_db()
-        tab.ed.select("polymaker-pla-pro-red")
-        tab.ed.e_name.setText("My red")                      # unsaved edit in the editor
-        page.select("polymaker-pla-pro-teal")
-        fil = page.fil()
-        n = np.arange(1, 9)[:, None]
-        for box, base in ((page.wedge_a, [244., 245, 240]), (page.wedge_b, [26., 26, 28])):
-            T = np.exp(-(n * 0.12) / 0.3)
-            lin = cm.srgb_to_linear(np.array(base)) * T + fil.linear() * (1 - T)
-            box.text.setPlainText(",".join(cm.to_hex(c) for c in cm.linear_to_srgb(lin)))
-            box.base.setCurrentText(cm.to_hex(base))
-        page.do_fit()
-        self.assertTrue(page.apply_btn.isEnabled())
-        page.apply_fit()
-        disk = DB(self.path).filaments["polymaker-pla-pro-teal"]
-        self.assertEqual(disk.provenance, "measured")
-        self.assertAlmostEqual(disk.td, 0.3, delta=0.02)
-        self.assertEqual(tab.ed.db.filaments["polymaker-pla-pro-teal"].provenance, "measured")
-        self.assertEqual(tab.ed.db.filaments["polymaker-pla-pro-red"].name, "My red")
-
-    def test_measured_readings_fill_wedge_a_then_b(self):
-        tab = self._tab()
-        page = self._page(tab)
-        self.assertEqual(page.add_measured("#AABBCC,#112233,#445566"), "A")
-        self.assertEqual(page.steps.value(), 3)
-        self.assertEqual(page.add_measured("#010203,#040506,#070809"), "B")
-        self.assertEqual(page.wedge_b.text.toPlainText(), "#010203,#040506,#070809")
 
     def test_every_page_paints(self):
         ed = self.ed

@@ -1,10 +1,10 @@
-"""Calibrate tab: the one place to calibrate a filament.
+"""Calibrate tab: print the wedges a filament is calibrated from.
 
-"Guided" (gui/filaments/calibrate.CalibratePage) walks one filament through wedge, readings and
-fit, and saves the result to the library. "All options" holds the wedge/chips/fit command forms
-for what the guided page does not expose (several filaments on one plate, chips, photos). The
-Filaments editor and the Measure tab hand over to the guided page through start() and
-set_measured().
+"Guided" (gui/filaments/calibrate.CalibratePage) walks one filament through its wedges and hands
+the measured readings file to the spectral fit in the Spectra tab. "All options" holds the
+wedge/chips command forms for what the guided page does not expose (several filaments on one
+plate, chips). The Filaments editor and the Measure tab hand over through start() and
+load_readings(). There is no fit on this tab: calibration is spectral only.
 """
 from __future__ import annotations
 
@@ -21,12 +21,9 @@ class CalibrateTab(QWidget):
     def __init__(self, project=None, presets=None, host=None):
         super().__init__()
         self.host = host
-        self.guided = CalibratePage(project, on_saved=lambda _fid: self._db_written(),
-                                    presets=presets)
+        self.guided = CalibratePage(project, on_readings=self.fit_readings, presets=presets)
         self.tabs = ToolTabs.for_tool("calibrate", calibrate.build_parser, project=project,
-                                      presets=presets, on_done=self._done)
-        # Saving is the point of a fit; a bad one is still refused by the tool itself.
-        self.tabs.panels["fit"].form.set_values({"write": True})
+                                      presets=presets)
         self.nb = QTabWidget()
         self.nb.addTab(self.guided, "Guided")
         self.nb.addTab(self.tabs, "All options")
@@ -40,17 +37,6 @@ class CalibrateTab(QWidget):
     def reload_db(self, path=None):
         self.guided.reload(path)
 
-    def _db_written(self):
-        fil = self.host.tabs.get("Filaments") if self.host else None
-        if fil is not None:
-            fil.reload_db()
-
-    def _done(self, panel, job):
-        """A finished `fit --write` changed the database: tell the other tabs."""
-        if job.returncode == 0 and panel.command == ("fit",) and panel.form.values().get("write"):
-            self._db_written()
-            self.guided.reload()
-
     def start(self, fid, steps=None, base_id=None):
         """Open the guided page on filament `fid` (from the Filaments editor)."""
         self.guided.reload()
@@ -58,17 +44,16 @@ class CalibrateTab(QWidget):
         self.guided.prepare(steps=steps, base_id=base_id)
         self.nb.setCurrentWidget(self.guided)
 
-    def set_measured(self, hexes: str, base=None):
-        """Readings from the Measure tab: into the guided page's next empty wedge (and the
-        fit form, for anyone using All options). `base` is a measured base hex. Returns
-        "A" or "B"."""
-        self.tabs.panels["fit"].form.set_values({"measured": hexes})
-        self.nb.setCurrentWidget(self.guided)
-        return self.guided.add_measured(hexes, base=base)
+    def fit_readings(self, path, fid) -> bool:
+        """Open the Spectra tab's fit on a readings file. False if there is no Spectra tab."""
+        spectra = self.host.tabs.get("Spectra") if self.host else None
+        if spectra is None:
+            return False
+        spectra.fit_readings(path, fid)
+        self.host.show_tab("Spectra")
+        return True
 
-    def load_readings(self, path):
-        """A readings file from Measure (measured from the wedge sheet): fill the guided page."""
+    def load_readings(self, path) -> bool:
+        """A readings file from Measure: checked by the guided page, then on to the fit."""
         self.guided.reload()
-        self.nb.setCurrentWidget(self.guided)
-        self.tabs.panels["fit"].form.set_values({"readings": path})
         return self.guided.load_readings(path)

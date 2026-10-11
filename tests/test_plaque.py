@@ -17,7 +17,7 @@ IDS = [f"polymaker-pla-pro-{c}" for c in ("black", "blue", "red", "yellow", "whi
 def run(*extra, img):
     return subprocess.run(
         [sys.executable, "-m", "stackforge.tools.plaque", img, "--width", "6", "--max-layers", "3",
-         "--base-layers", "3", *extra],
+         "--base-layers", "3", "--optics", "rgb", *extra],
         cwd=ROOT, capture_output=True, text=True)
 
 
@@ -30,6 +30,13 @@ class Cli(unittest.TestCase):
 
     def tearDown(self):
         self.tmp.cleanup()
+
+    def test_optics_default_is_spectral_and_refuses_uncalibrated_filaments(self):
+        self.assertEqual(plaque.build_parser().get_default("optics"), "spectral")
+        with self.assertRaises(SystemExit) as cm:           # the packaged library has no spectra
+            plaque.main([self.img, "--db", packaged("filaments.json"), "--filaments",
+                         "polymaker-pla-pro-white,polymaker-pla-pro-black"])
+        self.assertIn("stackforge-spectral fit", str(cm.exception))
 
     def test_no_rank_keeps_a_base_listed_last(self):
         out = os.path.join(self.d, "out.3mf")

@@ -5,9 +5,9 @@ this repo consumes.
 
 Three jobs:
 
-  measure-wedge   reflectance of each step of a printed wedge, printed as the
-                  hex list `stackforge-calibrate fit --measured` takes (and saved with
-                  the spectra, for a later Kubelka-Munk fit).
+  measure-wedge   reflectance of each step of a printed wedge. With --sheet (the
+                  wedge sheet from stackforge-calibrate wedge) it writes the readings
+                  file, spectra included, that `stackforge-spectral fit` takes.
   transmission    how much light gets through standalone chips of 1 to N layers
                   (stackforge-calibrate chips), using a *laptop screen* as the
                   backlight: measure the screen bare, then with a chip laid on
@@ -512,9 +512,9 @@ def cmd_measure_wedge(args):
         with open(args.output, "w") as f:
             json.dump(out, f, indent=1)
         print(f"\nsaved {args.output}")
-    base_arg = f"\"{res['base_hex']}\"" if base is not None else "<hex or id>"
-    print(f"\nNext: stackforge-calibrate fit --filament <id> --base {base_arg} "
-          f"--template <your slicer project.3mf> --measured \"{res['hex']}\" --write")
+    print("\nNothing here feeds a fit: calibration is spectral only. Measure with --sheet "
+          "(the wedge sheet stackforge-calibrate wedge wrote) to get a readings file for "
+          "stackforge-spectral fit.")
 
 
 def _measure_sheet(args):
@@ -548,7 +548,7 @@ def _measure_sheet(args):
     wedgesheet.write(out_path, out)
     print(f"\nreadings file: {os.path.abspath(out_path)}")
     print("Next: load it in Calibrate > Guided (“Load readings…”), or\n"
-          f"      stackforge-calibrate fit --filament <id> --readings {out_path} --write")
+          f"      stackforge-spectral fit --filament <id> --readings {out_path} --write")
 
 
 def cmd_transmission(args):

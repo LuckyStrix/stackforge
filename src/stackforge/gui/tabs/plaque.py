@@ -220,7 +220,7 @@ class PlaqueDesigner(QWidget):
                                 "base; a see-through base makes every colour wrong."))
 
         c = section("Colour")
-        self.c_optics = _combo(["rgb", "spectral"], "rgb")
+        self.c_optics = _combo(["rgb", "spectral"], "spectral")
         self.c_illum = _combo(list(spectral.ILLUMINANTS), "D65")
         c.addRow("Optics", self.c_optics)
         c.addRow("", theme.hint("spectral: Kubelka-Munk per wavelength from measured wedge spectra. "
@@ -276,7 +276,7 @@ class PlaqueDesigner(QWidget):
         self.c_fit.currentTextChanged.connect(lambda *_: (self._refresh_fit(), self._inputs_changed()))
         for wdg in (self.c_dither, self.c_rankby, self.c_illum):
             wdg.currentTextChanged.connect(lambda *_: self._inputs_changed())
-        self.c_illum.setEnabled(False)
+        self.c_illum.setEnabled(self._spectral())
         self.c_optics.currentTextChanged.connect(lambda *_: self._optics_changed())
         return scroll
 

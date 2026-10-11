@@ -222,10 +222,10 @@ class Pickers(unittest.TestCase):
         c.set("#336699")
         self.assertEqual(c.get(), "#336699")
 
-    def test_calibrate_base_accepts_a_filament_or_a_colour(self):
-        from stackforge.tools import calibrate
-        fit = self.form("calibrate", calibrate.build_parser, ("fit",))
-        base = fit.entries["base"].widget
+    def test_spectral_base_accepts_a_filament_or_a_colour(self):
+        from stackforge.tools import spectral
+        show = self.form("spectral", spectral.build_parser, ("show",))
+        base = show.entries["base"].widget
         base.set("#E8E8EE")
         self.assertEqual(base.get(), "#E8E8EE")
         base.set("polymaker-pla-pro-white")
@@ -254,6 +254,9 @@ class Designer(unittest.TestCase):
         self.proj.settings.set("db", packaged("filaments.json"))
         self.des = PlaqueDesigner(self.proj, PresetStore(os.path.join(self.d.name, "presets")),
                                   image_path=os.path.join(root, "docs", "plaque_target.png"))
+        # The designer opens on spectral optics; these cover the RGB designer (the packaged
+        # library has no spectral calibrations). Spectral: tests/test_spectra_gui.py.
+        self.des.c_optics.setCurrentText("rgb")
         self.des.show()
         self.addCleanup(self.des.close)
 
@@ -391,28 +394,33 @@ class Host(unittest.TestCase):
         self.assertIn("failed", box.text())
         box.close()
 
-    def test_calibrate_fit_saves_by_default(self):
-        self.assertTrue(self.win.tabs["Calibrate"].tabs.panels["fit"].form.values()["write"])
-
-    def test_measure_hex_list_flows_to_calibrate_fit(self):
-        from stackforge.gui.tabs.measure import HEX_LINE
-        line = 'calibrate.py fit --filament <id> --base <hex or id> --measured "#AABBCC,#112233"'
-        self.assertEqual(HEX_LINE.search(line).group(1), "#AABBCC,#112233")
+    def test_calibrate_has_no_fit(self):
         cal = self.win.tabs["Calibrate"]
-        self.assertEqual(cal.set_measured("#AABBCC,#112233,#445566"), "A")
-        self.assertIs(cal.nb.currentWidget(), cal.guided)
-        self.assertEqual(cal.guided.wedge_a.text.toPlainText(), "#AABBCC,#112233,#445566")
-        self.assertEqual(cal.tabs.panels["fit"].form.values()["measured"], "#AABBCC,#112233,#445566")
+        self.assertEqual(set(cal.tabs.panels), {"wedge", "chips"})
+        self.assertFalse(hasattr(cal.guided, "do_fit"))
 
-    def test_measure_base_and_readings_file_flow_to_calibrate(self):
-        from stackforge.gui.tabs.measure import BASE_LINE, READINGS_LINE
-        line = 'Next: stackforge-calibrate fit --filament <id> --base "#0C0E0C" --measured "#1"'
-        self.assertEqual(BASE_LINE.search(line).group(1), "#0C0E0C")
+    def test_readings_file_flows_to_the_spectral_fit(self):
+        from stackforge.core import wedgesheet
+        from stackforge.gui.tabs.measure import READINGS_LINE
+        from stackforge.tools import calibrate
         out = "...\nreadings file: C:\\Users\\x\\wedge_teal.readings.json\nNext: ..."
         self.assertEqual(READINGS_LINE.findall(out), ["C:\\Users\\x\\wedge_teal.readings.json"])
-        cal = self.win.tabs["Calibrate"]
-        self.assertEqual(cal.set_measured("#AABBCC,#112233,#445566", "#0C0E0C"), "A")
-        self.assertEqual(cal.guided.wedge_a.base.currentText(), "#0C0E0C")
+        cal, spectra = self.win.tabs["Calibrate"], self.win.tabs["Spectra"]
+        db = cal.guided.db.filaments
+        fid, bases = "polymaker-pla-pro-teal", ("polymaker-pla-pro-white", "polymaker-pla-pro-black")
+        ws = calibrate.WedgeSet([db[fid]], [db[b] for b in bases], 4, 0.12, 0.2, 14.0, 14.0)
+        data = ws.sheet(os.path.join(self.d.name, "w.3mf"))
+        data["kind"] = wedgesheet.READINGS_KIND
+        for s in data["strips"]:
+            s.update(hex="#111111,#222222,#333333,#444444", reversed_steps=[])
+        path = os.path.join(self.d.name, "w.readings.json")
+        wedgesheet.write(path, data)
+        self.assertTrue(cal.load_readings(path))
+        self.assertIs(self.win.current(), spectra)
+        self.assertIs(spectra.nb.currentWidget(), spectra.tools)
+        vals = spectra.tools.panels["fit"].form.values()
+        self.assertEqual((vals["readings"], vals["filament"]), (path, fid))
+        self.assertFalse(vals["write"])                      # saving stays a choice
 
     def test_filament_editor_hands_over_to_calibrate(self):
         fil = self.win.tabs["Filaments"]

@@ -262,6 +262,7 @@ class DesignerOptics(unittest.TestCase):
         db.save()
         des = PlaqueDesigner(FakeProject(path))
         des.db_path = path
+        des.c_optics.setCurrentText("rgb")      # the designer opens on spectral; these start from rgb
         des._reload_filaments()
         return des
 

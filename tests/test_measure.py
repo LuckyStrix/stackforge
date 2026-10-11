@@ -351,14 +351,16 @@ class CalibrateCli(unittest.TestCase):
                          "--template", tpl, "--steps", "3", "-o", os.path.join(self.tmp.name, "w.3mf"))
         self.assertIn("only 2 filament slot", str(cm.exception))
 
-    def test_fit_takes_the_grid_from_the_template_and_never_guesses(self):
-        hexes = "#D8E6E4,#B4D2D0,#8FBEBC,#6FADAB,#54A09E"
-        with self.assertRaises(SystemExit) as cm:
-            self.run_cli("fit", "--filament", "blue", "--base", "white", "--measured", hexes)
-        self.assertIn("--template", str(cm.exception))
-        log = self.run_cli("fit", "--filament", "blue", "--base", "white", "--measured", hexes,
-                           "--template", self.tpl)
-        self.assertIn("at 0.12 mm layers", log)
+    def test_the_rgb_fit_command_is_gone_and_names_the_spectral_one(self):
+        for argv in (["fit", "--filament", "blue", "--base", "white", "--measured", "#D8E6E4"],
+                     ["--db", "x.json", "fit"], ["--db=x.json", "fit"]):
+            with self.assertRaises(SystemExit) as cm:
+                calibrate.main(argv)
+            self.assertIn("stackforge-spectral fit", str(cm.exception))
+        with self.assertRaises(SystemExit) as cm:            # a filament called "fit" is not it
+            self.run_cli("wedge", "--filament", "fit", "--base", "white", "--template", self.tpl,
+                         "-o", os.path.join(self.tmp.name, "w.3mf"))
+        self.assertNotIn("stackforge-spectral", str(cm.exception))
 
 
 class FakeMeter:
@@ -449,7 +451,7 @@ class SheetRoundTrip(unittest.TestCase):
                          os.path.join(self.tmp.name, "big.3mf"))
         self.assertIn("bed is 256 x 256", str(cm.exception))
 
-    def test_measure_walks_the_sheet_and_fit_recovers_td(self):
+    def test_measure_walks_the_sheet_and_writes_readings(self):
         from stackforge.core import wedgesheet
         self._wedge()
         sheet = os.path.join(self.tmp.name, "wedge_blue.sheet.json")
@@ -463,24 +465,4 @@ class SheetRoundTrip(unittest.TestCase):
         self.assertEqual(len(data["strips"]), 2)
         self.assertTrue(all(s["base_hex"] for s in data["strips"]))
         self.assertEqual(len(data["strips"][0]["hex"].split(",")), 6)
-        fit = self.run_cli("fit", "--filament", "blue", "--readings", path)
-        self.assertIn("(measured)", fit)
-        self.assertIn("from the readings file", fit)
-        td = float(fit.split("td      = [")[1].split("]")[0].split(",")[0])
-        self.assertAlmostEqual(td, 0.3, delta=0.03)
-
-    def test_fit_names_what_a_readings_file_holds_when_the_filament_is_not_there(self):
-        self._wedge()
-        sheet = os.path.join(self.tmp.name, "wedge_blue.sheet.json")
-        self._measure(sheet, self._simulated("blue", 0.3))
-        with self.assertRaises(SystemExit) as cm:
-            self.run_cli("fit", "--filament", "red", "--readings",
-                         os.path.join(self.tmp.name, "wedge_blue.readings.json"))
-        self.assertIn("polymaker-pla-pro-blue", str(cm.exception))
-
-    def test_a_sheet_is_not_a_readings_file(self):
-        self._wedge()
-        with self.assertRaises(SystemExit) as cm:
-            self.run_cli("fit", "--filament", "blue", "--readings",
-                         os.path.join(self.tmp.name, "wedge_blue.sheet.json"))
-        self.assertIn("give it to Measure first", str(cm.exception))
+        self.assertIn("stackforge-spectral fit", log)        # the next step it names

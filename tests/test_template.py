@@ -32,7 +32,7 @@ def run_main(*argv):
     out = io.StringIO()
     with contextlib.redirect_stdout(out):
         plaque.main([os.path.join(ROOT, "docs", "plaque_target.png"), "--db",
-                 packaged("filaments.json"), *argv])
+                 packaged("filaments.json"), "--optics", "rgb", *argv])
     return out.getvalue()
 
 
