@@ -288,6 +288,16 @@ class CalibrateCli(unittest.TestCase):
             self.assertEqual(prof["sparse_infill_density"], "100%", cmd[0])
             self.assertIn('key="sparse_infill_density" value="100%"', cfg)
 
+    def test_wedge_is_concentric(self):
+        import zipfile
+        out = os.path.join(self.tmp.name, "w.3mf")
+        self.run_cli("wedge", "--filament", "blue", "--base", "white", "--template", self.tpl,
+                     "--steps", "3", "-o", out)
+        with zipfile.ZipFile(out) as z:
+            cfg = z.read("Metadata/model_settings.config").decode()
+        for key in ("top_surface_pattern", "internal_solid_infill_pattern"):
+            self.assertIn(f'key="{key}" value="concentric"', cfg)
+
     def test_wedge_base_is_opaque_by_default(self):
         log = self.run_cli("wedge", "--filament", "blue", "--base", "white", "--template",
                            self.tpl, "--steps", "3", "-o", os.path.join(self.tmp.name, "w.3mf"))

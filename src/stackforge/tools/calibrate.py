@@ -123,6 +123,19 @@ WEDGE_SPACING = 8.0     # mm between the wedges of a set, front to back
 MIN_BASE_MM = 1.0       # thinnest automatic base, opaque or not
 
 
+def concentric_settings(flavor) -> dict:
+    """Per-object overrides that lay every solid layer of a wedge concentrically.
+
+    Line fills turn 90 degrees each layer, and the meter sees the direction: the 2026-10-12
+    orange wedges zigzag ~7 dE between odd and even steps on both bases. The layers under the
+    top one show through a translucent filament, so they are concentric too (Orca only: Prusa
+    has no setting for them).
+    """
+    if flavor == "orca":
+        return {"top_surface_pattern": "concentric", "internal_solid_infill_pattern": "concentric"}
+    return {"top_fill_pattern": "concentric"}
+
+
 class WedgeSet:
     """Every wedge a calibration needs, in one file: one wedge per base, each carrying a row
     of steps per test filament.
@@ -199,7 +212,8 @@ class WedgeSet:
         threemf.get_writer(flavor)(
             path, self.items, self.decals, self.base_ext, "part", template=template,
             colors=self.colors, layer_height=self.layer_h, first_layer_height=self.first_layer_h,
-            solid=True, object_settings=threemf.solid_object_settings(flavor, self.layer_h))
+            solid=True, object_settings={**threemf.solid_object_settings(flavor, self.layer_h),
+                                         **concentric_settings(flavor)})
 
     def sheet(self, model_path) -> dict:
         """What measure needs to walk these wedges, and calibrate to fit them afterwards."""
