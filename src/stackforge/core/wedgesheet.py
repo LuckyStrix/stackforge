@@ -43,8 +43,9 @@ def strip_title(strip: dict) -> str:
 
 
 def write(path: str, data: dict) -> None:
+    text = json.dumps(data, indent=1)   # serialise first: a failure must not truncate the file
     with open(path, "w", encoding="utf-8") as fh:
-        json.dump(data, fh, indent=1)
+        fh.write(text)
 
 
 def _load(path: str, kind: str, what: str) -> dict:

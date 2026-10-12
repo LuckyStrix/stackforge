@@ -1,7 +1,7 @@
 """measure.py against a fake spotread (transcript shape captured from a real
 ColorMunki Photo by the calibration-suite project), plus the pure maths.
 Hardware tests run only with STACKFORGE_MUNKI=1."""
-import os, shutil, stat, tempfile, unittest
+import json, os, shutil, stat, tempfile, unittest
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -143,6 +143,7 @@ class Guards(unittest.TestCase):
         self.assertEqual(measure.wedge_reversals([20, 30, 38, 45]), [])          # light over black
         self.assertEqual(measure.wedge_reversals([90, 80, 95, 65, 60]), [3])     # step 3 misread
         self.assertEqual(measure.wedge_reversals([60, 60.5, 60, 60.4]), [])      # flat: no trend
+        json.dumps(measure.wedge_reversals([90, 80, 95, 65, 60]))                # plain ints: it is saved
 
 
 class Maths(unittest.TestCase):

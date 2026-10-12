@@ -191,7 +191,7 @@ def wedge_reversals(lab_l, tol: float = WEDGE_REVERSAL_L) -> list[int]:
     if abs(trend) < tol:
         return []
     d = np.diff(L) * np.sign(trend)
-    return [i + 2 for i in np.flatnonzero(d < -tol)]
+    return [int(i) + 2 for i in np.flatnonzero(d < -tol)]
 
 
 # --------------------------------------------------------------------------
