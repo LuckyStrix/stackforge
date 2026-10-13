@@ -126,7 +126,17 @@ MIN_BASE_MM = 1.0       # thinnest automatic base, opaque or not
 MIN_CHANNEL_CONTRAST = 0.25  # linear RGB, coarser than spectra so stricter; see WedgeSet.contrast_notes
 
 
-concentric_settings = threemf.concentric_settings      # the plaque is written the same way
+def concentric_settings(flavor) -> dict:
+    """Per-object overrides that lay every solid layer of a wedge concentrically.
+
+    Line fills turn 90 degrees each layer, and the meter sees the direction: the 2026-10-12
+    orange wedges zigzag ~7 dE between odd and even steps on both bases. The layers under the
+    top one show through a translucent filament, so they are concentric too (Orca only: Prusa
+    has no setting for them).
+    """
+    if flavor == "orca":
+        return {"top_surface_pattern": "concentric", "internal_solid_infill_pattern": "concentric"}
+    return {"top_fill_pattern": "concentric"}
 
 
 class WedgeSet:

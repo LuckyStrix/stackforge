@@ -76,10 +76,7 @@ class Template(unittest.TestCase):
         self.assertEqual([c.upper() for c in prof["filament_multi_colour"]], cols)
         self.assertLessEqual(float(prof["wipe_tower_y"][0]), 256 - threemf.PRIME_TOWER_DEPTH)
 
-        # Concentric like the calibration wedges: K and S describe that finish.
-        for key, val in (("layer_height", "0.12"), ("sparse_infill_density", "100%"),
-                         ("top_surface_pattern", "concentric"),
-                         ("internal_solid_infill_pattern", "concentric")):
+        for key, val in (("layer_height", "0.12"), ("sparse_infill_density", "100%")):
             self.assertIn(f'<metadata key="{key}" value="{val}"/>', cfg)
         # The plate is the base (T1); colour modifiers are on 2..4.
         parts = re.findall(r'subtype="(\w+)">.*?key="extruder" value="(\d+)"', cfg, re.S)
