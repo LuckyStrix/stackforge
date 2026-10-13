@@ -229,14 +229,38 @@ class FitCli(unittest.TestCase):
         self.assertEqual(after.spectral["layer_height_ref"], 0.08)
         self.assertTrue(os.path.exists(png))
 
-    def test_one_base_is_refused(self):
+    def test_a_base_that_matches_the_filament_somewhere_is_refused(self):
         data = json.load(open(self.readings))
-        data["strips"] = data["strips"][:1]
+        data["strips"] = data["strips"][:1]                # orange over white only
         wedgesheet.write(self.readings, data)
         rc = tool.main(["fit", "--readings", self.readings, "--filament", "demo-orange", "--db", self.db,
                         "--no-holdout", "--write"])
         self.assertEqual(rc, 1)
         self.assertFalse(sp.is_calibrated(DB(self.db).filaments["demo-orange"]))
+        note = tool.signal_note(tool.datasets_from_readings(data, "demo-orange")[0])
+        self.assertIn("-730 nm", note)                     # white looks like orange in the reds
+        self.assertIn("dark (black) base", note)
+
+    def test_white_or_black_needs_only_the_other(self):
+        for fid, base in (("demo-white", "demo-black"), ("demo-black", "demo-white")):
+            wedgesheet.write(self.readings, tool.demo_readings(fid, steps=6, bases=(base,)))
+            rc = tool.main(["fit", "--readings", self.readings, "--filament", fid, "--db", self.db,
+                            "--no-holdout", "--write"])
+            self.assertEqual(rc, 0, fid)
+            self.assertEqual(DB(self.db).filaments[fid].spectral["bases"], [base])
+
+    def test_held_out_bases_predict_what_a_single_base_fit_never_saw(self):
+        """White fitted over black alone predicts white over orange (a background it never saw)."""
+        ds = tool.datasets_from_readings(tool.demo_readings("demo-white", steps=8, bases=("demo-black",)),
+                                         "demo-white")[0]
+        self.assertIsNone(tool.signal_note(ds))
+        K, S, _ = tool.fit_ks(ds, 0.08)
+        Kt, St = sp.ks(demo("demo-white"))
+        Rg = sp.r_inf(*sp.ks(demo("demo-orange")))
+        L = np.arange(1, 13, dtype=float)
+        de = np.linalg.norm(sp.spectrum_to_lab(tool.predict(K, S, Rg, L, 0.08), "D50")
+                            - sp.spectrum_to_lab(tool.predict(Kt, St, Rg, L, 0.08), "D50"), axis=-1)
+        self.assertLess(de.max(), 1.0)
 
     def test_steps_measured_against_the_wedge_are_refused(self):
         data = json.load(open(self.readings))
@@ -375,6 +399,15 @@ class SpectralPlaque(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("demo-red", r.stdout + r.stderr)
         self.assertIn("spectral", r.stdout + r.stderr)
+
+    def test_refusal_names_each_filament_once_and_offers_rgb(self):
+        red = demo("demo-red")
+        red.spectral = None
+        with self.assertRaises(SystemExit) as cm:
+            sp.require_calibrated([red, demo("demo-white"), red])      # ticked and the base
+        msg = str(cm.exception)
+        self.assertEqual(msg.count("demo-red"), 1)
+        self.assertIn("--optics rgb", msg)
 
     def test_backing_is_white_minus_black_backing(self):
         K, S = sp.ks(demo("demo-white"))

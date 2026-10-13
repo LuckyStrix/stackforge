@@ -387,12 +387,14 @@ from typed hex colours or a photo) is gone: the command exits with a pointer to
 of fitting. `stackforge-plaque` defaults to `--optics spectral`, so a filament with no spectral
 calibration is refused unless you ask for `--optics rgb`.
 
-### Print two wedges, over contrasting bases
+### Print wedges over bases that contrast with the filament
 
-One base cannot separate what a filament absorbs from what it scatters, so the spectral fit
-refuses `--write` from a single base, or from two that differ by less than 0.25 in mean
-reflectance. A wedge whose base is the filament itself is left out, so to calibrate your white,
-use a different light filament as the light base. See [stackforge-spectral](#stackforge-spectral).
+What separates what a filament absorbs from what it scatters is watching its layers hide a
+background unlike it. A coloured filament looks like a white base where it is light and like a
+black one where it is dark, so it needs both. White needs only black, and black only white
+(add a grey for extra data). The spectral fit refuses `--write` when some wavelength never
+changes on any wedge, and says which base to add. A wedge whose base is the filament itself is
+left out. See [stackforge-spectral](#stackforge-spectral).
 
 ### Matching by eye, with no instrument
 
@@ -859,7 +861,7 @@ stackforge-spectral demo-readings -o demo.readings.json     # SYNTHETIC, to try 
 ```
 
 The fit reports a held-out dE (each step predicted by a fit that never saw it). It refuses to
-write from one base, two similar bases, under 4 steps, or spectra whose scale disagrees with the
+write when a base looks like the filament at some wavelength (no wedge changes there), under 4 steps, or spectra whose scale disagrees with the
 reading's own XYZ.
 
 ![Spectra tab (synthetic demo filaments)](docs/spectra_viewer.png)

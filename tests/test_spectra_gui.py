@@ -232,7 +232,7 @@ class DesignerOptics(unittest.TestCase):
             try:
                 des.db_path = path
                 des._reload_filaments()
-                des.c_optics.setCurrentText("spectral")
+                des.set_optics("spectral")
                 pump()
                 rows = {des.list.item(i).data(Qt.UserRole): des.list.item(i) for i in range(des.list.count())}
                 self.assertFalse(rows["demo-red"].flags() & Qt.ItemIsEnabled)
@@ -241,7 +241,7 @@ class DesignerOptics(unittest.TestCase):
                 self.assertEqual(rows["demo-red"].checkState(), Qt.Unchecked)
                 self.assertEqual(des.config_ns().optics, "spectral")
                 self.assertTrue(des.c_illum.isEnabled())
-                des.c_optics.setCurrentText("rgb")
+                des.set_optics("rgb")
                 pump()
                 rows = {des.list.item(i).data(Qt.UserRole): des.list.item(i) for i in range(des.list.count())}
                 self.assertTrue(rows["demo-red"].flags() & Qt.ItemIsEnabled)   # rgb takes any filament
@@ -262,7 +262,7 @@ class DesignerOptics(unittest.TestCase):
         db.save()
         des = PlaqueDesigner(FakeProject(path))
         des.db_path = path
-        des.c_optics.setCurrentText("rgb")      # the designer opens on spectral; these start from rgb
+        des.set_optics("rgb")      # the designer opens on spectral; these start from rgb
         des._reload_filaments()
         return des
 
@@ -271,15 +271,51 @@ class DesignerOptics(unittest.TestCase):
             des = self.designer(d, {"demo-white"})
             try:
                 des._set_base("demo-white")
-                des.c_optics.setCurrentText("spectral")
+                des.set_optics("spectral")
                 pump()
                 bases = [des.base.itemData(i) for i in range(des.base.count())]
                 self.assertNotIn("demo-white", bases)            # only calibrated bases offered
                 self.assertIn("grid", des.lbl_est.text())        # the panel still updates
                 self.assertEqual(des.lbl_measured.text(), "")    # no RGB "not measured" warning
-                des.c_optics.setCurrentText("rgb")
+                des.set_optics("rgb")
                 pump()
                 self.assertEqual(des._base_id(), "demo-white")   # the base comes back
+            finally:
+                des.close()
+                des.deleteLater()
+                pump()
+
+    def test_spectral_is_the_default_model(self):
+        from stackforge.gui.tabs.plaque import PlaqueDesigner
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "f.json")
+            db = DB(path)
+            for f in sp.demo_filaments():
+                db.filaments[f.id] = f
+            db.save()
+            des = PlaqueDesigner(FakeProject(path))
+            try:
+                self.assertEqual(des.optics(), "spectral")
+                self.assertEqual(des.c_optics.currentIndex(), 0)       # listed first
+                self.assertTrue(des.no_spectral.isHidden())
+            finally:
+                des.close()
+                des.deleteLater()
+                pump()
+
+    def test_nothing_calibrated_explains_and_offers_rgb(self):
+        with tempfile.TemporaryDirectory() as d:
+            des = self.designer(d, {f.id for f in sp.demo_filaments()})
+            try:
+                des.set_optics("spectral")
+                pump()
+                self.assertFalse(des.no_spectral.isHidden())
+                self.assertIn("None of your", des.lbl_no_spectral.text())
+                self.assertIn("? (no base yet)", des.lbl_est.text())     # not an invented "1 (auto)"
+                des.btn_use_rgb.click()
+                pump()
+                self.assertEqual(des.optics(), "rgb")
+                self.assertTrue(des.no_spectral.isHidden())
             finally:
                 des.close()
                 des.deleteLater()
@@ -289,11 +325,11 @@ class DesignerOptics(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             des = self.designer(d, {"demo-red"})
             try:
-                des.c_optics.setCurrentText("spectral")
+                des.set_optics("spectral")
                 pump()
                 des._set_checked({"demo-white", "demo-red"})     # what _apply_preset does
                 self.assertEqual(des._checked(), {"demo-white"})
-                des.c_optics.setCurrentText("rgb")
+                des.set_optics("rgb")
                 pump()
                 self.assertEqual(des._checked(), {"demo-white", "demo-red"})
             finally:
@@ -306,10 +342,10 @@ class DesignerOptics(unittest.TestCase):
             des = self.designer(d, {"demo-red"})
             try:
                 des._set_checked({"demo-white", "demo-red"})
-                des.c_optics.setCurrentText("spectral")
+                des.set_optics("spectral")
                 pump()
                 des._set_all(False)
-                des.c_optics.setCurrentText("rgb")
+                des.set_optics("rgb")
                 pump()
                 self.assertEqual(des._checked(), set())
             finally:
@@ -322,10 +358,10 @@ class DesignerOptics(unittest.TestCase):
             des = self.designer(d, {"demo-red"})
             try:
                 des._set_checked({"demo-white", "demo-red", "demo-blue"})
-                des.c_optics.setCurrentText("spectral")
+                des.set_optics("spectral")
                 pump()
                 self.assertEqual(des._checked(), {"demo-white", "demo-blue"})
-                des.c_optics.setCurrentText("rgb")
+                des.set_optics("rgb")
                 pump()
                 self.assertEqual(des._checked(), {"demo-white", "demo-red", "demo-blue"})
             finally:

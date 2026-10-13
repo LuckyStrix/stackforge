@@ -282,16 +282,21 @@ def ks(fil):
     return K, S
 
 
-def require_calibrated(fils, what="--optics spectral"):
-    """SystemExit naming every filament without a spectral calibration."""
-    missing = [f for f in fils if not is_calibrated(f)]
+CALIBRATE_HOW = ("Print a wedge set over contrasting bases (a coloured filament over a white and "
+                 "a black; white or black over the other), measure it with `stackforge-measure "
+                 "measure-wedge --sheet`, then run `stackforge-spectral fit --readings <file> "
+                 "--filament <id> --write`.")
+
+
+def require_calibrated(fils, what="--optics spectral",
+                       alt="Or pass --optics rgb to design with the td estimates for now."):
+    """SystemExit naming every filament without a spectral calibration (each once)."""
+    missing = list({f.id: f for f in fils if not is_calibrated(f)}.values())
     if missing:
         names = "\n".join(f"    {f.id}  ({f.label()})" for f in missing)
         raise SystemExit(
             f"{what} only works with spectrally calibrated filaments; these have no "
-            f"calibration:\n{names}\n  Print a wedge set over a white and a black base, "
-            f"measure it with `stackforge-measure measure-wedge --sheet`, then run "
-            f"`stackforge-spectral fit --readings <file> --filament <id> --write`.")
+            f"calibration:\n{names}\n  {CALIBRATE_HOW}" + (f"\n  {alt}" if alt else ""))
 
 
 def colour_of(fil, illum="D65") -> str:
@@ -359,6 +364,8 @@ def spectrum_scale(readings) -> float:
     otherwise be taken as a 0..1 value 100 times too bright. Unverified on hardware, so the
     readings' own XYZ is used as a cross-check (`scale_check`).
     """
+    if not readings:
+        raise SpectralError("no readings carry a spectrum")
     top = max(float(raw_spectrum(r)[1].max()) for r in readings)
     return 100.0 if top > 1.5 else 1.0
 

@@ -12,10 +12,12 @@ with one td (or three).
     stackforge-spectral demo-readings -o demo.readings.json     # synthetic, for trying it out
 
 WHAT A FIT NEEDS
-    The same filament printed as a wedge over two CONTRASTING bases (a white and a black),
-    each with its bare-base patch measured: over white a layer's scattering shows, over black
-    its absorption does, and only the pair separates K from S. One base, or two similar ones,
-    is refused for --write -- the fit would look tight and be wrong.
+    The filament printed as a wedge over bases that CONTRAST WITH IT, each with its bare-base
+    patch measured. What separates K from S is watching the layers hide a background unlike
+    themselves, so at every wavelength some wedge must change between its bare base and its
+    thickest step. White over black (or black over white) does that alone; a coloured filament
+    matches a white base where it is light and a black one where it is dark, so it needs both.
+    Where no wedge changes, --write is refused -- the fit would look tight and be wrong there.
 
 WHAT A FIT IS NOT
     K and S are effective values for stacks printed the way the wedge was (solid infill, the
@@ -42,7 +44,7 @@ from stackforge.core.filamentdb import DEFAULT_DB, DB
 from stackforge.tools import plaque
 
 MIN_STEPS = 4
-MIN_BASE_CONTRAST = 0.25     # mean |R_white - R_black| over the bands
+MIN_SIGNAL = 0.05            # per band: |thickest step - bare base| on the best wedge
 SMOOTH = 0.01                # weight of the second-difference penalty on log K, log S
 SCALE_TOL = (0.8, 1.25)      # reading Y / spectrum Y outside this: the scale guess is wrong
 
@@ -182,11 +184,43 @@ def held_out_de(datasets, layer_h, smooth):
     return out
 
 
-def base_contrast(datasets) -> float:
-    if len(datasets) < 2:
-        return 0.0
-    bases = [Rb for _, Rb, _, _ in datasets]
-    return max(float(np.abs(a - b).mean()) for i, a in enumerate(bases) for b in bases[i + 1:])
+def signal(datasets) -> np.ndarray:
+    """Per band, how far the best wedge moves from its bare base to its thickest step.
+
+    That change is the only thing that tells K from S: a band where the base already looks like
+    the filament says nothing about how fast the layers hide what is under them. Synthetic
+    checks: white over black alone, or black over white alone, predict stacks over other
+    backgrounds to < 0.5 dE; orange or yellow over one base miss by 7-33 dE in the bands where
+    the base matches them, and those bands are exactly the ones under MIN_SIGNAL."""
+    return np.max([np.abs(M[-1] - Rb) for _, Rb, M, _ in datasets], axis=0)
+
+
+def _band_ranges(mask) -> str:
+    out, i = [], 0
+    while i < len(mask):
+        if mask[i]:
+            j = i
+            while j + 1 < len(mask) and mask[j + 1]:
+                j += 1
+            out.append(f"{sp.GRID[i]:.0f}" + (f"-{sp.GRID[j]:.0f}" if j > i else "") + " nm")
+            i = j + 1
+        else:
+            i += 1
+    return ", ".join(out)
+
+
+def signal_note(datasets):
+    """None when every band is pinned down, else why not and which base would fix it."""
+    sig = signal(datasets)
+    weak = sig < MIN_SIGNAL
+    if not weak.any():
+        return None
+    thick = np.mean([M[-1] for _, _, M, _ in datasets], axis=0)
+    want = "dark (black)" if thick[weak].mean() > 0.3 else "light (white)"
+    bases = " and ".join(dict.fromkeys(bid for bid, _, _, _ in datasets))
+    return (f"at {_band_ranges(weak)} no wedge changes by {MIN_SIGNAL} between its bare base and "
+            f"its thickest step (best {sig[weak].max():.3f}): over {bases} the filament looks like "
+            f"its base there, so K and S cannot be told apart. Add a wedge over a {want} base")
 
 
 # --------------------------------------------------------------------------
@@ -285,14 +319,10 @@ def cmd_fit(args):
         print(f"  held-out dE: mean {ho.mean():.2f}, max {ho.max():.2f}"
               + ("   <- the fit does not generalise; re-measure or check the wedge" if ho.mean() > 3 else ""))
 
-    contrast = base_contrast(data)
     refuse = []
-    if len(data) < 2:
-        refuse.append("only one base: K and S cannot be told apart. Print the wedge over a white "
-                      "AND a black base")
-    elif contrast < MIN_BASE_CONTRAST:
-        refuse.append(f"the two bases differ by only {contrast:.2f} in reflectance (need "
-                      f"{MIN_BASE_CONTRAST}): use a white and a black base")
+    weak = signal_note(data)
+    if weak:
+        refuse.append(weak)
     if min(len(M) for _, _, M, _ in data) < MIN_STEPS:
         refuse.append(f"fewer than {MIN_STEPS} steps on a wedge")
     if warnings:
@@ -344,7 +374,7 @@ def _resolve(db, ids, demo):
             raise SystemExit(f"--demo filaments are {', '.join(pool)}; not {', '.join(missing)}")
         return [pool[i] for i in ids], pool
     fils = [db.get(i) for i in ids]
-    sp.require_calibrated(fils, "show")
+    sp.require_calibrated(fils, "show", alt=None)
     return fils, db.filaments
 
 
@@ -360,7 +390,7 @@ def _base_spectrum(arg, pool):
         # A colour has no spectrum: take it as a neutral grey of the same lightness.
         y = float(colormath.srgb_to_linear(np.array(rgb, float)) @ colormath._M_RGB2XYZ[1])
         return np.full(sp.NB, y), f"neutral grey matching {arg} (Y {y:.2f})"
-    sp.require_calibrated([f], "--base")
+    sp.require_calibrated([f], "--base", alt=None)
     return sp.r_inf(*sp.ks(f)), f.label()
 
 

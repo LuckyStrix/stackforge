@@ -73,6 +73,8 @@ def load_sheet(path: str) -> dict:
 
 def load_readings(path: str) -> dict:
     data = _load(path, READINGS_KIND, "wedge readings file")
+    if not data["strips"]:
+        raise ValueError(f"{os.path.basename(path)}: no wedges were measured")
     for s in data["strips"]:
         if not s.get("hex"):
             raise ValueError(f"{os.path.basename(path)}: {strip_title(s)} has no readings")

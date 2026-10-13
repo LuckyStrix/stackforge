@@ -37,9 +37,20 @@ check below is what tells you whether it holds for your prints.
 
 ## Calibrating a filament
 
-You need the filament printed as a wedge over **two contrasting bases**, a white and a black, each
-with its bare-base patch measured. Over white a layer's scattering shows; over black its absorption
-does. Only the pair separates K from S.
+You need the filament printed as a wedge over **bases that contrast with it**, each with its
+bare-base patch measured. What separates K from S is watching the layers hide a background unlike
+themselves, so at every wavelength some wedge has to change between its bare base and its thickest
+step:
+
+- a **coloured** filament needs a white AND a black base: it is light where it reflects (so a white
+  base looks like it there) and dark where it absorbs (so a black base does);
+- **white** needs only a black base, and **black** only a white one. A grey as a second base adds data
+  (white over black and grey, black over white and grey); a wedge over the filament itself is never
+  printed.
+
+Synthetic check (12 steps, meter noise): white over black alone, or black over white alone, predicts
+stacks over other backgrounds to under 0.5 dE; orange or yellow over one base miss by 7-33 dE in the
+bands where that base matches them.
 
 ```sh
 stackforge-calibrate wedge --filament orange --base white,black --template my.3mf -o wedge.3mf
@@ -57,7 +68,9 @@ The fit reports:
 - K, S and R∞ at every fifth band
 
 `--write` is refused:
-- with one base, or two bases that differ by less than 0.25 in mean reflectance
+- when at some wavelength no wedge changes by 0.05 between its bare base and its thickest step
+  (the message names the bands and whether a dark or a light base would fix them).
+  `stackforge-calibrate wedge` warns before printing when, from library colours, it looks that way
 - with fewer than 4 steps
 - when measure flagged steps that ran against the wedge (`reversed_steps`)
 - when the readings' own XYZ disagrees with the Y of their spectra (see "Unverified" below)
@@ -72,7 +85,7 @@ Designer) warns when a calibrated filament is used on a different layer grid.
 ## Using it
 
 - **Plaque:** `stackforge-plaque … [--illuminant D65|D50|A]`: spectral is the default (`--optics rgb`
-  has to be asked for). The Designer has the same switch under Colour > Optics. Only spectrally calibrated filaments are accepted, base
+  has to be asked for). The Designer has the same switch as "Colour model" at the top of its filament list (Spectral first; "RGB: td estimates" for filaments not yet calibrated, offered outright when fewer than two are). Only spectrally calibrated filaments are accepted, base
   included. The CLI lists the missing ones and refuses; the Designer greys them out. Everything
   downstream (ranking, dithering, export, the opaque-base check) is unchanged. The base check asks
   the same question as the RGB one: how much does what is under the base still show? In KM that

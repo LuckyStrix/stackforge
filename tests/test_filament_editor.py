@@ -203,7 +203,19 @@ class Editor(unittest.TestCase):
         msg = info.call_args[0][2]
         self.assertIn("Extruder 1 = ", msg)
         self.assertNotIn("Extruder 3", msg)
-        self.assertIn("refuses", msg)                        # one base cannot be fitted
+        self.assertNotIn("refuse", msg)                      # white over black alone fits
+
+    def test_a_coloured_filament_over_one_base_is_told_to_add_one(self):
+        from unittest import mock
+        from PySide6.QtWidgets import QFileDialog
+        page = self._page(self._tab())
+        page.select("polymaker-pla-pro-orange")
+        page.wbase2.setCurrentText(page.wbase.currentText())     # white only
+        out = os.path.join(self.d.name, "w.3mf")
+        with mock.patch.object(QFileDialog, "getSaveFileName", return_value=(out, "")), \
+                mock.patch.object(QMessageBox, "information") as info:
+            page.write_wedge()
+        self.assertIn("Add a black base", info.call_args[0][2])
 
     def test_wedge_settings_saved_as_default_load_next_time(self):
         from stackforge.gui.filaments.calibrate import CalibratePage
@@ -271,14 +283,35 @@ class Editor(unittest.TestCase):
         self.assertTrue(page.load_readings(path))
         self.assertEqual(page.fil_combo.currentData(), "polymaker-pla-pro-teal")
         self.assertEqual(got, [(path, "polymaker-pla-pro-teal")])
-        self.assertNotIn("only one base", page.lbl_status.text())
+        self.assertNotIn("refuse", page.lbl_status.text())
         self.assertFalse(hasattr(page, "do_fit"))         # the RGB td fit is gone from the page
 
-    def test_one_base_readings_are_flagged(self):
+    def _spectral_readings(self, fid, demo, bases):
+        """Synthetic spectral readings of demo filament `demo`, filed under library filament `fid`."""
+        from stackforge.core import wedgesheet
+        from stackforge.tools import spectral as tool
+        data = tool.demo_readings(demo, steps=8, bases=bases)
+        ref = wedgesheet.filament_ref(DB(self.path).filaments[fid])
+        for s in data["strips"]:
+            s["filament"] = ref
+        path = os.path.join(self.d.name, "s.readings.json")
+        wedgesheet.write(path, data)
+        return path
+
+    def test_readings_whose_base_matches_the_filament_are_flagged(self):
         page = self._page(self._tab())
         page.on_readings = lambda path, fid: True
-        self.assertTrue(page.load_readings(self._readings("polymaker-pla-pro-white", 0.47)))
-        self.assertIn("only one base", page.lbl_status.text())
+        path = self._spectral_readings("polymaker-pla-pro-orange", "demo-orange", ("demo-white",))
+        self.assertTrue(page.load_readings(path))
+        self.assertIn("will refuse to save", page.lbl_status.text())
+        self.assertIn("dark (black) base", page.lbl_status.text())
+
+    def test_white_over_black_alone_is_not_flagged(self):
+        page = self._page(self._tab())
+        page.on_readings = lambda path, fid: True
+        path = self._spectral_readings("polymaker-pla-pro-white", "demo-white", ("demo-black",))
+        self.assertTrue(page.load_readings(path))
+        self.assertNotIn("refuse", page.lbl_status.text())
 
     def test_readings_with_no_fit_to_hand_to_name_the_command(self):
         from unittest import mock

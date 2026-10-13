@@ -38,6 +38,14 @@ LEGEND = [
     "Green = reachable. Red = outside the gamut; add a filament rather than changing settings.",
     "Target first, then the best loadouts with their swatches and error.",
 ]
+# (shown, value): spectral is the model to design with; RGB stays for filaments not yet calibrated.
+OPTICS = [("Spectral: measured spectra", "spectral"), ("RGB: td estimates (approximate)", "rgb")]
+OPTICS_HINT = {
+    "spectral": "Kubelka-Munk per wavelength, from each filament's measured wedge spectra. Only "
+                "spectrally calibrated filaments (base included) can be ticked.",
+    "rgb": "One transmission distance (td) per filament, mostly estimated. Works with every "
+           "filament, but colours are guesses until calibrated: prefer Spectral once you can.",
+}
 EMPTY = ["1. Open an image   2. Tick the filaments you own   3. Press Generate",
          "Generate to see the simulated print",
          "Generate to see where colour is unreachable",
@@ -125,6 +133,27 @@ class PlaqueDesigner(QWidget):
 
         box = QGroupBox("2 · Filaments you own or might load")
         bl = QVBoxLayout(box)
+        model = QHBoxLayout()
+        model.addWidget(QLabel("Colour model"))
+        self.c_optics = QComboBox()
+        for text, value in OPTICS:
+            self.c_optics.addItem(text, value)
+        model.addWidget(self.c_optics, 1)
+        bl.addLayout(model)
+        self.lbl_optics = theme.hint("")
+        bl.addWidget(self.lbl_optics)
+        self.no_spectral = QWidget()                # spectral chosen, too little calibrated
+        nl = QVBoxLayout(self.no_spectral)
+        nl.setContentsMargins(0, 0, 0, 0)
+        self.lbl_no_spectral = QLabel()
+        self.lbl_no_spectral.setObjectName("warn")
+        self.lbl_no_spectral.setWordWrap(True)
+        nl.addWidget(self.lbl_no_spectral)
+        self.btn_use_rgb = QPushButton("Design with RGB td estimates instead")
+        self.btn_use_rgb.clicked.connect(lambda: self.set_optics("rgb"))
+        nl.addWidget(self.btn_use_rgb)
+        self.no_spectral.setVisible(False)
+        bl.addWidget(self.no_spectral)
         bl.addWidget(theme.hint("Tick them all. Ticking more than the toolhead count makes Generate "
                                 "rank the combinations for you."))
         row = QHBoxLayout()
@@ -220,12 +249,9 @@ class PlaqueDesigner(QWidget):
                                 "base; a see-through base makes every colour wrong."))
 
         c = section("Colour")
-        self.c_optics = _combo(["rgb", "spectral"], "spectral")
         self.c_illum = _combo(list(spectral.ILLUMINANTS), "D65")
-        c.addRow("Optics", self.c_optics)
-        c.addRow("", theme.hint("spectral: Kubelka-Munk per wavelength from measured wedge spectra. "
-                                "Only spectrally calibrated filaments can be ticked."))
         c.addRow("Viewing light", self.c_illum)
+        c.addRow("", theme.hint("The light the plaque is matched under (spectral model only)."))
         self.c_fit = _combo(["cover", "contain", "stretch"], "cover")
         self.c_dither = _combo(["none", "ordered", "blue", "floyd"], "none")
         self.s_grid = _spin(48, 384, 16, 192)
@@ -277,14 +303,25 @@ class PlaqueDesigner(QWidget):
         for wdg in (self.c_dither, self.c_rankby, self.c_illum):
             wdg.currentTextChanged.connect(lambda *_: self._inputs_changed())
         self.c_illum.setEnabled(self._spectral())
-        self.c_optics.currentTextChanged.connect(lambda *_: self._optics_changed())
+        self.lbl_optics.setText(OPTICS_HINT[self.optics()])
+        self.c_optics.currentIndexChanged.connect(lambda *_: self._optics_changed())
         return scroll
 
+    def optics(self) -> str:
+        """"spectral" or "rgb" (the combo shows longer names)."""
+        return self.c_optics.currentData() or "spectral"
+
+    def set_optics(self, value: str):
+        i = self.c_optics.findData(value)
+        if i >= 0:
+            self.c_optics.setCurrentIndex(i)
+
     def _spectral(self) -> bool:
-        return self.c_optics.currentText() == "spectral"
+        return self.optics() == "spectral"
 
     def _optics_changed(self):
         self.c_illum.setEnabled(self._spectral())
+        self.lbl_optics.setText(OPTICS_HINT[self.optics()])
         self._reload_filaments()
 
     def _build_bar(self):
@@ -437,9 +474,26 @@ class PlaqueDesigner(QWidget):
         if names:
             self._set_base(cur if cur in names else next((n for n in names if "white" in n), names[0]))
         self.base.blockSignals(False)
+        short = self._spectral_shortfall()
+        self.lbl_no_spectral.setText(short or "")
+        self.no_spectral.setVisible(bool(short))
         self._loading = False
         self._apply_filter()
         self._inputs_changed()
+
+    def _spectral_shortfall(self):
+        """Why no spectral plaque can be made from this library, or None. A plaque needs a base
+        and at least one colour, all spectrally calibrated."""
+        if not self._spectral():
+            return None
+        n = sum(spectral.is_calibrated(f) for f in self.db.filaments.values())
+        if n >= 2:
+            return None
+        return (f"{'None' if n == 0 else 'Only one'} of your {len(self.db.filaments)} filaments "
+                f"{'has' if n == 1 else 'have'} a spectral calibration, and a spectral plaque needs "
+                f"at least two (a base and a colour). Calibrate them in Filaments › Calibrate: print "
+                f"the wedges, measure them, load the readings. Until then you can design with the "
+                f"RGB td estimates.")
 
     def _apply_filter(self):
         needle = self.filter.text().strip().lower()
@@ -506,7 +560,7 @@ class PlaqueDesigner(QWidget):
             width=self.s_width.value(), height=self.s_height.value(), grid=self.s_grid.value(),
             cap=400_000, dither=self.c_dither.currentText(), fit=self.c_fit.currentText(),
             slots=self.s_slots.value(), top=self.s_top.value(), rank_by=self.c_rankby.currentText(),
-            rank_samples=self.s_samples.value(), optics=self.c_optics.currentText(),
+            rank_samples=self.s_samples.value(), optics=self.optics(),
             illuminant=self.c_illum.currentText())
 
     def _inputs_changed(self):
@@ -517,6 +571,10 @@ class PlaqueDesigner(QWidget):
     def _validate(self):
         if self.source_img is None:
             QMessageBox.warning(self, APP, "Open an image first.")
+            return None
+        short = self._spectral_shortfall()
+        if short:
+            QMessageBox.warning(self, APP, short)
             return None
         sel = self.selected()
         if len(sel) < 2:
@@ -633,9 +691,13 @@ class PlaqueDesigner(QWidget):
         else:
             w_px = h_px = plaque.pixel_grid(a, 1, 1)[0]
         combos = comb(max(0, n - 1), slots - 1) if n > slots else 0
+        # Auto base layers come from the base's opacity: with no usable base there is no number.
+        unknown = base is None and auto
+        base_txt = "? (no base yet)" if unknown else f"{a.base_layers}{' (auto)' if auto else ''}"
         lines = [f"grid       {w_px} x {h_px} px",
-                 f"plaque     {w_px*a.resolution:.0f} x {h_px*a.resolution:.0f} x {total:.2f} mm",
-                 f"layers     {a.base_layers}{' (auto)' if auto else ''} base + {a.max_layers} colour "
+                 f"plaque     {w_px*a.resolution:.0f} x {h_px*a.resolution:.0f} x "
+                 + (f"{total:.2f}+ mm (base not counted)" if unknown else f"{total:.2f} mm"),
+                 f"layers     {base_txt} base + {a.max_layers} colour "
                  f"at {a.layer_height:g} / {a.first_layer_height:g} mm",
                  f"selected   {n} filament{'s' if n != 1 else ''}"]
         if combos:
@@ -859,7 +921,7 @@ class PlaqueDesigner(QWidget):
                 "dither": self.c_dither.currentText(), "grid": self.s_grid.value(),
                 "slots": self.s_slots.value(), "top": self.s_top.value(),
                 "rankby": self.c_rankby.currentText(), "samples": self.s_samples.value(),
-                "optics": self.c_optics.currentText(), "illuminant": self.c_illum.currentText(),
+                "optics": self.optics(), "illuminant": self.c_illum.currentText(),
                 "filaments": sorted(f.id for f in self.selected()), "base": self._base_id()}
 
     def _refresh_presets(self, select=""):
@@ -898,9 +960,11 @@ class PlaqueDesigner(QWidget):
             if key in p:
                 widget.setValue(p[key])
         for key, widget in (("fit", self.c_fit), ("dither", self.c_dither), ("rankby", self.c_rankby),
-                            ("optics", self.c_optics), ("illuminant", self.c_illum)):
+                            ("illuminant", self.c_illum)):
             if key in p:
                 widget.setCurrentText(p[key])
+        if "optics" in p:
+            self.set_optics(p["optics"])
         want = set(p.get("filaments", []))
         self._set_checked(want)
         notes = []

@@ -3,8 +3,10 @@
 
   `wedge` builds a step-wedge 3MF: a staircase of 1 to N layers of the test
   filament, laid over an opaque base. Give it a white AND a black base and
-  the one file holds a wedge on each. Two backgrounds separate what the
-  filament absorbs from what it scatters, which a single background cannot do.
+  the one file holds a wedge on each. Watching layers hide a background unlike
+  them separates what the filament absorbs from what it scatters: a coloured
+  filament needs both (each matches it somewhere), white or black needs only
+  the other.
 
   `chips` builds standalone filament-only chips, for transmission readings.
 
@@ -121,6 +123,7 @@ def build_chips(steps, layer_h, step_w, step_d, gap, first_layer_h=None):
 
 WEDGE_SPACING = 8.0     # mm between the wedges of a set, front to back
 MIN_BASE_MM = 1.0       # thinnest automatic base, opaque or not
+MIN_CHANNEL_CONTRAST = 0.25  # linear RGB, coarser than spectra so stricter; see WedgeSet.contrast_notes
 
 
 def concentric_settings(flavor) -> dict:
@@ -246,6 +249,27 @@ class WedgeSet:
                        "it is measured first.")
         return out
 
+    def contrast_notes(self) -> list[str]:
+        """Test filaments whose bases look like them somewhere, judged from library colours.
+
+        The spectral fit refuses a band where no wedge changes between its bare base and its
+        thickest step (`tools/spectral.signal`). Before printing only the library colours are
+        known, so this is the same test per linear RGB channel: white over black alone passes,
+        orange over white alone does not (white looks like orange in red)."""
+        out = []
+        tested = {f.id: f for _, rows in self.wedges for f in rows}
+        for f in tested.values():
+            bases = [b for b, rows in self.wedges if f.id in {r.id for r in rows}]
+            lin = colormath.srgb_to_linear(f.rgb())
+            gap = np.max([np.abs(lin - colormath.srgb_to_linear(b.rgb())) for b in bases], axis=0)
+            weak = [i for i in range(3) if gap[i] < MIN_CHANNEL_CONTRAST]
+            if weak:
+                want = "black" if lin[weak].mean() > 0.3 else "white"
+                out.append(f"{f.label()} over {' and '.join(b.label() for b in bases)}: no base "
+                           f"differs from it in {'/'.join('RGB'[i] for i in weak)}, so the spectral "
+                           f"fit will likely refuse to save. Add a {want} base.")
+        return out
+
 
 def resolve_grid(args):
     """Fill args.layer_height / first_layer_height from --template (the profile that
@@ -332,9 +356,8 @@ def cmd_wedge(args):
                   f"build plate as much as on {b.name}.")
             print(f"    Use --base-layers {need} "
                   f"({args.first_layer_height + (need-1)*args.layer_height:.2f} mm).")
-    if len(ws.wedges) < 2:
-        print("\nOne base only: give a contrasting second one (--base white,black) -- the "
-              "spectral fit needs both and refuses to save from one.")
+    for note in ws.contrast_notes():
+        print(f"\n  ! {note}")
     print(f"\nThen: stackforge-measure measure-wedge --sheet {sheet}")
     print(f"      stackforge-spectral fit --filament <id> "
           f"--readings {wedgesheet.readings_path_for(sheet)} --write")

@@ -18,6 +18,7 @@ from stackforge.gui.filaments.common import scroll_page, section, spin
 from stackforge.gui.pickers import swatch_icon
 from stackforge.gui.settings import PresetStore
 from stackforge.tools import calibrate
+from stackforge.tools import spectral as spectral_tool
 
 
 class CalibratePage(QWidget):
@@ -265,9 +266,12 @@ class CalibratePage(QWidget):
             if s.get("reversed_steps"):
                 notes.append(f"wedge {s['wedge']}: step(s) {s['reversed_steps']} ran against "
                              "the wedge when measured")
-        if len({s["base"]["id"] for s in strips}) < 2:
-            notes.append("only one base: the fit needs a white AND a black wedge and will "
-                         "refuse to save")
+        try:
+            weak = spectral_tool.signal_note(spectral_tool.datasets_from_readings(data, fil["id"])[0])
+        except SystemExit:
+            weak = None                          # the fit itself says what is wrong
+        if weak:
+            notes.append("the fit will refuse to save: " + weak)
         if not (self.on_readings and self.on_readings(path, fil["id"])):
             QMessageBox.information(
                 self, APP, "Fit these readings with the spectral fit (Spectra tab > All options "
@@ -345,6 +349,5 @@ class CalibratePage(QWidget):
             "ColorMunki: Measure > measure-wedge with it as the wedge sheet reads every wedge in "
             "order and writes a readings file. Bring that back and press “Load readings…” "
             "in step 2 to fit it."
-            + ("\n\nOnly one wedge: the spectral fit needs a light AND a dark base and refuses "
-               "to save from one. Choose a second, contrasting base and write it again."
-               if one else ""))
+            + "".join(f"\n\n{n} Choose it as a base and write the wedges again."
+                      for n in ws.contrast_notes()))

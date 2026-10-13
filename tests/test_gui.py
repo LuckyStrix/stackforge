@@ -256,7 +256,7 @@ class Designer(unittest.TestCase):
                                   image_path=os.path.join(root, "docs", "plaque_target.png"))
         # The designer opens on spectral optics; these cover the RGB designer (the packaged
         # library has no spectral calibrations). Spectral: tests/test_spectra_gui.py.
-        self.des.c_optics.setCurrentText("rgb")
+        self.des.set_optics("rgb")
         self.des.show()
         self.addCleanup(self.des.close)
 

@@ -267,8 +267,8 @@ class SpectraViewer(QWidget):
                 sc = f.spectral
                 it.setToolTip(f"{f.label()}\nK/S {sc.get('source') or ''} {sc.get('measured_at') or ''}".strip())
             else:
-                it.setToolTip(f"{f.label()}\nno spectral calibration: print a wedge set over white and "
-                              f"black, measure it, then stackforge-spectral fit")
+                it.setToolTip(f"{f.label()}\nno spectral calibration: print a wedge set over contrasting "
+                              f"bases, measure it, then stackforge-spectral fit")
             on = f.id in prev if prev else (self.demo and f.id in ("demo-orange", "demo-blue"))
             it.setCheckState(Qt.Checked if (ok and on) else Qt.Unchecked)
             if not ok:
@@ -477,7 +477,8 @@ class SpectraViewer(QWidget):
         else:
             title = f"{layer} layer(s), {layer * lh:.2f} mm, over {bname}, seen under {illum}"
         self.chart.empty = ("No spectrally calibrated filaments in this library yet.\n\n"
-                            "Print a wedge set over a white and a black base, measure it with "
+                            "Print a wedge set over contrasting bases (a colour over white and "
+                            "black; white or black over the other), measure it with "
                             "spectra (Measure tab), then run stackforge-spectral fit "
                             "(All options) -- or press “Load demo spectra” to explore."
                             if not self.calibrated() else "Tick one or more filaments on the left.")
