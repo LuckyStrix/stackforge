@@ -19,7 +19,7 @@ import os
 import numpy as np
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import (QComboBox, QDoubleSpinBox, QFileDialog, QGroupBox,
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog, QGroupBox,
                                QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem,
                                QMessageBox, QPushButton, QSlider, QSpinBox, QSplitter, QTabWidget,
                                QVBoxLayout, QWidget)
@@ -29,7 +29,7 @@ from stackforge.core import spectral as sp
 from stackforge.core.filamentdb import DB, DEFAULT_DB
 from stackforge.gui import theme
 from stackforge.gui.pickers import swatch_icon
-from stackforge.gui.spectrum_chart import Axis, Series, SpectrumChart, SwatchStrip, visible
+from stackforge.gui.spectrum_chart import Axis, Series, SpectrumChart, SwatchStrip
 from stackforge.gui.tabs.common import ToolTabs
 from stackforge.tools import spectral as spectral_tool
 
@@ -162,7 +162,12 @@ class SpectraViewer(QWidget):
         self.maxl.setRange(1, 40)
         self.maxl.setValue(16)
         self.maxl.valueChanged.connect(self._max_changed)
+        self.log = QCheckBox("Log")
+        self.log.setToolTip("Log reflectance / transmittance axis (1% to 100%): spreads out dark "
+                            "filaments, which sit flat on the bottom of the linear one")
+        self.log.toggled.connect(lambda *_: self.refresh())
         ctl.addWidget(self.view, 1)
+        ctl.addWidget(self.log)
         for lbl, wdg in (("Light", self.illum), ("Layer", self.lh), ("Up to", self.maxl)):
             ctl.addSpacing(8)
             ctl.addWidget(QLabel(lbl))
@@ -440,7 +445,7 @@ class SpectraViewer(QWidget):
 
         for f in fils:
             K, S = sp.ks(f)
-            col = visible(sp.colour_of(f, illum))
+            col = QColor(sp.colour_of(f, illum))
             R = sp.stack_spectra(f, Rb, N, lh)
             rows.append((f.name, [sp.spectrum_to_hex(r, illum) for r in R]))
             if view == "reflectance":
@@ -468,8 +473,13 @@ class SpectraViewer(QWidget):
             else:
                 self.lbl_stack.setText("")
 
-        axis = {"reflectance": Axis("reflectance"), "transmittance": Axis("transmittance"),
-                "ks": Axis("K/S (log)", -3, 3, log=True)}[view]
+        self.log.setEnabled(view != "ks")
+        if view == "ks":
+            axis = Axis("K/S (log)", -3, 3, log=True)
+        elif self.log.isChecked():
+            axis = Axis(f"{view} (log)", -2, 0, log=True)
+        else:
+            axis = Axis(view)
         if view == "ks":
             title = f"K/S of {len(fils)} filament(s): high = the band is absorbed, low = sent back"
         elif view == "transmittance":

@@ -19,15 +19,20 @@ from stackforge.core import spectral as sp
 from stackforge.gui import theme
 
 
-def visible(hexcol: str, min_l=38.0) -> QColor:
-    """A curve colour that shows on the dark background: very dark colours are lifted."""
-    rgb = np.array(colormath.parse_hex(hexcol), float)
-    lab = colormath.srgb_to_lab(rgb)
-    if lab[0] >= min_l:
-        return QColor(hexcol)
-    t = (min_l - lab[0]) / min_l
-    mix = rgb * (1 - t) + np.array([170, 170, 182]) * t
-    return QColor(colormath.to_hex(mix))
+CASING = "#aaaab6"
+
+
+def casing(colour, min_l=38.0) -> QColor | None:
+    """The light edge a colour needs to show on the dark background, or None if it shows anyway.
+
+    Dark colours keep their own colour and are outlined: a black filament reads as a black
+    line with a light edge, not as a grey one."""
+    c = QColor(colour)
+    if colormath.srgb_to_lab(np.array([c.red(), c.green(), c.blue()], float))[0] >= min_l:
+        return None
+    edge = QColor(CASING)
+    edge.setAlpha(c.alpha())
+    return edge
 
 
 def _paint_error(widget, p, exc):
@@ -186,19 +191,22 @@ class SpectrumChart(QWidget):
                 for i, c in enumerate(s.curves):
                     if i == self.layer:
                         continue
-                    col = QColor(s.colour)
+                    col = QColor(casing(s.colour) or s.colour)   # too thin to case: the edge alone
                     col.setAlpha(55)
                     self._draw_curve(p, r, c, QPen(col, 1))
             for s in self.series:
                 c = self._curve(s, self.layer)
+                edge = casing(s.colour)
                 if c is not None:
+                    if edge is not None:
+                        self._draw_curve(p, r, c, QPen(edge, 4.8))
                     pen = QPen(s.colour, 2.4)
                     if s.dashed:
                         pen.setStyle(Qt.DashLine)
                     self._draw_curve(p, r, c, pen)
                 if s.points is not None:
-                    p.setPen(QPen(s.colour, 1.4))
-                    p.setBrush(QColor(theme.BG))
+                    p.setPen(QPen(edge or s.colour, 1.4))
+                    p.setBrush(QColor(s.colour if edge is not None else theme.BG))
                     for nm, v in zip(sp.GRID, s.points):
                         p.drawEllipse(QPointF(self._x(r, nm), self._y(r, v)), 3.2, 3.2)
                     p.setBrush(Qt.NoBrush)
@@ -253,6 +261,9 @@ class SpectrumChart(QWidget):
         for k, (lbl, col, v) in enumerate(lines[1:], 1):
             y = box.top() + 4 + 16 * k
             p.fillRect(QRectF(bx + 8, y + 5, 8, 8), col)
+            if casing(col) is not None:
+                p.setPen(QPen(QColor(CASING), 1))
+                p.drawRect(QRectF(bx + 8.5, y + 5.5, 7, 7))
             p.setPen(QColor(theme.FG))
             p.drawText(QRectF(bx + 20, y, w, 16), Qt.AlignLeft | Qt.AlignVCenter, f"{lbl}  {v:.3g}")
 
@@ -308,6 +319,9 @@ class SwatchStrip(QWidget):
             for i, hx in enumerate(hexes):
                 cell = QRectF(left + i * cw, y, max(cw - 1, 1), 20)
                 p.fillRect(cell, QColor(hx))
+                if casing(hx) is not None:           # a black cell has no edge against the background
+                    p.setPen(QPen(QColor(theme.LINE), 1))
+                    p.drawRect(cell.adjusted(0.5, 0.5, -0.5, -0.5))
                 if i == self.current:
                     p.setPen(QPen(QColor(theme.FG), 2))
                     p.drawRect(cell.adjusted(1, 1, -1, -1))

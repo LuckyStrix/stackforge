@@ -8,12 +8,13 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import numpy as np  # noqa: E402
 from PySide6.QtCore import Qt  # noqa: E402
+from PySide6.QtGui import QColor  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
 from stackforge.core import spectral as sp  # noqa: E402
 from stackforge.core.filamentdb import DB  # noqa: E402
 from stackforge.gui import theme  # noqa: E402
-from stackforge.gui.spectrum_chart import Axis, Series, SpectrumChart  # noqa: E402
+from stackforge.gui.spectrum_chart import CASING, Axis, Series, SpectrumChart, casing  # noqa: E402
 from stackforge.gui.tabs.spectra import SpectraViewer, WATERMARK  # noqa: E402
 from stackforge.tools import spectral as tool  # noqa: E402
 
@@ -46,7 +47,7 @@ class Viewer(unittest.TestCase):
         self.db = os.path.join(self.tmp.name, "f.json")
         db = DB(self.db)
         for f in sp.demo_filaments():
-            if f.id in ("demo-orange", "demo-white"):
+            if f.id in ("demo-orange", "demo-white", "demo-black"):
                 db.filaments[f.id] = f
             elif f.id == "demo-red":
                 f.spectral = None                       # one uncalibrated filament
@@ -96,6 +97,33 @@ class Viewer(unittest.TestCase):
             pump()
             self.assertFalse(self.v.chart.grab().isNull())
         self.assertTrue(self.v.chart.axis.log)                           # the K/S view
+
+    def test_log_axis_is_opt_in_and_spreads_out_black(self):
+        self.tick("demo-black")
+        self.assertFalse(self.v.chart.axis.log)
+        r = self.v.chart._plot_rect()
+        flat = r.bottom() - self.v.chart._y(r, 0.03)
+        self.v.log.setChecked(True)
+        pump()
+        self.assertTrue(self.v.chart.axis.log)
+        self.assertEqual((self.v.chart.axis.lo, self.v.chart.axis.hi), (-2, 0))
+        self.assertGreater(r.bottom() - self.v.chart._y(r, 0.03), 5 * flat)
+        self.assertFalse(self.v.chart.grab().isNull())
+        self.v.view.setCurrentIndex(self.v.view.findData("ks"))
+        pump()
+        self.assertFalse(self.v.log.isEnabled())                         # K/S is always log
+
+    def test_black_keeps_its_colour_and_gets_a_light_edge(self):
+        self.tick("demo-black")
+        s = self.v.chart.series[0]
+        self.assertLess(s.colour.lightness(), 60)                        # not lifted to grey
+        self.assertIsNotNone(casing(s.colour))
+        self.assertIsNone(casing("#ff8800"))
+        img = self.v.chart.grab().toImage()                              # nothing else in the plot is light
+        r = self.v.chart._plot_rect().toRect()
+        edge = sum(img.pixelColor(x, y).red() > QColor(CASING).red() - 40
+                   for x in range(r.left() + 2, r.right() - 2) for y in range(r.top(), r.bottom() + 3))
+        self.assertGreater(edge, r.width())
 
     def test_stack_builder_draws_a_dashed_stack(self):
         self.tick("demo-orange")
@@ -206,7 +234,6 @@ class Chart(unittest.TestCase):
         c.resize(600, 400)
         c.set_data([], 0, Axis("K/S", -3, 3, log=True))
         self.assertFalse(c.grab().isNull())
-        from PySide6.QtGui import QColor
         c.set_data([Series("a", QColor("#ff8800"), [np.full(sp.NB, 0.5)])], 0, Axis("K/S", -3, 3, log=True))
         self.assertFalse(c.grab().isNull())
 
