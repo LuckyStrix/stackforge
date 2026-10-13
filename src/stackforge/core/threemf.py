@@ -683,6 +683,20 @@ def solid_object_settings(flavor, layer_height, solid=True) -> dict:
     return obj
 
 
+def concentric_settings(flavor) -> dict:
+    """Per-object overrides that lay every solid layer concentrically (wedges and plaques).
+
+    Line fills turn 90 degrees each layer, and the meter sees the direction: the 2026-10-12
+    orange wedges zigzag ~7 dE between odd and even steps on both bases. The layers under the
+    top one show through a translucent filament, so they are concentric too (Orca only: Prusa
+    has no setting for them). A plaque takes the same overrides as the wedges its filaments
+    were calibrated on: K and S describe stacks finished the way the wedge was.
+    """
+    if flavor == "orca":
+        return {"top_surface_pattern": "concentric", "internal_solid_infill_pattern": "concentric"}
+    return {"top_fill_pattern": "concentric"}
+
+
 def template_slots(template):
     """Filament slots set up in the template's profile, or None if unreadable."""
     try:

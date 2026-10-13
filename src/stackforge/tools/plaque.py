@@ -422,8 +422,11 @@ def build_geometry(labels, width_mm, res, layer_h, base_h, base_index, n_fil):
 
 def write_plaque(path, flavor, plate, decals, fils, base_index, part_type,
                  template, layer_height, first_layer_height, solid=True):
-    """Write the 3MF. Shared by the CLI and the GUI so both force solid infill."""
+    """Write the 3MF. Shared by the CLI and the GUI so both force solid, concentric infill
+    (the finish the calibration wedges are printed with)."""
     obj = threemf.solid_object_settings(flavor, layer_height, solid)
+    if solid:
+        obj.update(threemf.concentric_settings(flavor))
     threemf.get_writer(flavor)(
         path, [plate], {0: decals}, base_index + 1, part_type,
         template=template, colors=[f.color for f in fils],
