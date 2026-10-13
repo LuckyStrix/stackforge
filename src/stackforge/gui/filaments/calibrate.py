@@ -50,8 +50,8 @@ class CalibratePage(QWidget):
         w = section(col, "1 · Print the step wedges",
                     "Staircases carrying 1 to N layers of this filament over an opaque base: one "
                     "over a light base and one over a dark base, both in one file. Two backgrounds "
-                    "separate absorption from scattering, which one cannot do: the fit refuses to "
-                    "save from a single base. A wedge whose base is the filament itself is left "
+                    "separate absorption from scattering, which one cannot do: the fit warns that "
+                    "it cannot be trusted from a single base. A wedge whose base is the filament itself is left "
                     "out (white over white shows nothing), so to calibrate your white choose a "
                     "different light filament as the light base.")
         self.wbase = QComboBox()
@@ -271,7 +271,7 @@ class CalibratePage(QWidget):
         except SystemExit:
             weak = None                          # the fit itself says what is wrong
         if weak:
-            notes.append("the fit will refuse to save: " + weak)
+            notes.append("the fit will not be trustworthy: " + weak)
         if not (self.on_readings and self.on_readings(path, fil["id"])):
             QMessageBox.information(
                 self, APP, "Fit these readings with the spectral fit (Spectra tab > All options "

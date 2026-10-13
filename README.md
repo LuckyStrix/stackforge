@@ -392,8 +392,8 @@ calibration is refused unless you ask for `--optics rgb`.
 What separates what a filament absorbs from what it scatters is watching its layers hide a
 background unlike it. A coloured filament looks like a white base where it is light and like a
 black one where it is dark, so it needs both. White needs only black, and black only white
-(add a grey for extra data). The spectral fit refuses `--write` when some wavelength never
-changes on any wedge, and says which base to add. A wedge whose base is the filament itself is
+(add a grey for extra data). The spectral fit warns loudly when some wavelength never
+changes on any wedge, and says which base to add (`--write` still saves it). A wedge whose base is the filament itself is
 left out. See [stackforge-spectral](#stackforge-spectral).
 
 ### Matching by eye, with no instrument
@@ -860,8 +860,8 @@ stackforge-spectral show --filaments orange,blue --base white --layers 8 --previ
 stackforge-spectral demo-readings -o demo.readings.json     # SYNTHETIC, to try the fit
 ```
 
-The fit reports a held-out dE (each step predicted by a fit that never saw it). It refuses to
-write when a base looks like the filament at some wavelength (no wedge changes there), under 4 steps, or spectra whose scale disagrees with the
+The fit reports a held-out dE (each step predicted by a fit that never saw it). It still writes, under a loud
+warning kept with the calibration, when a base looks like the filament at some wavelength (no wedge changes there), under 4 steps, steps that ran against the wedge, or spectra whose scale disagrees with the
 reading's own XYZ.
 
 ![Spectra tab (synthetic demo filaments)](docs/spectra_viewer.png)

@@ -49,13 +49,13 @@ clean and CI runs both. PySide6 is the `gui` extra; the CLIs need only numpy/Pil
 - **Spectral optics take calibrated filaments only** (`core/spectral.py`, `docs/spectral.md`).
   `plaque --optics spectral` and `SpectralGamut` refuse any filament or base without a
   `Filament.spectral` block (Kubelka-Munk K, S per 10 nm band, 380-730), which only
-  `stackforge-spectral fit` writes, when every band changes on some wedge (`signal`, MIN_SIGNAL:
-  white over black alone is enough, a colour needs white and black). It never touches color/td/td_rgb/provenance.
+  `stackforge-spectral fit` writes; it is trustworthy when every band changes on some wedge (`signal`, MIN_SIGNAL:
+  white over black alone is enough, a colour needs white and black), and warns otherwise. It never touches color/td/td_rgb/provenance.
   `Gamut` is split into `_setup`/`_add_layer`/`_linear` hooks: the RGB path must stay byte-identical
   (checked against the pre-refactor build). CIE tables in `data/cie/` are the CIE's files, md5-tested.
 - **Spectrum scale is unverified on hardware** (Argyll documents 0..100; 0..1 is warned about): decided per readings file (never per patch: a dark
-  patch on 0..100 reads below 1), cross-checked against each base patch's XYZ; mismatch refuses
-  `--write`. `demo-*` filaments are SYNTHETIC: watermarked, never written to a library by the viewer.
+  patch on 0..100 reads below 1), cross-checked against each base patch's XYZ. No fit check refuses `--write`
+  (2026-10-13): weak signal, <4 steps, scale mismatch and reversed steps print a NOT TRUSTWORTHY box and are saved in `spectral["warnings"]`. `demo-*` filaments are SYNTHETIC: watermarked, never written to a library by the viewer.
 - **No exception may escape a `paintEvent`**: on Windows PySide it kills the process (access
   violation). `gui/spectrum_chart.py` draws the error instead. numpy 2 keeps `ceil()` of an int integral.
 

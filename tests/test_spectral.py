@@ -1,5 +1,7 @@
 """Spectral optics: CIE colorimetry, the Kubelka-Munk layer model, the K/S fit from wedge
 spectra, the spectral plaque gamut, and the calibrated-only rule. No display needed."""
+import contextlib
+import io
 import json
 import os
 import subprocess
@@ -229,14 +231,16 @@ class FitCli(unittest.TestCase):
         self.assertEqual(after.spectral["layer_height_ref"], 0.08)
         self.assertTrue(os.path.exists(png))
 
-    def test_a_base_that_matches_the_filament_somewhere_is_refused(self):
+    def test_a_base_that_matches_the_filament_somewhere_is_written_with_a_warning(self):
         data = json.load(open(self.readings))
         data["strips"] = data["strips"][:1]                # orange over white only
         wedgesheet.write(self.readings, data)
         rc = tool.main(["fit", "--readings", self.readings, "--filament", "demo-orange", "--db", self.db,
                         "--no-holdout", "--write"])
-        self.assertEqual(rc, 1)
-        self.assertFalse(sp.is_calibrated(DB(self.db).filaments["demo-orange"]))
+        self.assertEqual(rc, 0)
+        fil = DB(self.db).filaments["demo-orange"]
+        self.assertTrue(sp.is_calibrated(fil))
+        self.assertIn("-730 nm", fil.spectral["warnings"][0])
         note = tool.signal_note(tool.datasets_from_readings(data, "demo-orange")[0])
         self.assertIn("-730 nm", note)                     # white looks like orange in the reds
         self.assertIn("dark (black) base", note)
@@ -248,6 +252,7 @@ class FitCli(unittest.TestCase):
                             "--no-holdout", "--write"])
             self.assertEqual(rc, 0, fid)
             self.assertEqual(DB(self.db).filaments[fid].spectral["bases"], [base])
+            self.assertNotIn("warnings", DB(self.db).filaments[fid].spectral)
 
     def test_held_out_bases_predict_what_a_single_base_fit_never_saw(self):
         """White fitted over black alone predicts white over orange (a background it never saw)."""
@@ -262,24 +267,30 @@ class FitCli(unittest.TestCase):
                             - sp.spectrum_to_lab(tool.predict(Kt, St, Rg, L, 0.08), "D50"), axis=-1)
         self.assertLess(de.max(), 1.0)
 
-    def test_steps_measured_against_the_wedge_are_refused(self):
+    def test_steps_measured_against_the_wedge_are_written_with_a_warning(self):
         data = json.load(open(self.readings))
         data["strips"][0]["reversed_steps"] = [4]
         wedgesheet.write(self.readings, data)
-        rc = tool.main(["fit", "--readings", self.readings, "--filament", "demo-orange", "--db", self.db,
-                        "--no-holdout", "--write"])
-        self.assertEqual(rc, 1)
-        self.assertFalse(sp.is_calibrated(DB(self.db).filaments["demo-orange"]))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            rc = tool.main(["fit", "--readings", self.readings, "--filament", "demo-orange",
+                            "--db", self.db, "--no-holdout", "--write"])
+        self.assertEqual(rc, 0)
+        self.assertIn("NOT TRUSTWORTHY", out.getvalue())
+        fil = DB(self.db).filaments["demo-orange"]
+        self.assertTrue(sp.is_calibrated(fil))
+        self.assertIn("[4]", fil.spectral["warnings"][0])
         self.assertIn("[4]", tool.reversed_notes(data, "demo-orange")[0])
 
-    def test_inconsistent_scale_is_refused(self):
+    def test_inconsistent_scale_is_written_with_a_warning(self):
         data = json.load(open(self.readings))
         for s in data["strips"]:
             s["base_reading"]["xyz"] = [v * 3 for v in s["base_reading"]["xyz"]]
         wedgesheet.write(self.readings, data)
         rc = tool.main(["fit", "--readings", self.readings, "--filament", "demo-orange", "--db", self.db,
                         "--no-holdout", "--write"])
-        self.assertEqual(rc, 1)
+        self.assertEqual(rc, 0)
+        self.assertIn("scale", DB(self.db).filaments["demo-orange"].spectral["warnings"][0])
 
     def test_show(self):
         png = os.path.join(self.d, "show.png")

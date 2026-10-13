@@ -303,7 +303,7 @@ class Editor(unittest.TestCase):
         page.on_readings = lambda path, fid: True
         path = self._spectral_readings("polymaker-pla-pro-orange", "demo-orange", ("demo-white",))
         self.assertTrue(page.load_readings(path))
-        self.assertIn("will refuse to save", page.lbl_status.text())
+        self.assertIn("will not be trustworthy", page.lbl_status.text())
         self.assertIn("dark (black) base", page.lbl_status.text())
 
     def test_white_over_black_alone_is_not_flagged(self):

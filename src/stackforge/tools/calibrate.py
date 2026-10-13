@@ -267,7 +267,7 @@ class WedgeSet:
                 want = "black" if lin[weak].mean() > 0.3 else "white"
                 out.append(f"{f.label()} over {' and '.join(b.label() for b in bases)}: no base "
                            f"differs from it in {'/'.join('RGB'[i] for i in weak)}, so the spectral "
-                           f"fit will likely refuse to save. Add a {want} base.")
+                           f"fit will likely not be trustworthy there. Add a {want} base.")
         return out
 
 

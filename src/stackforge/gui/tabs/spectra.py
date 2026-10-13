@@ -551,7 +551,7 @@ class SpectraTab(QWidget):
 
     def fit_readings(self, path, fid=None):
         """A readings file from Calibrate or Measure: fill the fit form and show it. Saving
-        stays a choice on the form; the tool refuses a fit it cannot stand behind."""
+        stays a choice on the form; the tool warns loudly about a fit it cannot stand behind."""
         panel = self.tools.panels["fit"]
         panel.form.set_values({"readings": path, **({"filament": fid} if fid else {})})
         self.tools.select(panel)

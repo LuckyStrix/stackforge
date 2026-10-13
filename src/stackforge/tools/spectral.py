@@ -17,7 +17,8 @@ WHAT A FIT NEEDS
     themselves, so at every wavelength some wedge must change between its bare base and its
     thickest step. White over black (or black over white) does that alone; a coloured filament
     matches a white base where it is light and a black one where it is dark, so it needs both.
-    Where no wedge changes, --write is refused -- the fit would look tight and be wrong there.
+    Where no wedge changes the fit looks tight and is wrong; --write still saves it, under a
+    loud warning that is kept in the record.
 
 WHAT A FIT IS NOT
     K and S are effective values for stacks printed the way the wedge was (solid infill, the
@@ -88,12 +89,12 @@ def datasets_from_readings(readings: dict, filament_id: str):
 def reversed_notes(readings: dict, filament_id: str) -> list:
     """measure's wedge-reversal check for this filament's strips: steps whose lightness ran
     against the wedge (a swapped patch or a misplaced aperture). Fitting them bakes the error
-    into K and S, so --write is refused while any are flagged."""
+    into K and S, so the fit warns while any are flagged."""
     out = []
     for s in readings["strips"]:
         if s["filament"]["id"] == filament_id and s.get("reversed_steps"):
             out.append(f"{wedgesheet.strip_title(s)}: step(s) {s['reversed_steps']} ran against the "
-                       f"wedge when measured; re-measure them before fitting")
+                       f"wedge when measured; they are fitted as read")
     return out
 
 
@@ -319,16 +320,16 @@ def cmd_fit(args):
         print(f"  held-out dE: mean {ho.mean():.2f}, max {ho.max():.2f}"
               + ("   <- the fit does not generalise; re-measure or check the wedge" if ho.mean() > 3 else ""))
 
-    refuse = []
+    # Nothing here stops --write: a doubtful fit beats a guess. It is saved with these attached.
+    doubts = []
     weak = signal_note(data)
     if weak:
-        refuse.append(weak)
+        doubts.append(weak)
     if min(len(M) for _, _, M, _ in data) < MIN_STEPS:
-        refuse.append(f"fewer than {MIN_STEPS} steps on a wedge")
+        doubts.append(f"fewer than {MIN_STEPS} steps on a wedge")
     if warnings:
-        refuse.append("the spectrum scale does not match the readings' own XYZ (see above)")
-    if rev:
-        refuse.append("steps were measured against the wedge (see above)")
+        doubts.append("the spectrum scale does not match the readings' own XYZ (see above)")
+    doubts += rev
 
     if args.preview:
         curves, pts = [], []
@@ -343,12 +344,14 @@ def cmd_fit(args):
                     note="SYNTHETIC" if synthetic else None, points=pts)
         print(f"\nplot -> {args.preview}")
 
-    if refuse:
-        for r in refuse:
-            print(f"\n  !! {r}")
-        if args.write:
-            print("  Refusing --write.")
-        return 1
+    if doubts:
+        print("\n" + "!" * 78)
+        print("!! THIS FIT IS NOT TRUSTWORTHY. K and S may be wrong where it says:")
+        for r in doubts:
+            print(f"!!   - {r}")
+        print("!! " + ("Writing it anyway; the warnings are kept with the calibration."
+                       if args.write else "--write will save it anyway, with these warnings."))
+        print("!" * 78)
     if not args.write:
         print("\n(dry run -- pass --write to save K and S into the database)")
         return 0
@@ -359,7 +362,7 @@ def cmd_fit(args):
         layer_height_ref=layer_h, n_steps=[len(M) for _, _, M, _ in data],
         bases=[bid for bid, _, _, _ in data], de_mean=round(float(allde.mean()), 3),
         de_held_out=round(float(ho.mean()), 3) if ho is not None else None,
-        **({"synthetic": True} if synthetic else {}))
+        **({"synthetic": True} if synthetic else {}), **({"warnings": doubts} if doubts else {}))
     # `color` is an input of the RGB model; a spectral fit leaves it alone.
     db.save()
     print(f"\nwrote the spectral calibration of {fil.id} to {db.path}")

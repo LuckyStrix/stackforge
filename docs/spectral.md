@@ -67,7 +67,8 @@ The fit reports:
   number. Above ~3 the model is not describing the print; re-measure, or suspect the print.
 - K, S and R∞ at every fifth band
 
-`--write` is refused:
+Nothing stops `--write`. The fit prints a boxed NOT TRUSTWORTHY warning, and saves it in the
+record's `warnings`:
 - when at some wavelength no wedge changes by 0.05 between its bare base and its thickest step
   (the message names the bands and whether a dark or a light base would fix them).
   `stackforge-calibrate wedge` warns before printing when, from library colours, it looks that way
@@ -119,7 +120,7 @@ round-trip test of the fit (`tests/test_spectral.py`).
   default, 3.3 nm with `-H`), so that is the expected scale, and the fit warns when a file looks
   like 0..1 instead. The scale is decided over a whole readings file, never per patch: a very dark
   patch on the 0..100 scale reads below 1. The fit then cross-checks each base
-  patch's own XYZ against the Y of its spectrum, and refuses to write on a mismatch. The first real
+  patch's own XYZ against the Y of its spectrum, and warns on a mismatch (every K and S is then suspect). The first real
   wedge set is also the first test of this path.
 - **Printed accuracy of `--optics spectral`.** Nothing has been printed from it yet. The demo
   filaments are tuned to look like printed PLA (about 60% of red light still passes 0.24 mm of
