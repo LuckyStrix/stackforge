@@ -618,30 +618,8 @@ def next_steps(fils, args):
 # --------------------------------------------------------------------------
 
 
-def colour_histogram(img, max_colours):
-    """Distinct colours of `img` and how many pixels have each: (rgb (k,3), counts (k,)).
-
-    Scoring these weighted by count is exact. A random pixel sample was not:
-    when the top two combinations were 0.04 dE apart the winner changed with
-    the seed. An image with more than `max_colours` distinct colours has low
-    bits dropped (to the bin centre) until it fits, moving each by a few codes.
-    """
-    px = img.reshape(-1, 3).astype(np.int64)
-    for drop in range(8):
-        q = ((px >> drop) << drop) + ((1 << drop) >> 1)
-        u, counts = np.unique((q[:, 0] << 16) | (q[:, 1] << 8) | q[:, 2],
-                              return_counts=True)
-        if len(u) <= max_colours:
-            break
-    rgb = np.stack([(u >> 16) & 255, (u >> 8) & 255, u & 255], -1).astype(np.float64)
-    return rgb, counts.astype(np.float64)
-
-
-def weighted_percentile(values, weights, q):
-    order = np.argsort(values)
-    cum = np.cumsum(weights[order])
-    i = np.searchsorted(cum, q / 100.0 * cum[-1])
-    return float(values[order][min(i, len(values) - 1)])
+colour_histogram = colormath.colour_histogram        # shared with paint's ranking
+weighted_percentile = colormath.weighted_percentile
 
 
 def score_subset(fils, base, args, rgb):

@@ -1,4 +1,4 @@
-import os, subprocess, sys, tempfile, unittest, zipfile
+import os, re, subprocess, sys, tempfile, unittest, zipfile
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -106,6 +106,76 @@ class ImagePatterns(unittest.TestCase):
             self.assertEqual(sc.evaluate("image-planar", sc.Coords(
                 np.array([2.0, 18.0]), np.array([10.0, 10.0]), np.array([0.0, 0.0]),
                 (20, 20, 20)), a, pal).tolist(), [0, 1])
+
+
+class Ranking(unittest.TestCase):
+    def ns(self, **kw):
+        import argparse
+        return argparse.Namespace(**{"dither": "ordered", "dither_strength": 1.0, "pattern": "texture",
+                                     "rank_by": "mean", **kw})
+
+    PAL = np.array([[230, 230, 230], [237, 213, 166], [103, 135, 173], [120, 85, 60],
+                    [20, 20, 20]], float)        # white (base), light brown, blue, mid brown, black
+
+    def test_mid_brown_target_picks_the_brown_not_the_blue(self):
+        """The bug that prompted ranking: a dark skin tone went to blue, the darkest
+        filament given. With a mid brown among the candidates it must win."""
+        from stackforge.core import colormath
+        target = colormath.srgb_to_linear(np.tile([[141, 119, 99]], (500, 1)).astype(float))
+        for dither in ("ordered", "off"):
+            best = sc.rank_sets(self.PAL, 0, 2, target, self.ns(dither=dither))[0]
+            self.assertEqual(best["keep"], [0, 3], dither)
+
+    def test_every_set_keeps_the_base_and_has_slots_members(self):
+        from stackforge.core import colormath
+        target = colormath.srgb_to_linear(np.array([[200, 50, 50], [50, 50, 200]], float))
+        ranked = sc.rank_sets(self.PAL, 2, 3, target, self.ns())
+        self.assertEqual(len(ranked), 6)                          # C(4, 2)
+        for r in ranked:
+            self.assertIn(2, r["keep"])
+            self.assertEqual(len(r["keep"]), 3)
+        self.assertEqual([r["mean"] for r in ranked], sorted(r["mean"] for r in ranked))
+
+    def test_cli_ranks_down_to_slots(self):
+        from PIL import Image
+        with tempfile.TemporaryDirectory() as d:
+            src = os.path.join(d, "cube.3mf")
+            c = cube_item()
+            mf.write(src, [(c.verts, c.tris)])
+            img = os.path.join(d, "brown.png")
+            Image.fromarray(np.full((4, 4, 3), (120, 85, 60), np.uint8)).save(img)
+            out = os.path.join(d, "out.3mf")
+            hexes = ",".join("#%02X%02X%02X" % tuple(int(v) for v in c) for c in self.PAL)
+            r = subprocess.run([sys.executable, "-m", "stackforge.tools.paint", src, "-o", out,
+                                "--palette", hexes, "--slots", "2", "--pattern", "image-planar",
+                                "--image", img, "--resolution", "1.0", "--layer-height", "0.2"],
+                               cwd=ROOT, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+            self.assertIn("ranking 4 sets of 2", r.stdout)
+            self.assertIn("T2 #78553C", r.stdout)                 # the mid brown was chosen
+            with zipfile.ZipFile(out) as z:
+                cfg = z.read("Metadata/model_settings.config").decode()
+            used = set(re.findall(r'key="extruder" value="(\d+)"', cfg))
+            self.assertEqual(used, {"1", "2"})                    # two extruders, not five
+
+    def test_decorative_pattern_cannot_rank(self):
+        with self.assertRaises(SystemExit) as cm:
+            sc.main(["x.3mf", "-o", "o.3mf", "--palette", "#000,#fff,#f00", "--slots", "2",
+                     "--pattern", "stripes"])
+        self.assertIn("colour pattern", str(cm.exception))
+
+
+class Preview(unittest.TestCase):
+    def test_front_view_is_not_stretched_by_thin_layers(self):
+        from PIL import Image
+        edges = sc.layer_edges(8.0, 0.2, 0.08)                 # 8 mm tall, 0.08 mm layers
+        lab = np.zeros((len(edges) - 1, 10, 10), np.int16)     # 10 x 10 voxels of 0.8 mm = 8 mm
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "p.png")
+            sc.save_preview(p, lab, np.array([[255, 0, 0]], float), edges, 0.8)
+            w, h = Image.open(p).size
+        self.assertEqual(h, 10)                                # 8 mm / 0.8 mm, not 99 layers
+        self.assertEqual(w, 10 + 4 + 10)
 
 
 class Boxes(unittest.TestCase):

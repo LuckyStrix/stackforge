@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import itertools
 import math
 import os
 import time
@@ -169,28 +170,18 @@ def p_gradient(cd, a, n):
     return np.clip((ax / max(size, 1e-9) * n).astype(int), 0, n - 1)
 
 
-def _nearest_filament(rgb, palette):
-    """(N,3) sRGB -> nearest palette index in Lab, chunked to bound memory."""
-    pal_lab = colormath.srgb_to_lab(palette)
-    out = np.empty(len(rgb), dtype=np.int32)
-    for s in range(0, len(rgb), 200_000):
-        lab = colormath.srgb_to_lab(rgb[s:s + 200_000].astype(np.float64))
-        out[s:s + 200_000] = ((lab[:, None, :] - pal_lab[None]) ** 2).sum(-1).argmin(-1)
-    return out
+# Colour patterns are split in two: a target fn(coords, args) -> (N,3) linear RGB per voxel,
+# then `_pick` onto the palette. Ranking scores filament sets against the targets in between.
 
 
-def _pick(rgb_srgb, cd, a, palette):
-    """Palette index for sampled sRGB colours: dithered if --dither is on, else nearest in Lab."""
-    mode = _dither_mode(a)
-    if mode == "off":
-        return _nearest_filament(rgb_srgb, palette)
-    return _pick_linear(colormath.srgb_to_linear(np.asarray(rgb_srgb, dtype=np.float64)), cd, a, palette)
+def _strength(a):
+    return 0.0 if _dither_mode(a) == "off" else getattr(a, "dither_strength", 1.0)
 
 
-def _pick_linear(target_lin, cd, a, palette):
-    pal_lin = colormath.srgb_to_linear(palette)
-    strength = 0.0 if _dither_mode(a) == "off" else getattr(a, "dither_strength", 1.0)
-    idx, blend = colormath.quantize_dither(target_lin, pal_lin, cd.cells, strength)
+def _pick(target_lin, cd, a, palette):
+    """Palette index per voxel: dithered if --dither is on, else nearest in Lab."""
+    idx, blend = colormath.quantize_dither(target_lin, colormath.srgb_to_linear(palette),
+                                           cd.cells, _strength(a))
     de = np.linalg.norm(colormath.linear_to_lab(blend) - colormath.linear_to_lab(target_lin), axis=-1)
     a.colour_report = getattr(a, "colour_report", []) + [(de.sum(), len(de))]
     return idx
@@ -214,31 +205,35 @@ def _load(a):
     return np.asarray(colormath.open_image(a.image))
 
 
-def p_image_spherical(cd, a, n, palette):
+def _image_target(a, u, v):
+    return colormath.srgb_to_linear(_sample(_load(a), u, v))
+
+
+def t_image_spherical(cd, a):
     """Equirectangular map (Earth/Mars/Moon style): u from azimuth, v from elevation."""
     u = ((cd.theta + math.pi) / (2 * math.pi) + a.lon_offset / 360.0) % 1.0
     v = 0.5 - cd.phi / math.pi
-    return _pick(_sample(_load(a), u, v), cd, a, palette)
+    return _image_target(a, u, v)
 
 
-def p_image_cylindrical(cd, a, n, palette):
+def t_image_cylindrical(cd, a):
     """Wrap around the vertical axis; v runs down the model's height."""
     u = ((cd.theta + math.pi) / (2 * math.pi) + a.lon_offset / 360.0) % 1.0
     v = 1.0 - cd.z / max(cd.size[2], 1e-9)
-    return _pick(_sample(_load(a), u, v), cd, a, palette)
+    return _image_target(a, u, v)
 
 
-def p_image_planar(cd, a, n, palette):
+def t_image_planar(cd, a):
     """Project along --axis, like top_paint but for any direction."""
     ax = "xyz".index(a.axis)
     o = [i for i in range(3) if i != ax]
     co = [cd.x, cd.y, cd.z]
     u = co[o[0]] / max(cd.size[o[0]], 1e-9)
     v = 1.0 - co[o[1]] / max(cd.size[o[1]], 1e-9)
-    return _pick(_sample(_load(a), np.clip(u, 0, 1), np.clip(v, 0, 1)), cd, a, palette)
+    return _image_target(a, np.clip(u, 0, 1), np.clip(v, 0, 1))
 
 
-def p_texture(cd, a, n, palette):
+def t_texture(cd, a):
     """The model's own colours (GLB texture, vertex colours, material factors).
 
     Each voxel takes the mean colour of its nearest surface samples; the surface is
@@ -258,8 +253,7 @@ def p_texture(cd, a, n, palette):
     if k == 1:
         dist, nn = dist[:, None], nn[:, None]
     w = 1.0 / (dist + cd.res * 0.25)
-    target = (cols[nn] * w[..., None]).sum(1) / w.sum(1)[:, None]
-    return _pick_linear(target, cd, a, palette)
+    return (cols[nn] * w[..., None]).sum(1) / w.sum(1)[:, None]
 
 
 _EXPR_NAMES = {k: getattr(np, k) for k in (
@@ -335,20 +329,57 @@ PATTERNS = {
     "stripes": p_stripes,
     "gradient": p_gradient,
     "expr": p_expr,
-    "image-spherical": p_image_spherical,
-    "image-cylindrical": p_image_cylindrical,
-    "image-planar": p_image_planar,
-    "texture": p_texture,
+}
+TARGETS = {          # colour patterns: a target colour per voxel, matched to the palette
+    "image-spherical": t_image_spherical,
+    "image-cylindrical": t_image_cylindrical,
+    "image-planar": t_image_planar,
+    "texture": t_texture,
 }
 IMAGE_PATTERNS = {"image-spherical", "image-cylindrical", "image-planar"}
-COLOUR_PATTERNS = IMAGE_PATTERNS | {"texture"}      # patterns that need a palette, not just a count
+COLOUR_PATTERNS = set(TARGETS)      # patterns that need a palette, not just a count
 
 
-def evaluate(pattern, cd, args, palette):
+def evaluate(pattern, cd, args, palette, target=None):
+    """Palette index per voxel. `target` is the colour pattern's output, if already computed."""
     n = len(palette)
-    fn = PATTERNS[pattern]
-    idx = fn(cd, args, n, palette) if pattern in COLOUR_PATTERNS else fn(cd, args, n)
+    if pattern in TARGETS:
+        idx = _pick(TARGETS[pattern](cd, args) if target is None else target, cd, args, palette)
+    else:
+        idx = PATTERNS[pattern](cd, args, n)
     return np.asarray(idx).astype(int) % n
+
+
+# --------------------------------------------------------------------------
+# choosing the filaments
+# --------------------------------------------------------------------------
+
+RANK_COLOURS = 20_000   # distinct target colours scored per set, as plaque's --rank-samples
+
+
+def score_palette(rgb, palette, args):
+    """dE (k,) of each target colour (sRGB 0..255) against what `palette` shows for it: the
+    area average of the dithered pair, or the nearest filament with --dither off. The same
+    pick `_pick` makes, minus the per-voxel threshold, which does not move the average."""
+    _, blend = colormath.quantize_dither(colormath.srgb_to_linear(rgb), colormath.srgb_to_linear(palette),
+                                         np.zeros((len(rgb), 3), int), _strength(args))
+    return np.linalg.norm(colormath.linear_to_lab(blend) - colormath.srgb_to_lab(rgb), axis=-1)
+
+
+def rank_sets(palette, base, slots, targets_lin, args):
+    """Every `slots`-sized set of palette indices that keeps `base`, scored against the
+    voxels' target colours (weighted by voxel count), best first."""
+    srgb = np.round(colormath.linear_to_srgb(targets_lin)).astype(np.int64)
+    rgb, weight = colormath.colour_histogram(srgb, RANK_COLOURS)
+    others = [i for i in range(len(palette)) if i != base]
+    out = []
+    for combo in itertools.combinations(others, slots - 1):
+        keep = sorted((base, *combo))
+        de = score_palette(rgb, palette[keep], args)
+        out.append({"keep": keep, "mean": float(np.average(de, weights=weight)),
+                    "p95": colormath.weighted_percentile(de, weight, 95), "max": float(de.max())})
+    out.sort(key=lambda r: r[args.rank_by])
+    return out
 
 
 # --------------------------------------------------------------------------
@@ -356,18 +387,27 @@ def evaluate(pattern, cd, args, palette):
 # --------------------------------------------------------------------------
 
 
-def label_grid(occ, shell, bounds, res, edges, pattern, args, palette, item=None):
-    """(nz,ny,nx) int labels; -1 where there is nothing to colour."""
-    x0, y0, x1, y1 = bounds
-    nz, ny, nx = occ.shape
-    lab = np.full(occ.shape, -1, dtype=np.int16)
+def shell_coords(shell, bounds, res, edges, size, item=None):
+    """((zs, ys, xs), Coords) of the voxels in `shell`; Coords is None when it is empty."""
+    x0, y0 = bounds[:2]
     zs, ys, xs = np.nonzero(shell)
     if len(zs) == 0:
-        return lab
+        return (zs, ys, xs), None
     mids = (edges[:-1] + edges[1:]) / 2
-    cd = Coords(xs * res + res / 2, ys * res + res / 2, mids[zs], args.size, item=item,
+    cd = Coords(xs * res + res / 2, ys * res + res / 2, mids[zs], size, item=item,
                 res=res, origin=(x0, y0), cells=np.stack([xs, ys, zs], axis=1))
-    lab[zs, ys, xs] = evaluate(pattern, cd, args, palette)
+    return (zs, ys, xs), cd
+
+
+def label_grid(occ, shell, bounds, res, edges, pattern, args, palette, item=None,
+               coords=None, target=None):
+    """(nz,ny,nx) int labels; -1 where there is nothing to colour. `coords` and `target`
+    are `shell_coords` and the pattern's target colours, when already computed."""
+    lab = np.full(occ.shape, -1, dtype=np.int16)
+    (zs, ys, xs), cd = coords or shell_coords(shell, bounds, res, edges, args.size, item)
+    if cd is None:
+        return lab
+    lab[zs, ys, xs] = evaluate(pattern, cd, args, palette, target)
     return lab
 
 
@@ -406,8 +446,12 @@ def _rects(layer, valid):
 # --------------------------------------------------------------------------
 
 
-def save_preview(path, lab, palette):
-    """Top view and front view of the colour of the first coloured voxel seen."""
+def save_preview(path, lab, palette, edges=None, res=None):
+    """Top view and front view of the colour of the first coloured voxel seen.
+
+    A voxel is `res` wide but one layer tall, so the front view is resampled to `res` per
+    pixel in z too; drawn one row per layer, a 0.08 mm grid stretched it tenfold.
+    """
     pal = np.vstack([palette, [[30, 30, 34]]]).astype(np.uint8)
     empty = len(palette)
 
@@ -419,7 +463,12 @@ def save_preview(path, lab, palette):
         return np.where(has.any(axis=axis), got, empty)
 
     top = first_hit(lab, 0, True)[::-1]            # looking down; y up on the page
-    front = first_hit(lab, 1, False)[::-1]          # looking along +y; z up
+    front = first_hit(lab, 1, False)                # looking along +y, row = layer
+    if edges is not None and res:
+        rows = max(1, int(round(edges[-1] / res)))
+        layer = np.searchsorted(edges, (np.arange(rows) + 0.5) * res) - 1
+        front = front[np.clip(layer, 0, len(front) - 1)]
+    front = front[::-1]                             # z up
     a, b = pal[top], pal[front]
     hh = max(a.shape[0], b.shape[0])
     def pad(im, bottom):
@@ -450,7 +499,15 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--base-extruder", type=int, default=1,
                     help="extruder the object already prints in; voxels given this colour "
                          "emit no modifier")
-    ap.add_argument("--pattern", choices=["texture"] + sorted(set(PATTERNS) - {"texture"}),
+    ap.add_argument("--slots", type=int, default=None,
+                    help="filament slots, COUNTING THE BASE. With more filaments than slots, every "
+                         "set of this size that keeps the base is scored against the model's "
+                         "colours and the best is used (image-* and texture patterns). "
+                         "Default: the --template's slot count")
+    ap.add_argument("--rank-by", choices=["mean", "p95"], default="mean",
+                    help="what the best set minimises: mean dE, or the 95th percentile")
+    ap.add_argument("--top", type=int, default=5, help="ranked sets to list")
+    ap.add_argument("--pattern", choices=["texture"] + sorted((set(PATTERNS) | set(TARGETS)) - {"texture"}),
                     help="texture = the model's own colours (GLB); image-* wrap an --image; the "
                          "rest are decorative. Default: texture for a GLB, required for a 3MF")
     ap.add_argument("--dither", choices=["off", "ordered"], default=None,
@@ -494,12 +551,12 @@ def main(argv=None):
         from stackforge.core.filamentdb import DB
         fils = DB(args.db).resolve(args.filaments)
         palette = np.array([f.rgb() for f in fils], float)
-        for i, f in enumerate(fils, 1):
-            print(f"  T{i} {f.color} {f.label()}")
         colors = [f.color for f in fils]
+        names = [f.label() for f in fils]
     else:
         palette = colormath.parse_palette(args.palette)
         colors = [colormath.to_hex(c) for c in palette]
+        names = list(colors)
     if not 1 <= args.base_extruder <= len(palette):
         raise SystemExit(f"--base-extruder must be 1 to {len(palette)}")
 
@@ -517,6 +574,19 @@ def main(argv=None):
         if not glb_input:
             raise SystemExit("--pattern is required for a 3MF (a GLB defaults to texture)")
         args.pattern = "texture"
+
+    slots = args.slots or (threemf.template_slots(args.template) if args.template else None) \
+        or len(palette)
+    ranking = len(palette) > slots
+    if ranking and args.pattern not in COLOUR_PATTERNS:
+        raise SystemExit(f"{len(palette)} filaments for {slots} slots: choosing between them needs "
+                         f"a colour pattern (image-* or texture). List {slots} or fewer.")
+    if ranking and slots < 2:
+        raise SystemExit("--slots must be at least 2 to choose between filaments")
+    tag = "candidate " if ranking else "T"
+    for i, (c, name) in enumerate(zip(colors, names), 1):
+        base = "  (base)" if ranking and i == args.base_extruder else ""
+        print(f"  {tag}{i} {c} {name}{base}")
 
     threemf.require_layer_grid(args.flavor, args.template, args.layer_height)
     t_lh, t_flh = threemf.template_layer_settings(args.template) if args.template else (None, None)
@@ -559,23 +629,52 @@ def main(argv=None):
                          f"{MAX_VOXELS // 1_000_000} M); raise --resolution or lower the model size")
 
     t0 = time.time()
-    decals = {}
-    total_boxes, seen_labels = 0, np.zeros(len(palette), int)
-    preview_lab = None
+    shells = []
     for i, item in enumerate(items):
         occ = voxelize(item, bounds, args.resolution, edges)
         if not occ.any():
             print(f"  ! item {i} ({item.name}) voxelised to nothing; is the mesh empty or degenerate?")
             continue
         shell = shell_mask(occ, args.resolution, args.layer_height, args.depth)
-        lab = label_grid(occ, shell, bounds, args.resolution, edges, args.pattern, args, palette, item)
+        coords = shell_coords(shell, bounds, args.resolution, edges, args.size, item)
+        target = TARGETS[args.pattern](coords[1], args) \
+            if args.pattern in TARGETS and coords[1] is not None else None
+        shells.append((i, item, occ, shell, coords, target))
+        print(f"  item {i}: {occ.sum() / 1e3:.0f} k solid voxels, "
+              f"{shell.sum() / 1e3:.0f} k coloured ({time.time() - t0:.1f}s)")
+
+    if ranking:
+        targets = [s[5] for s in shells if s[5] is not None]
+        if not targets:
+            raise SystemExit("nothing to colour, so nothing to choose filaments for")
+        base = args.base_extruder - 1
+        n_sets = math.comb(len(palette) - 1, slots - 1)
+        print(f"\nranking {n_sets} sets of {slots} (base {names[base]} always in) "
+              f"on {sum(len(t) for t in targets) / 1e3:.0f} k voxels' colours")
+        ranked = rank_sets(palette, base, slots, np.concatenate(targets), args)
+        print(f"\n{'rank':>4} {'mean dE':>8} {'p95':>6} {'max':>6}  filaments")
+        for r, res in enumerate(ranked[:args.top], 1):
+            print(f"{r:>4} {res['mean']:8.2f} {res['p95']:6.2f} {res['max']:6.2f}  "
+                  + ", ".join(names[k] for k in res["keep"]))
+        keep = ranked[0]["keep"]
+        palette, colors, names = palette[keep], [colors[k] for k in keep], [names[k] for k in keep]
+        args.base_extruder = keep.index(base) + 1
+        print("\nusing:")
+        for i, (c, name) in enumerate(zip(colors, names), 1):
+            print(f"  T{i} {c} {name}" + ("  (base)" if i == args.base_extruder else ""))
+        print()
+
+    decals = {}
+    total_boxes, seen_labels = 0, np.zeros(len(palette), int)
+    preview_lab = None
+    for i, item, occ, shell, coords, target in shells:
+        lab = label_grid(occ, shell, bounds, args.resolution, edges, args.pattern, args, palette,
+                         item, coords, target)
         parts = emit_boxes(lab, bounds, args.resolution, edges, args.base_extruder - 1)
         decals[i] = parts
         total_boxes += sum(len(t) // 12 for _, _, t in parts)
         seen_labels += np.bincount(lab[lab >= 0], minlength=len(palette))
         preview_lab = lab if preview_lab is None else np.maximum(preview_lab, lab)
-        print(f"  item {i}: {occ.sum() / 1e3:.0f} k solid voxels, "
-              f"{shell.sum() / 1e3:.0f} k coloured ({time.time() - t0:.1f}s)")
 
     rep = getattr(args, "colour_report", [])
     if rep:
@@ -596,7 +695,7 @@ def main(argv=None):
             print(f"  ! --depth {args.depth} mm reaches below the template's solid shell "
                   f"({solid:.2f} mm); colour under that lands on sparse infill.")
     if args.preview and preview_lab is not None:
-        save_preview(args.preview, preview_lab, palette)
+        save_preview(args.preview, preview_lab, palette, edges, args.resolution)
         print(f"  preview -> {args.preview}")
 
     threemf.get_writer(args.flavor)(

@@ -220,7 +220,7 @@ class Colour(unittest.TestCase):
         cd = sc.Coords(np.zeros(1), np.zeros(1), np.zeros(1), (1, 1, 1),
                        item=threemf.Item("t", v, t), res=1.0)
         with self.assertRaises(SystemExit):
-            sc.p_texture(cd, a, 4, PALETTE)
+            sc.t_texture(cd, a)
 
 
 class Dither(unittest.TestCase):
