@@ -77,8 +77,10 @@ clean and CI runs both. PySide6 is the `gui` extra; the CLIs need only numpy/Pil
   Y-up metres -> Z-up mm is `(x,-z,y)` (a rotation: do not mirror, winding must stay outward). glTF
   vertex colours and `baseColorFactor` are linear; textures are sRGB. Slice-checked (all four tools used),
   never printed.
-- **paint ranks filament sets like plaque, but on swatch colours** (`rank_sets`): colour patterns
+- **paint ranks filament sets like plaque, but one filament per voxel** (`rank_sets`): colour patterns
   are a target fn (`TARGETS`) then `_pick`, so every item is voxelised before the set is chosen.
+  `printed_palette`: calibrated filaments are `--depth` mm over the base (KM); uncalibrated keep
+  the swatch. Swatches are badly off (light brown measures 21 dE darker); never rank on them.
   Outer-wall slice of a head (2026-10-15): base gains on thin modifiers, 16% vs 9.5% designed at
   `--resolution` 0.3, 24% at 0.6, so walls do NOT lose small features the way plaque tops do.
 - **paint `--expr` goes through an AST whitelist** (`compile_expr`) before `eval`: no

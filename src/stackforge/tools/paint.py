@@ -36,7 +36,7 @@ from scipy.ndimage import distance_transform_edt
 
 from stackforge.core import threemf
 from stackforge.core.filamentdb import DEFAULT_DB
-from stackforge.core import colormath
+from stackforge.core import colormath, spectral
 
 MAX_VOXELS = 60_000_000   # same ceiling top_paint applies to its raster
 MIN_FEATURE_MM = 0.6      # narrowest region that gets plastic at a 0.4 mm nozzle (see CLAUDE.md)
@@ -357,6 +357,41 @@ def evaluate(pattern, cd, args, palette, target=None):
 RANK_COLOURS = 20_000   # distinct target colours scored per set, as plaque's --rank-samples
 
 
+def printed_palette(fils, base, depth, optics="spectral"):
+    """(sRGB (n,3) each filament shows on the surface, notes).
+
+    spectral: a calibrated filament is `depth` mm of it over the base's bulk colour
+    (Kubelka-Munk, as plaque), so its colour is the measured one rather than the library
+    swatch, and a translucent one shows the base through. depth 0 colours all the way
+    through, so that is the bulk colour. An uncalibrated filament keeps its swatch; so does
+    everything with optics "swatch". Opaque voxels of one filament each: no stacking.
+    """
+    notes = []
+    if optics == "swatch":
+        return np.array([f.rgb() for f in fils], float), notes
+    Rb = spectral.r_inf(*spectral.ks(base)) if spectral.is_calibrated(base) else None
+    out = []
+    for f in fils:
+        if not spectral.is_calibrated(f):
+            out.append(f.rgb())
+            continue
+        K, S = spectral.ks(f)
+        R = spectral.r_inf(K, S) if depth <= 0 or Rb is None else spectral.layer(Rb, K, S, depth)
+        out.append(np.clip(spectral.spectrum_to_srgb(R), 0, 255))
+        for w in f.spectral.get("warnings") or []:
+            notes.append(f"{f.label()}: its calibration was written with a warning: {w}")
+        if f.spectral.get("synthetic"):
+            notes.append(f"{f.label()}: SYNTHETIC calibration, not a measurement")
+    plain = [f.label() for f in fils if not spectral.is_calibrated(f)]
+    if plain:
+        notes.append("no spectral calibration, so the library swatch stands in for what prints: "
+                     + ", ".join(plain))
+    if Rb is None and len(plain) < len(fils) and depth > 0:
+        notes.append(f"the base ({base.label()}) has no calibration, so translucent filaments "
+                     f"are taken at their bulk colour, as if nothing showed through")
+    return np.array(out, float), notes
+
+
 def score_palette(rgb, palette, args):
     """dE (k,) of each target colour (sRGB 0..255) against what `palette` shows for it: the
     area average of the dithered pair, or the nearest filament with --dither off. The same
@@ -364,6 +399,11 @@ def score_palette(rgb, palette, args):
     _, blend = colormath.quantize_dither(colormath.srgb_to_linear(rgb), colormath.srgb_to_linear(palette),
                                          np.zeros((len(rgb), 3), int), _strength(args))
     return np.linalg.norm(colormath.linear_to_lab(blend) - colormath.srgb_to_lab(rgb), axis=-1)
+
+
+def _prints_as(swatch_hex, rgb):
+    shown = colormath.to_hex(np.round(rgb))
+    return "" if shown.upper() == swatch_hex.upper() else f"  -> prints as {shown}"
 
 
 def rank_sets(palette, base, slots, targets_lin, args):
@@ -499,6 +539,11 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--base-extruder", type=int, default=1,
                     help="extruder the object already prints in; voxels given this colour "
                          "emit no modifier")
+    ap.add_argument("--optics", choices=["spectral", "swatch"], default="spectral",
+                    help="spectral: a calibrated filament is matched as it prints, --depth mm of "
+                         "it over the base (measured colour; translucent ones show the base). "
+                         "Uncalibrated filaments use their swatch either way. swatch: the "
+                         "library hex for all")
     ap.add_argument("--slots", type=int, default=None,
                     help="filament slots, COUNTING THE BASE. With more filaments than slots, every "
                          "set of this size that keeps the base is scored against the model's "
@@ -547,10 +592,11 @@ def main(argv=None):
     ap = build_parser()
     args = ap.parse_args(argv)
 
+    fils = None
     if args.filaments:
         from stackforge.core.filamentdb import DB
         fils = DB(args.db).resolve(args.filaments)
-        palette = np.array([f.rgb() for f in fils], float)
+        palette = np.array([f.rgb() for f in fils], float)      # until --optics, below
         colors = [f.color for f in fils]
         names = [f.label() for f in fils]
     else:
@@ -583,10 +629,15 @@ def main(argv=None):
                          f"a colour pattern (image-* or texture). List {slots} or fewer.")
     if ranking and slots < 2:
         raise SystemExit("--slots must be at least 2 to choose between filaments")
+    if fils:
+        # The slicer keeps the library swatches (`colors`); matching uses what prints.
+        palette, notes = printed_palette(fils, fils[args.base_extruder - 1], args.depth, args.optics)
+        for n in notes:
+            print(f"  ! {n}")
     tag = "candidate " if ranking else "T"
     for i, (c, name) in enumerate(zip(colors, names), 1):
         base = "  (base)" if ranking and i == args.base_extruder else ""
-        print(f"  {tag}{i} {c} {name}{base}")
+        print(f"  {tag}{i} {c} {name}{base}{_prints_as(c, palette[i - 1])}")
 
     threemf.require_layer_grid(args.flavor, args.template, args.layer_height)
     t_lh, t_flh = threemf.template_layer_settings(args.template) if args.template else (None, None)
@@ -661,7 +712,8 @@ def main(argv=None):
         args.base_extruder = keep.index(base) + 1
         print("\nusing:")
         for i, (c, name) in enumerate(zip(colors, names), 1):
-            print(f"  T{i} {c} {name}" + ("  (base)" if i == args.base_extruder else ""))
+            print(f"  T{i} {c} {name}" + ("  (base)" if i == args.base_extruder else "")
+                  + _prints_as(c, palette[i - 1]))
         print()
 
     decals = {}

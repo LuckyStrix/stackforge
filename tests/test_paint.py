@@ -165,6 +165,41 @@ class Ranking(unittest.TestCase):
         self.assertIn("colour pattern", str(cm.exception))
 
 
+class PrintedColour(unittest.TestCase):
+    def setUp(self):
+        from stackforge.core import spectral
+        self.sp = spectral
+        self.d = {f.id: f for f in spectral.demo_filaments()}
+
+    def test_translucent_filament_shows_the_base(self):
+        red, white, black = self.d["demo-red"], self.d["demo-white"], self.d["demo-black"]
+        def gap(depth):        # red channel of the red, over white minus over black
+            on_white, _ = sc.printed_palette([white, red], white, depth)
+            on_black, _ = sc.printed_palette([black, red], black, depth)
+            return on_white[1][0] - on_black[1][0]
+        self.assertGreater(gap(0.4), 20)                                  # the base shows through
+        self.assertLess(gap(1.2), gap(0.4))                               # less of it, thicker
+        bulk, _ = sc.printed_palette([white, red], white, 0)              # depth 0: all the way through
+        bulk_b, _ = sc.printed_palette([black, red], black, 0)
+        np.testing.assert_allclose(bulk[1], bulk_b[1])
+
+    def test_measured_colour_replaces_the_swatch(self):
+        from stackforge.core import colormath
+        red, white = self.d["demo-red"], self.d["demo-white"]
+        red.color = "#00FF00"                                           # a swatch that is plain wrong
+        pal, _ = sc.printed_palette([white, red], white, 1.2)
+        self.assertGreater(pal[1][0], pal[1][1])                         # still red, as measured
+        sw, _ = sc.printed_palette([white, red], white, 1.2, optics="swatch")
+        np.testing.assert_allclose(sw[1], colormath.parse_hex("#00FF00"))
+
+    def test_uncalibrated_keeps_its_swatch_and_says_so(self):
+        from stackforge.core.filamentdb import Filament
+        plain = Filament(id="plain", name="Plain", color="#336699")
+        pal, notes = sc.printed_palette([self.d["demo-white"], plain], self.d["demo-white"], 1.2)
+        np.testing.assert_allclose(pal[1], [0x33, 0x66, 0x99])
+        self.assertTrue(any("swatch" in n and "Plain" in n for n in notes))
+
+
 class Preview(unittest.TestCase):
     def test_front_view_is_not_stretched_by_thin_layers(self):
         from PIL import Image

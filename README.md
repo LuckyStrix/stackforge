@@ -794,10 +794,20 @@ needs a green-ish filament. `stackforge-make-samples` writes `globe.glb` to try 
 every `--slots`-sized set that keeps the base filament (`--base-extruder`) is scored against the
 voxels' own target colours, by mean dE (`--rank-by p95` for the tail), and the best is written.
 `--slots` defaults to the template's slot count. It scores the same thing the run reports: the
-dithered pair's area average, or the nearest filament with `--dither off`. Swatch colours only,
-no layer optics, so it is a ranking for opaque single-filament voxels. A scanned head whose skin
-was darker than every filament given went almost all jeans blue (the darkest); ranked over the
-whole library it took light brown, light grey, black and red, 21 dE down to 10 (simulated).
+dithered pair's area average, or the nearest filament with `--dither off`.
+
+**What a filament looks like** (`--optics`, default `spectral`): a spectrally calibrated
+filament is matched as `--depth` mm of it over the base (Kubelka-Munk, as plaque), so the
+measured colour replaces the library swatch, and a translucent one (PolyLite red, orange,
+yellow) shows the base through. An uncalibrated filament keeps its swatch, and the run names
+it. The 3MF keeps the swatches for the slicer's display. Each voxel is still one opaque-ish
+filament: no stacking of different filaments, so dark tones are reached by dithering in black.
+
+On a scanned head (skin about L\* 52) the measured colours mattered more than translucency:
+light brown measures `#BC9E81` against its `#EDD5A6` swatch, light grey `#82888F` against
+`#BAC4C4`. Scored on measured colours, the hand-picked set (jeans blue base, light brown, light
+grey, yellow) is 19.8 dE, the set ranked on swatches 13.8, the set ranked on measured colours
+(light brown, black, white, red) 10.0. Simulated; half its surface is dithered black.
 
 Everything below also applies to GLB input; the decorative patterns need no colour data.
 
