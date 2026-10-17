@@ -238,13 +238,21 @@ class Stacking(unittest.TestCase):
         d = {f.id: f for f in spectral.demo_filaments()}
         self.fils = [d["demo-white"], d["demo-red"], d["demo-yellow"], d["demo-black"]]
 
-    def test_band_counts(self):
-        self.assertEqual(self.ps.band_counts(1.2, 0.08, 0.6), [15, 7, 3, 2])
-        self.assertEqual(self.ps.band_counts(1.2, 0.2, 0.6), [6, 3, 2])
-        self.assertEqual(self.ps.band_counts(0.4, 0.08, 0.6), [5, 2, 1])   # shallower than a wall band
-        self.assertEqual(self.ps.band_counts(0.08, 0.08, 0.6), [1])
-        # 0.8 mm voxels: a wall has one voxel in 1.2 mm, so one band, not two with an empty one
-        self.assertEqual(self.ps.band_counts(1.2, 0.08, 0.8), [15, 7, 3, 1])
+    def test_band_classes(self):
+        def ms(*a):
+            return [(m, round(u, 3)) for m, u in self.ps.band_classes(*a)]
+        self.assertEqual(ms(1.2, 0.08, 0.6), [(15, 0.08), (7, 0.171), (3, 0.4), (2, 0.6)])
+        self.assertEqual(ms(1.2, 0.2, 0.6), [(6, 0.2), (3, 0.4), (2, 0.6)])
+        # 0.8 mm voxels: a wall has one voxel in 1.2 mm, so it is one band of what it prints
+        self.assertEqual(ms(1.2, 0.08, 0.8), [(15, 0.08), (7, 0.171), (3, 0.4), (1, 0.8)])
+        # 0.5 mm voxels: two in 1.2 mm, and 0.5 is under a wall band, so one band of 1.0
+        self.assertEqual(ms(1.2, 0.08, 0.5)[-1], (1, 1.0))
+        # 0.4 mm voxels: three; split in whole voxels of >= 0.6, that is one band of 1.2
+        self.assertEqual(ms(1.2, 0.08, 0.4)[-1], (1, 1.2))
+        self.assertEqual(ms(1.2, 0.08, 0.3)[-1], (2, 0.6))            # four voxels, two each
+        for a in ((1.2, 0.08, 0.6), (0.4, 0.08, 0.6), (0.08, 0.08, 0.6), (2.0, 0.12, 0.45)):
+            us = [u for _, u in self.ps.band_classes(*a)]
+            self.assertEqual(us, sorted(us), a)                       # thinnest first
 
     def test_stack_depth_is_whole_layers(self):
         self.assertAlmostEqual(self.ps.stack_depth(1.0, 0.12), 0.96)
@@ -260,16 +268,16 @@ class Stacking(unittest.TestCase):
         n = self.ps.normals(dist, zs, ys, xs, res, lh)
         np.testing.assert_allclose(n[0], [0, 0, 1], atol=1e-6)            # top face
         np.testing.assert_allclose(n[1], [-1, 0, 0], atol=1e-6)           # the x = 0 wall
-        ms = self.ps.band_counts(1.2, lh, res)
-        self.assertEqual(list(self.ps.classify(n, 1.2, lh, res, ms)), [0, len(ms) - 1])
+        classes = self.ps.band_classes(1.2, lh, res)
+        self.assertEqual(list(self.ps.classify(n, lh, res, classes)), [0, len(classes) - 1])
         d = self.ps.true_depth(dist[zs, ys, xs], n, res, lh)
         np.testing.assert_allclose(d, [lh / 2, res / 2], atol=1e-6)      # outermost voxel centres
 
     def test_slopes_get_bands_in_between(self):
-        ms = self.ps.band_counts(1.2, 0.08, 0.6)                          # [15, 7, 3, 2]
+        classes = self.ps.band_classes(1.2, 0.08, 0.6)                   # 15, 7, 3, 2 bands
         t = np.radians([0, 20, 45, 90])                                   # tilt of the normal from up
         n = np.stack([np.sin(t), np.zeros(4), np.cos(t)], 1)
-        got = [ms[c] for c in self.ps.classify(n, 1.2, 0.08, 0.6, ms)]
+        got = [classes[c][0] for c in self.ps.classify(n, 0.08, 0.6, classes)]
         # 20 deg: a voxel step along the normal is 0.6 sin 20 + 0.08 cos 20 = 0.28 mm -> 4 -> 3
         self.assertEqual(got, [15, 3, 2, 2])
 
@@ -283,15 +291,17 @@ class Stacking(unittest.TestCase):
         shell = occ & (dist <= depth)
         zs, ys, xs = np.nonzero(shell)
         n = self.ps.normals(dist, zs, ys, xs, res, lh)
-        ms = self.ps.band_counts(depth, lh, res)
-        cls = self.ps.classify(n, depth, lh, res, ms)
+        classes = self.ps.band_classes(depth, lh, res)
+        cls = self.ps.classify(n, lh, res, classes)
         d = self.ps.true_depth(dist[zs, ys, xs], n, res, lh)
-        st = self.ps.Stacks(self.fils, 0, depth, ms)
+        st = self.ps.Stacks(self.fils, 0, classes)
         band = st.band(cls, d)
-        for c, m in enumerate(ms):
+        for c, (m, u) in enumerate(classes):
             sel = cls == c
             if sel.any():       # every band of the class is some voxel's band
                 self.assertEqual(set(band[sel][band[sel] < m]), set(range(m)), f"{m} bands")
+        m, u = classes[-1]      # and the wall models what its voxels print: one 0.8 mm voxel
+        self.assertAlmostEqual(m * u, res)
 
     def test_a_column_shares_anchor_class_and_target(self):
         """Voxels down one column must solve alike, or the bands mix; the review saw float
@@ -308,8 +318,8 @@ class Stacking(unittest.TestCase):
         a.image = os.path.join(tempfile.mkdtemp(), "g.png")
         from PIL import Image
         Image.fromarray(np.random.default_rng(0).integers(0, 255, (16, 16, 3), np.uint8)).save(a.image)
-        ms = self.ps.band_counts(1.2, lh, res)
-        geo = sc.stack_geometry(dist, coords, edges, ms, a)
+        classes = self.ps.band_classes(1.2, lh, res)
+        geo = sc.stack_geometry(dist, coords, edges, classes, a)
         (zs, ys, xs), _ = coords
         bottom = (ys == 5) & (xs == 5) & (zs < 6)                        # the bottom-face column
         self.assertGreater(bottom.sum(), 1)
@@ -322,7 +332,7 @@ class Stacking(unittest.TestCase):
             self.assertTrue((v == v[0]).all(), key)
 
     def test_labels_decode_like_plaques_stack(self):
-        st = self.ps.Stacks(self.fils, 0, 0.24, [3, 1])
+        st = self.ps.Stacks(self.fils, 0, [(3, 0.08), (1, 0.24)])
         g = st.gamuts[0]
         states = np.arange(len(g.colors))
         cls = np.zeros(len(states), int)
@@ -333,7 +343,7 @@ class Stacking(unittest.TestCase):
 
     def test_solve_finds_a_stack_colour(self):
         from stackforge.core import colormath
-        st = self.ps.Stacks(self.fils, 0, 0.24, [3, 1])
+        st = self.ps.Stacks(self.fils, 0, [(3, 0.08), (1, 0.24)])
         g = st.gamuts[0]
         pick = np.linspace(1, len(g.colors) - 1, 25).astype(int)
         target = g.colors[pick]
@@ -376,6 +386,33 @@ class Stacking(unittest.TestCase):
         self.assertIn("using (stacked):", outs["on"])
         self.assertIn("using (one filament per voxel):", outs["off"])
         self.assertLess(errs["on"], errs["off"] - 3)      # 8.3 -> 4.2 dE at 0.6 mm voxels
+
+
+class StackingOff(unittest.TestCase):
+    def test_uncalibrated_set_is_not_stacked_and_says_why_up_front(self):
+        from PIL import Image
+        from stackforge.core import spectral
+        from stackforge.core.filamentdb import DB, Filament
+        white = {f.id: f for f in spectral.demo_filaments()}["demo-white"]
+        plain = Filament(id="plain", name="Plain", color="#336699")
+        with tempfile.TemporaryDirectory() as d:
+            db = DB(os.path.join(d, "f.json"))
+            db.filaments[white.id], db.filaments[plain.id] = white, plain
+            db.save()
+            src = os.path.join(d, "cube.3mf")
+            c = cube_item()
+            mf.write(src, [(c.verts, c.tris)])
+            img = os.path.join(d, "i.png")
+            Image.fromarray(np.full((4, 4, 3), (80, 100, 160), np.uint8)).save(img)
+            r = subprocess.run([sys.executable, "-m", "stackforge.tools.paint", src,
+                                "-o", os.path.join(d, "o.3mf"), "--db", db.path,
+                                "--filaments", "demo-white,plain", "--pattern", "image-planar",
+                                "--image", img, "--resolution", "1.0", "--layer-height", "0.2"],
+                               cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+        self.assertIn("stacking off: stacking needs 2 spectrally calibrated filaments; 1 are", r.stdout)
+        self.assertLess(r.stdout.index("stacking off"), r.stdout.index("reading"))
+        self.assertNotIn("stacked in bands", r.stdout)
 
 
 class Preview(unittest.TestCase):

@@ -635,14 +635,21 @@ def score_subset(fils, base, args, rgb):
 
 def gamut_de(g, rgb, mix):
     """dE (k,) of colours `rgb` (k,3 sRGB) against gamut `g`: its two-stack mix if `mix`,
-    else its nearest state. Shared with paint's stacking."""
+    else its nearest state."""
+    return gamut_match(g, rgb, mix)[0]
+
+
+def gamut_match(g, rgb, mix):
+    """(dE, a, b, alpha) of colours `rgb` (k,3 sRGB) against gamut `g`: each shows state b a
+    fraction alpha of the time and a the rest (`mix_pairs`), or with `mix` off its nearest
+    state a (b = a, alpha = 0). Shared with paint's stacking, which needs the states too."""
     lab = colormath.srgb_to_lab(rgb)
     if mix:
-        a, b, al = mix_pairs(g, rgb[:, None, :])
-        a, b, al = a[:, 0], b[:, 0], al[:, 0]
+        a, b, al = (v[:, 0] for v in mix_pairs(g, rgb[:, None, :]))
         mixed = g.colors[a] + al[:, None] * (g.colors[b] - g.colors[a])
-        return np.linalg.norm(colormath.linear_to_lab(mixed) - lab, axis=-1)
-    return g.tree.query(lab, workers=-1)[0]
+        return np.linalg.norm(colormath.linear_to_lab(mixed) - lab, axis=-1), a, b, al
+    de, a = g.tree.query(lab, workers=-1)
+    return de, a, a, np.zeros(len(a))
 
 
 def rank_subsets(all_fils, base, args, img, progress=None, verbose=True):

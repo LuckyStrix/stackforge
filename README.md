@@ -813,13 +813,15 @@ face and 2 of 0.6 mm on a wall, with slopes in between, each band count with its
 gamut. Every set that can stack (all calibrated) is screened with stacks, not just the best
 one-filament-per-voxel sets: that ranking sees each filament as opaque and would never
 shortlist the translucent sets stacking is for. A band is also never thinner than a voxel
-along the normal, so at 0.8 mm voxels a wall gets one band, and a gently tilted top face fewer
-than a flat one. On the scanned head at 0.6 mm voxels, 61% of the surface is wall-steep and
-only 3% gets more than 3 bands; the best stacked set (white base, light grey, black, PolyLite
-orange: thin orange over white warms the skin) is 9.7 dE simulated, against 10.0 without
-stacking, and white, light brown, black and red, 9.8, was chosen in the tie (its base covers
-40% of the surface). Opaque filaments barely stack: four of them gave 4k distinct 15-band
-stacks, a translucent set 65k. Ranking 15 filaments this way takes about 3 minutes.
+along the normal, and a wall's bands are its whole voxels (one 0.8 mm voxel in a 1.2 mm
+`--depth` is one 0.8 mm band, as printed), so a gently tilted top face gets fewer bands than a
+flat one. Scores count the surface voxels, one per point of the surface: counted per voxel, a
+top face 15 voxels deep would outweigh a wall 2 deep. On the scanned head at 0.6 mm voxels,
+56% of the surface is wall-steep and under 3% gets more than 3 bands; the best stacked set
+(white base, light grey, black, PolyLite orange: thin orange over white warms the skin) is
+9.5 dE simulated, against 9.7 without stacking. Opaque filaments barely stack: four of them
+gave 4k distinct 15-band stacks, a translucent set 65k. Ranking 15 filaments this way takes
+about 2.5 minutes; past 2000 stackable pairs only the best 2000 one-filament sets are screened.
 
 **What a filament looks like** (`--optics`, default `spectral`): a spectrally calibrated
 filament is matched as `--depth` mm of it over the base (Kubelka-Munk, as plaque), so the
