@@ -30,7 +30,7 @@ clean and CI runs both. PySide6 is the `gui` extra; the CLIs need only numpy/Pil
   honours them (the over-black wedges read dark on their bare-base patches). So a headless
   check is only valid with each base on extruder 1; paint puts the base there when it picks
   a subset (a full list keeps the user's slot order).
-- **One-pixel features don't print at 0.4 mm.** Each modifier region gets walls; a region one
+- **One-pixel features don't print at 0.4 mm** (plaque, classic walls; paint writes Arachne). Each modifier region gets walls; a region one
   nozzle-width across gets no plastic (5-9% of colour pixels lost at `--resolution 0.4`, 0.1% at
   0.6). Default is 0.6 (`MIN_FEATURE_MM`). Dithers are mostly one-pixel features.
 - **Wedge step n carries n layers of filament** (`layer_height` each): the thick first layer is
@@ -87,12 +87,19 @@ clean and CI runs both. PySide6 is the `gui` extra; the CLIs need only numpy/Pil
   `printed_palette`: calibrated filaments are `--depth` mm over the base (KM); uncalibrated keep
   the swatch. Swatches are badly off (light brown measures 21 dE darker); never rank on them.
 - **paint stacks along the surface normal** (`tools/paint_stack.py`): a top face stacks per
-  layer, a wall only in bands >= 0.6 mm (sliced cube, 2026-10-17: 0.16-0.42 mm wall bands got no
-  perimeter). Every stackable pair is screened with stacks: the flat ranking sees filaments as
-  opaque and never shortlists the translucent sets stacking is for.
-- **Walls lose dithered features to the base.** Outer wall of a scanned head vs its designed
-  surface voxels (2026-10-17, 0.6 mm): base 18% designed -> 39% sliced flat, 26% -> 47% stacked;
-  at 0.3 mm it is worse, not better. Simulated dE is optimistic by that much.
+  layer, a wall in bands >= 0.3 mm with Arachne walls (classic printed nothing under 0.5 mm:
+  sliced cube, 2026-10-17). Every stackable pair is screened with stacks: the flat ranking sees
+  filaments as opaque and never shortlists the translucent sets stacking is for.
+- **paint's walls: boxes overhang, Arachne per object** (`overhang`, `wall_settings`). The
+  voxel staircase stops short of a curved surface; the sliver left is base filament, which
+  classic walls drop (21% of a head pitted) and Arachne prints (30-50% base). Boxes reach 1.5
+  voxels out (the slicer clips modifiers to the object; parts are not, so they never overhang) and `min_bead_width` 50% (85% left
+  27% bare; `min_feature_size` changed nothing): 95% of the surface has plastic, 94% of it
+  the designed filament. Per-object keys are honoured headless (identical to the project's).
+- **Check a slice by position, not by `;TYPE:Outer wall`.** The slicer types the outer loop
+  of every colour region "Outer wall", buried ones included; the 2026-10-17 "walls lose
+  dithered features" finding was that artefact. Walk the unpainted model's outer wall as the
+  true surface and look up what the painted slice prints there.
 - **Tallying G-code: count only moves with X or Y.** Unretracts (`G1 E.8`) were 30-45% of all
   positive E on a busy model and skewed every share; the 2026-10-15 wall numbers had that error.
 - **paint `--expr` goes through an AST whitelist** (`compile_expr`) before `eval`: no

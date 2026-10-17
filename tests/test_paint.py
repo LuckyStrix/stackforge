@@ -440,6 +440,85 @@ class Boxes(unittest.TestCase):
         self.assertAlmostEqual(z.max(), 0.2 + 0.15)
 
 
+class Overhang(unittest.TestCase):
+    def test_labels_reach_past_the_surface_but_not_into_the_core(self):
+        occ = np.zeros((1, 9, 9), bool)
+        occ[0, 2:7, 2:7] = True
+        lab = np.full(occ.shape, -1, np.int16)
+        lab[0, 2:7, 2:7] = 1
+        lab[0, 2, 2:7] = 2                          # the front row is filament 2
+        lab[0, 4, 4] = -1                           # core under the shell: not coloured
+        grown, pad = sc.overhang(lab, occ)
+        self.assertEqual(pad, 2)
+        g = grown[0, pad:-pad, pad:-pad]            # back on lab's grid
+        self.assertEqual(g[1, 4], 2)                # one voxel out from the front row
+        self.assertEqual(g[4, 1], 1)                # and from the side
+        self.assertEqual(g[1, 1], 2)                # the diagonal, 1.41 voxels: reached
+        self.assertEqual(g[0, 4], -1)               # two out: not
+        self.assertEqual(g[4, 4], -1)               # the core keeps -1
+        self.assertTrue((g[2:7, 2:7][occ[0, 2:7, 2:7]] == lab[0, 2:7, 2:7][occ[0, 2:7, 2:7]]).all())
+        self.assertEqual(grown.shape, (1, 13, 13))
+
+    def test_reaches_past_the_grid_edge(self):
+        """The grid is the model's bounding box, so the surface can sit on its edge."""
+        occ = np.ones((1, 3, 3), bool)
+        lab = np.full(occ.shape, 3, np.int16)
+        grown, pad = sc.overhang(lab, occ)
+        self.assertEqual(grown[0, pad - 1, pad + 1], 3)
+        self.assertEqual(grown[0, 0, pad + 1], -1)
+
+
+class Walls(unittest.TestCase):
+    def run_cube(self, d, *extra):
+        src = os.path.join(d, "cube.3mf")
+        c = cube_item()
+        mf.write(src, [(c.verts, c.tris)])
+        out = os.path.join(d, "o.3mf")
+        r = subprocess.run([sys.executable, "-m", "stackforge.tools.paint", src, "-o", out,
+                            "--palette", "#FFFFFF,#101010", "--pattern", "checker3d", "--scale", "4",
+                            "--resolution", "1.0", "--layer-height", "0.2", *extra],
+                           cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+        with zipfile.ZipFile(out) as z:
+            ms = z.read("Metadata/model_settings.config").decode()
+            model = "".join(z.read(n).decode() for n in z.namelist() if n.endswith(".model"))
+        # x of each mesh object: the first is the cube, the rest its colour boxes
+        meshes = re.findall(r"<mesh>(.*?)</mesh>", model, re.S)
+        xs = [[float(v) for v in re.findall(r'<vertex x="([-\d.e]+)"', m)] for m in meshes]
+        cube, boxes = xs[0], [x for m in xs[1:] for x in m]
+        return ms, (min(cube), max(cube), min(boxes), max(boxes))
+
+    def test_arachne_is_written_per_object_and_boxes_overhang(self):
+        with tempfile.TemporaryDirectory() as d:
+            ms, (lo, hi, box_lo, box_hi) = self.run_cube(d)
+        self.assertIn('<metadata key="wall_generator" value="arachne"/>', ms)
+        self.assertIn('<metadata key="min_bead_width" value="50%"/>', ms)
+        self.assertAlmostEqual(hi - lo, 10.0)
+        self.assertAlmostEqual(box_lo, lo - 1.0, places=4)    # 1.5 voxels of 1 mm reach one
+        self.assertAlmostEqual(box_hi, hi + 1.0, places=4)
+
+    def test_parts_do_not_overhang(self):
+        """A part is not clipped to the object: reaching out would print outside it."""
+        with tempfile.TemporaryDirectory() as d:
+            _, (lo, hi, box_lo, box_hi) = self.run_cube(d, "--part-type", "part")
+        self.assertAlmostEqual(box_lo, lo, places=4)
+        self.assertAlmostEqual(box_hi, hi, places=4)
+
+    def test_template_walls_are_left_alone(self):
+        with tempfile.TemporaryDirectory() as d:
+            ms, _ = self.run_cube(d, "--walls", "template")
+        self.assertNotIn("wall_generator", ms)
+
+    def test_wall_band_follows_the_walls(self):
+        a = sc.build_parser().parse_args(["m.3mf", "-o", "o.3mf", "--palette", "#fff,#000"])
+        self.assertIsNone(a.wall_band)              # resolved in main, from --walls
+        self.assertEqual(sc.default_wall_band("arachne"), 0.3)
+        self.assertEqual(sc.default_wall_band("template"), 0.6)
+        from stackforge.tools import paint_stack
+        # 0.3 mm voxels: four in 1.2 mm; Arachne prints each as its own band
+        self.assertEqual(paint_stack.band_classes(1.2, 0.08, 0.3, 0.3)[-1], (4, 0.3))
+
+
 class EndToEnd(unittest.TestCase):
     def test_cli_writes_3mf(self):
         with tempfile.TemporaryDirectory() as d:

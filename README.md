@@ -785,8 +785,9 @@ glTF is Y-up metres; it is rotated to Z-up and scaled to millimetres (`--scale-t
 largest dimension instead), put on z=0 and centred on the bed from `--template`. Compressed
 files (Draco, meshopt, KTX2) are refused with a message; re-export without compression.
 `--dither off` gives plain nearest-filament; the run prints a mean dE (simulated, not
-measured). Dithering is made of one-voxel features, so keep `--resolution` at 0.6 mm or more
-(the default 0.8 is fine). The result is only as good as your palette: a texture with green in it
+measured). Dithering is made of one-voxel features; they print down to 0.3 mm voxels with
+paint's Arachne walls (see *Walls* below), and only from 0.6 mm with `--walls template` on a
+classic-wall profile. The result is only as good as your palette: a texture with green in it
 needs a green-ish filament. `stackforge-make-samples` writes `globe.glb` to try this on. The Paint tab's
 *Realistic colour* mode is this path.
 
@@ -807,10 +808,12 @@ the listed filaments are used, they keep your order (your slots) and the base is
 **Stacking** (`--stack on`, the default with calibrated filaments): translucent filaments are
 layered in bands along the surface normal, as plaque layers a plaque. How thin a band can be
 depends on which way the surface faces. A top face stacks one layer per band (0.16 mm bands
-printed exactly); a wall only gets a band once it is ~0.6 mm thick (`--wall-band`: 0.16-0.42 mm
-wall bands got no perimeter at all). So `--depth 1.2` is up to 15 bands of 0.08 mm on a top
-face and 2 of 0.6 mm on a wall, with slopes in between, each band count with its own stack
-gamut. Every set that can stack (all calibrated) is screened with stacks, not just the best
+printed exactly); a wall band is a ring as thin as the band, and with paint's Arachne walls
+0.3 mm bands print (`--wall-band`, default 0.3; classic walls printed nothing under 0.5 mm,
+so `--walls template` defaults it to 0.6). A band is never thinner than a voxel, so at the
+default voxels `--depth 1.2` is up to 15 bands of 0.08 mm on a top face and 2 of 0.6 mm on a
+wall, and at `--resolution 0.3` a wall gets 4 of 0.3 mm; slopes take the classes between,
+each band count with its own stack gamut. Every set that can stack (all calibrated) is screened with stacks, not just the best
 one-filament-per-voxel sets: that ranking sees each filament as opaque and would never
 shortlist the translucent sets stacking is for. A band is also never thinner than a voxel
 along the normal, and a wall's bands are its whole voxels (one 0.8 mm voxel in a 1.2 mm
@@ -819,9 +822,25 @@ flat one. Scores count the surface voxels, one per point of the surface: counted
 top face 15 voxels deep would outweigh a wall 2 deep. On the scanned head at 0.6 mm voxels,
 56% of the surface is wall-steep and under 3% gets more than 3 bands; the best stacked set
 (white base, light grey, black, PolyLite orange: thin orange over white warms the skin) is
-9.5 dE simulated, against 9.7 without stacking. Opaque filaments barely stack: four of them
-gave 4k distinct 15-band stacks, a translucent set 65k. Ranking 15 filaments this way takes
-about 2.5 minutes; past 2000 stackable pairs only the best 2000 one-filament sets are screened.
+9.5 dE simulated, against 9.7 without stacking. At `--resolution 0.3` the 0.3 mm wall bands
+make translucent PolyLite worth stacking: ranked again, white base, black, PolyLite red and
+yellow reach 8.6 dE, at the cost of ~400k boxes (a 42 MB 3MF, slow to load). Opaque
+filaments barely stack: four of them gave 4k distinct 15-band stacks, a translucent set 65k.
+Ranking 15 filaments this way takes about 2.5 minutes; past 2000 stackable pairs only the
+best 2000 one-filament sets are screened.
+
+**Walls** (`--walls arachne`, the default). Two things make the slicer print what paint
+designs on a wall. The colour boxes reach 1.5 voxels past the surface: the voxel staircase
+stops short of the true curved surface, and the sliver between was the object's own (base)
+filament, which classic walls dropped (pits in 21% of a scanned head's surface) and Arachne
+printed (30-50% of the surface came out base). The slicer clips a modifier to its object, so
+the overhang costs only boxes (~15% more); `--part-type part` is not clipped, so its boxes
+stop at the voxels. And each object gets Arachne walls with a 50%
+minimum bead, written per object so the template is untouched: the template's 85% left 27% of
+the surface without plastic. Sliced (Flash Studio 1.7.13, the head, stacked): at 0.6 mm voxels
+95% of the true surface has plastic and 94% of it is the designed filament, each filament's
+share within 2 points of the design; at 0.3 mm, 94% and 93%. `--walls template` leaves the
+template's walls alone.
 
 **What a filament looks like** (`--optics`, default `spectral`): a spectrally calibrated
 filament is matched as `--depth` mm of it over the base (Kubelka-Munk, as plaque), so the
@@ -869,14 +888,15 @@ grid drop out on alternate layers).
   floor ceil mod where minimum maximum exp log sign round`) are accepted; attributes,
   subscripts, lambdas, comprehensions and strings are refused. Safe on untrusted input.
 - **Slice-checked on a curved model** (a 75 mm scanned head, 0.08 mm layers, Flash Studio
-  1.7.13; recounted 2026-10-17 on extrusion moves only, after unretracts had skewed the first
-  count): the modifiers are honoured, but **walls lose dithered one-voxel features to the
-  base**. Designed 9.5/44/42/4.5% per tool (base first), the outer wall came out
-  33.5/30/33/3.5% at `--resolution 0.6` and 37.6/33/29/0.7% at 0.3: finer is worse. Simulated
-  dE is optimistic by that much; the print shows more base. Never printed.
+  1.7.13, 2026-10-17): the true surface (the unpainted model's outer wall) was walked in
+  0.1 mm steps and the painted slice's plastic there compared with the designed voxel. With
+  the *Walls* fixes, 94-95% of the surface has plastic and 93-94% of that is the designed
+  filament, at 0.6 and 0.3 mm voxels. An earlier count said walls lost dithered features to
+  the base; it tallied every `Outer wall` move, but the slicer types the edge of every colour
+  region that way, buried ones included. Never printed.
 - No interactive painting window. Dithering exists for texture and image patterns
-  (`--dither`), but its gains are simulated only: the slicer drops the one-pixel features a
-  dither is made of (see *Caveats*).
+  (`--dither`); the slicer keeps its one-voxel features with the *Walls* fixes, but the
+  colour gain itself is simulated, not measured.
 
 ## stackforge-measure
 

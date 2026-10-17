@@ -3,8 +3,10 @@
 plaque stacks layers on a flat plaque, all facing up. paint's surface faces every way, and
 the slicer prints a band differently by direction (sliced 2026-10-17, Flash Studio 1.7.13,
 0.42 mm lines, a cube banded T2 / T3 / core): on a top face every band printed exactly, down
-to 0.16 mm (two 0.08 mm layers); on a wall, bands of 0.16-0.42 mm got no perimeter at all
-and the wall stayed the core filament, while 0.6 mm got its own. A band must also hold a voxel
+to 0.16 mm (two 0.08 mm layers); on a wall, with classic walls, bands of 0.2-0.4 mm got no
+perimeter and printed nothing (the core's wall showed), while 0.5 mm got its own. With Arachne
+walls (paint's default, `paint.wall_settings`) or thin-wall detection, 0.3 and 0.4 mm bands
+printed, and 0.2 mm too. A band must also hold a voxel
 of its own along the normal, or it is never labelled. So the thinnest band a voxel can carry
 follows its outward normal n:
 
@@ -28,7 +30,8 @@ import numpy as np
 from stackforge.core import colormath, spectral
 from stackforge.tools.plaque import SpectralGamut, gamut_match, mix_pairs
 
-WALL_BAND_MM = 0.6     # thinnest band a wall prints at 0.42 mm lines (0.42 got no perimeter)
+WALL_BAND_MM = 0.6     # thinnest wall band with classic walls at 0.42 mm lines (0.4 printed none)
+ARACHNE_WALL_BAND_MM = 0.3   # with Arachne walls: 0.3 printed (and 0.2), checked on a head
 GRID, CAP = 192, 400_000   # plaque's gamut defaults
 
 

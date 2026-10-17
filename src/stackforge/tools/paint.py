@@ -493,6 +493,52 @@ def label_grid(occ, shell, bounds, res, edges, pattern, args, palette, item=None
     return lab
 
 
+def wall_settings(flavor) -> dict:
+    """Per-object overrides: Arachne walls with a 50% minimum bead.
+
+    Classic walls give a region no perimeter under ~0.5 mm across (sliced cube, 2026-10-17:
+    wall bands of 0.2-0.4 mm printed nothing); Arachne with the template's 85% bead still
+    left 27% of a painted head's surface without plastic, 50% left 5% (25%: the same).
+    Per object, so the template is untouched; the headless slice honours it (identical to
+    the project setting). The prusa keys are PrusaSlicer's names and unverified on a slice.
+    """
+    if flavor == "orca":
+        return {"wall_generator": "arachne", "min_bead_width": "50%"}
+    return {"perimeter_generator": "arachne", "min_bead_width": "50%"}
+
+
+def default_wall_band(walls):
+    """The thinnest band a wall prints, by --walls (see paint_stack)."""
+    return paint_stack.ARACHNE_WALL_BAND_MM if walls == "arachne" else paint_stack.WALL_BAND_MM
+
+
+OVERHANG_VOX = 1.5  # voxels the boxes reach past the surface: a voxel's side and its diagonal
+
+
+def overhang(lab, occ, reach=OVERHANG_VOX):
+    """(labels padded by `pad` voxels on each side in XY, pad): every voxel outside the model
+    within `reach` voxels of a labelled one (same layer) takes its label.
+
+    The voxel boxes stop at the voxel staircase, short of the true curved surface. What is
+    left between them and the mesh is a sliver under 0.4 mm wide in the object's own (base)
+    filament: classic walls drop it, leaving a pit, and Arachne prints it, so the base shows
+    (sliced head, 2026-10-17: 21% of the surface pitted; with Arachne 30-50% printed base).
+    Reaching past the surface leaves no sliver; the slicer clips a modifier to its object.
+    Voxels inside the model keep their labels, -1 included (the core under the shell)."""
+    pad = int(math.ceil(reach))
+    wide = ((0, 0), (pad, pad), (pad, pad))
+    lab = np.pad(lab, wide, constant_values=-1)
+    out = ~np.pad(occ, wide, constant_values=False)
+    for k in range(lab.shape[0]):
+        has = lab[k] >= 0
+        if not has.any():
+            continue
+        d, (iy, ix) = distance_transform_edt(~has, return_indices=True)
+        grow = out[k] & (d <= reach + 1e-9)
+        lab[k][grow] = lab[k][iy[grow], ix[grow]]
+    return lab, pad
+
+
 def emit_boxes(lab, bounds, res, edges, base_index):
     """One BoxBuilder per non-base filament. Boxes sit in the middle half of each
     layer: slicers sample at mid-height, so they are caught regardless of
@@ -596,9 +642,14 @@ def build_parser() -> argparse.ArgumentParser:
                          "plaque stacks layers (image-* and texture; needs every filament "
                          "spectrally calibrated, else one filament per voxel). off: one filament "
                          "per voxel")
-    ap.add_argument("--wall-band", type=float, default=paint_stack.WALL_BAND_MM,
+    ap.add_argument("--walls", choices=["arachne", "template"], default="arachne",
+                    help="arachne: the painted objects get Arachne walls with a 50%% minimum bead, "
+                         "so thin colour bands and one-voxel features print. template: leave the "
+                         "template's wall settings (classic walls drop regions under ~0.5 mm)")
+    ap.add_argument("--wall-band", type=float, default=None,
                     help="thinnest band, mm, the slicer prints on a wall; top faces stack per layer. "
-                         "0.6 at 0.42 mm lines (0.42 got no perimeter)")
+                         f"Default {paint_stack.ARACHNE_WALL_BAND_MM} with --walls arachne, "
+                         f"{paint_stack.WALL_BAND_MM} with classic walls")
     ap.add_argument("--optics", choices=["spectral", "swatch"], default="spectral",
                     help="spectral: a calibrated filament is matched as it prints, --depth mm of "
                          "it over the base (measured colour; translucent ones show the base). "
@@ -618,7 +669,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--dither", choices=["off", "ordered"], default=None,
                     help="mix the two nearest filaments across neighbouring voxels so the area "
                          "average matches the colour. Default: ordered for texture, else off. "
-                         "Needs --resolution >= 0.6 to print")
+                         "With --walls template it needs --resolution >= 0.6 to print")
     ap.add_argument("--dither-strength", type=float, default=1.0,
                     help="0 = none, 1 = full mix between the two nearest filaments")
     ap.add_argument("--scale-to", type=float, default=None,
@@ -807,6 +858,8 @@ def main(argv=None):
     ap = build_parser()
     args = ap.parse_args(argv)
 
+    if args.wall_band is None:
+        args.wall_band = default_wall_band(args.walls)
     fils = None
     if args.filaments:
         from stackforge.core.filamentdb import DB
@@ -893,10 +946,11 @@ def main(argv=None):
         raise SystemExit(f"--pattern {args.pattern} needs --image")
     if args.pattern == "texture" and not glb_input:
         raise SystemExit("--pattern texture needs a GLB/glTF model; a 3MF has no colours to read")
-    if _dither_mode(args) != "off" and args.dither_strength > 0 \
+    if _dither_mode(args) != "off" and args.dither_strength > 0 and args.walls == "template" \
             and args.resolution < MIN_FEATURE_MM - 1e-9:
-        print(f"  ! dither at --resolution {args.resolution} mm: one-voxel features are narrower "
-              f"than a nozzle and mostly do not print. Use {MIN_FEATURE_MM} or more.")
+        print(f"  ! dither at --resolution {args.resolution} mm with the template's walls: "
+              f"one-voxel features are narrower than a nozzle and mostly do not print. Use "
+              f"{MIN_FEATURE_MM} or more, or --walls arachne.")
     classes = None
     if stacking:
         args.stack_depth = paint_stack.stack_depth(args.depth, args.layer_height)
@@ -1009,7 +1063,12 @@ def main(argv=None):
                              palette, s.item, s.coords, s.target)
         if args.last_de is not None:
             report.append(args.last_de[s.surf])
-        parts = emit_boxes(lab, bounds, args.resolution, edges, args.base_extruder - 1)
+        # Only a modifier is clipped to its object: an overhanging part would print outside it.
+        grown, pad = overhang(lab, s.occ) if args.part_type == "modifier" else (lab, 0)
+        shift = pad * args.resolution
+        parts = emit_boxes(grown, (bounds[0] - shift, bounds[1] - shift, bounds[2] + shift,
+                                   bounds[3] + shift), args.resolution, edges,
+                           args.base_extruder - 1)
         decals[s.index] = parts
         total_boxes += sum(len(t) // 12 for _, _, t in parts)
         seen_labels += np.bincount(lab[lab >= 0], minlength=len(palette))
@@ -1046,7 +1105,8 @@ def main(argv=None):
     threemf.get_writer(args.flavor)(
         args.output, items, decals, args.base_extruder, args.part_type,
         template=args.template, colors=colors,
-        layer_height=args.layer_height, first_layer_height=args.first_layer_height)
+        layer_height=args.layer_height, first_layer_height=args.first_layer_height,
+        object_settings=wall_settings(args.flavor) if args.walls == "arachne" else None)
     print(f"wrote {args.output} ({os.path.getsize(args.output) / 1e6:.1f} MB, {args.flavor} flavor)")
     print(f"\nSlice with layer height EXACTLY {args.layer_height} mm and first layer "
           f"{args.first_layer_height} mm, or the modifiers land between layers.")
