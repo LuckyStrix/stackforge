@@ -28,7 +28,8 @@ clean and CI runs both. PySide6 is the `gui` extra; the CLIs need only numpy/Pil
 - **The headless slice ignores object/part extruders** (Flash Studio 1.7.13, 2026-10-17): every
   object prints on extruder 1, whatever model_settings says; modifiers are honoured. The GUI
   honours them (the over-black wedges read dark on their bare-base patches). So a headless
-  check is only valid with each base on extruder 1; paint puts a chosen base there.
+  check is only valid with each base on extruder 1; paint puts the base there when it picks
+  a subset (a full list keeps the user's slot order).
 - **One-pixel features don't print at 0.4 mm.** Each modifier region gets walls; a region one
   nozzle-width across gets no plastic (5-9% of colour pixels lost at `--resolution 0.4`, 0.1% at
   0.6). Default is 0.6 (`MIN_FEATURE_MM`). Dithers are mostly one-pixel features.

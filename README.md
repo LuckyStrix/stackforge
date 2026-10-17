@@ -799,9 +799,10 @@ nearest filament with `--dither off`.
 **Choosing the base.** Without `--base-extruder`, each set is tried with each of its members
 as the base (the core under the coloured shell, and what a translucent filament shows
 through). Scores within 0.1 dE are a tie, won by the base that already covers most of the
-surface, since base voxels need no modifier. The chosen base is written as extruder 1: the
-Flash Studio GUI honours a 3MF's object extruder, but its headless slice prints the object on
-extruder 1 regardless, so anything else could not be checked that way.
+surface, since base voxels need no modifier. When paint picks a subset, the base is written as
+extruder 1: the Flash Studio GUI honours a 3MF's object extruder, but its headless slice prints
+the object on extruder 1 regardless, so anything else could not be checked that way. When all
+the listed filaments are used, they keep your order (your slots) and the base is marked.
 
 **Stacking** (`--stack on`, the default with calibrated filaments): translucent filaments are
 layered in bands along the surface normal, as plaque layers a plaque. How thin a band can be
@@ -811,10 +812,14 @@ wall bands got no perimeter at all). So `--depth 1.2` is up to 15 bands of 0.08 
 face and 2 of 0.6 mm on a wall, with slopes in between, each band count with its own stack
 gamut. Every set that can stack (all calibrated) is screened with stacks, not just the best
 one-filament-per-voxel sets: that ranking sees each filament as opaque and would never
-shortlist the translucent sets stacking is for. On the scanned head, 57% of the surface is
-wall-steep, and the stacked winner (white base, light grey, black, PolyLite orange: thin
-orange over white warms the skin) is 9.6 dE simulated against 10.0 without stacking. Opaque
-filaments barely stack: four of them gave 4k distinct 15-band stacks, a translucent set 65k.
+shortlist the translucent sets stacking is for. A band is also never thinner than a voxel
+along the normal, so at 0.8 mm voxels a wall gets one band, and a gently tilted top face fewer
+than a flat one. On the scanned head at 0.6 mm voxels, 61% of the surface is wall-steep and
+only 3% gets more than 3 bands; the best stacked set (white base, light grey, black, PolyLite
+orange: thin orange over white warms the skin) is 9.7 dE simulated, against 10.0 without
+stacking, and white, light brown, black and red, 9.8, was chosen in the tie (its base covers
+40% of the surface). Opaque filaments barely stack: four of them gave 4k distinct 15-band
+stacks, a translucent set 65k. Ranking 15 filaments this way takes about 3 minutes.
 
 **What a filament looks like** (`--optics`, default `spectral`): a spectrally calibrated
 filament is matched as `--depth` mm of it over the base (Kubelka-Munk, as plaque), so the

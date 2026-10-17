@@ -171,6 +171,15 @@ class Ranking(unittest.TestCase):
         self.assertIn("0 boxes", out)
         self.assertEqual(used, {"1"})
 
+    def test_more_slots_than_filaments_keeps_the_listed_order(self):
+        """The review's crash: no --base-extruder and more slots than filaments (a 4-slot
+        template, 2 or 3 filaments) ranked no sets at all. And with nothing dropped the
+        order is the user's slots, so the base is marked where it is, not moved to T1."""
+        out, used = self.run_brown_cube("--slots", "8")
+        self.assertIn("ranked 5 set/base pairs of 5", out)
+        self.assertIn("T4 #78553C #78553C  (base)", out)                # 4th as listed
+        self.assertEqual(used, {"4"})
+
     def test_tie_goes_to_the_base_covering_most(self):
         rows = [{"mean": 5.00, "usage": 0.1, "id": "a"}, {"mean": 5.05, "usage": 0.6, "id": "b"},
                 {"mean": 5.30, "usage": 0.9, "id": "c"}]
@@ -234,6 +243,13 @@ class Stacking(unittest.TestCase):
         self.assertEqual(self.ps.band_counts(1.2, 0.2, 0.6), [6, 3, 2])
         self.assertEqual(self.ps.band_counts(0.4, 0.08, 0.6), [5, 2, 1])   # shallower than a wall band
         self.assertEqual(self.ps.band_counts(0.08, 0.08, 0.6), [1])
+        # 0.8 mm voxels: a wall has one voxel in 1.2 mm, so one band, not two with an empty one
+        self.assertEqual(self.ps.band_counts(1.2, 0.08, 0.8), [15, 7, 3, 1])
+
+    def test_stack_depth_is_whole_layers(self):
+        self.assertAlmostEqual(self.ps.stack_depth(1.0, 0.12), 0.96)
+        self.assertAlmostEqual(self.ps.stack_depth(1.2, 0.08), 1.2)
+        self.assertAlmostEqual(self.ps.stack_depth(0.05, 0.08), 0.08)     # never zero bands
 
     def test_normals_and_classes_on_a_cube(self):
         res, lh = 0.5, 0.2
@@ -244,8 +260,8 @@ class Stacking(unittest.TestCase):
         n = self.ps.normals(dist, zs, ys, xs, res, lh)
         np.testing.assert_allclose(n[0], [0, 0, 1], atol=1e-6)            # top face
         np.testing.assert_allclose(n[1], [-1, 0, 0], atol=1e-6)           # the x = 0 wall
-        ms = self.ps.band_counts(1.2, lh, 0.6)
-        self.assertEqual(list(self.ps.classify(n, 1.2, lh, ms)), [0, len(ms) - 1])
+        ms = self.ps.band_counts(1.2, lh, res)
+        self.assertEqual(list(self.ps.classify(n, 1.2, lh, res, ms)), [0, len(ms) - 1])
         d = self.ps.true_depth(dist[zs, ys, xs], n, res, lh)
         np.testing.assert_allclose(d, [lh / 2, res / 2], atol=1e-6)      # outermost voxel centres
 
@@ -253,16 +269,57 @@ class Stacking(unittest.TestCase):
         ms = self.ps.band_counts(1.2, 0.08, 0.6)                          # [15, 7, 3, 2]
         t = np.radians([0, 20, 45, 90])                                   # tilt of the normal from up
         n = np.stack([np.sin(t), np.zeros(4), np.cos(t)], 1)
-        got = [ms[c] for c in self.ps.classify(n, 1.2, 0.08, ms)]
-        self.assertEqual(got, [15, 3, 2, 2])          # 20 deg: 0.6 sin 20 = 0.21 mm -> 5 fit -> 3
+        got = [ms[c] for c in self.ps.classify(n, 1.2, 0.08, 0.6, ms)]
+        # 20 deg: a voxel step along the normal is 0.6 sin 20 + 0.08 cos 20 = 0.28 mm -> 4 -> 3
+        self.assertEqual(got, [15, 3, 2, 2])
 
-    def test_column_shares_its_anchor(self):
-        nrm = np.tile([[0.6, 0.0, 0.8]], (3, 1))
-        surface = np.array([5.0, 5.0, 5.0])
-        depth = np.array([0.1, 0.5, 0.9])
-        world = surface - nrm * depth[:, None]
-        cells = self.ps.anchor_cells(world, nrm, depth, 0.5, 0.2)
-        self.assertTrue((cells == cells[0]).all())
+    def test_every_band_has_a_voxel(self):
+        """The bug the review found: at 0.8 mm voxels a wall's second 0.6 mm band had no
+        voxel, so a stack's second filament never printed. Now a wall gets one band."""
+        res, lh, depth = 0.8, 0.2, 1.2
+        edges = sc.layer_edges(10.0, lh, lh)
+        occ = sc.voxelize(cube_item(), (0, 0, 10, 10), res, edges)
+        dist = sc.surface_distance(occ, res, lh)
+        shell = occ & (dist <= depth)
+        zs, ys, xs = np.nonzero(shell)
+        n = self.ps.normals(dist, zs, ys, xs, res, lh)
+        ms = self.ps.band_counts(depth, lh, res)
+        cls = self.ps.classify(n, depth, lh, res, ms)
+        d = self.ps.true_depth(dist[zs, ys, xs], n, res, lh)
+        st = self.ps.Stacks(self.fils, 0, depth, ms)
+        band = st.band(cls, d)
+        for c, m in enumerate(ms):
+            sel = cls == c
+            if sel.any():       # every band of the class is some voxel's band
+                self.assertEqual(set(band[sel][band[sel] < m]), set(range(m)), f"{m} bands")
+
+    def test_a_column_shares_anchor_class_and_target(self):
+        """Voxels down one column must solve alike, or the bands mix; the review saw float
+        noise split a column's dither threshold on a face that sat on a voxel boundary."""
+        import argparse
+        res, lh = 1.0, 0.2
+        edges = sc.layer_edges(10.0, lh, lh)
+        occ = sc.voxelize(cube_item(), (0, 0, 10, 10), res, edges)
+        dist = sc.surface_distance(occ, res, lh)
+        shell = occ & (dist <= 1.2)
+        coords = sc.shell_coords(shell, (0, 0, 10, 10), res, edges, (10, 10, 10))
+        a = argparse.Namespace(resolution=res, layer_height=lh, wall_band=0.6, stack_depth=1.2,
+                               size=(10, 10, 10), pattern="image-planar", image=None, axis="z")
+        a.image = os.path.join(tempfile.mkdtemp(), "g.png")
+        from PIL import Image
+        Image.fromarray(np.random.default_rng(0).integers(0, 255, (16, 16, 3), np.uint8)).save(a.image)
+        ms = self.ps.band_counts(1.2, lh, res)
+        geo = sc.stack_geometry(dist, coords, edges, ms, a)
+        (zs, ys, xs), _ = coords
+        bottom = (ys == 5) & (xs == 5) & (zs < 6)                        # the bottom-face column
+        self.assertGreater(bottom.sum(), 1)
+        for key in ("cells", "cls", "target"):
+            v = geo[key][bottom]
+            self.assertTrue((v == v[0]).all(), key)
+        top = (ys == 5) & (xs == 5) & (zs >= len(edges) - 7)             # and the top-face one
+        for key in ("cells", "cls", "target"):
+            v = geo[key][top]
+            self.assertTrue((v == v[0]).all(), key)
 
     def test_labels_decode_like_plaques_stack(self):
         st = self.ps.Stacks(self.fils, 0, 0.24, [3, 1])
@@ -288,8 +345,8 @@ class Stacking(unittest.TestCase):
 
     def test_cli_stacking_beats_one_filament_per_voxel(self):
         """A pink that is 0.2 mm of red over white: no single filament has it, a top face's
-        stack does exactly. The walls (half the cube) only get 0.6 mm bands, so not all of
-        the error goes: 8.3 dE flat, 3.6 stacked."""
+        stack does exactly. The walls (half the cube) only get 0.6 mm bands, which cannot
+        make a pink that needs 0.2 mm of red, so about half the error goes."""
         from PIL import Image
         from stackforge.core.filamentdb import DB
         white, red = self.fils[0], self.fils[1]
@@ -311,14 +368,14 @@ class Stacking(unittest.TestCase):
                                     "-o", os.path.join(d, f"{stack}.3mf"), "--db", db.path,
                                     "--filaments", ",".join(f.id for f in self.fils),
                                     "--pattern", "image-planar", "--image", img, "--dither", "off",
-                                    "--resolution", "1.0", "--layer-height", "0.2", "--stack", stack],
+                                    "--resolution", "0.6", "--layer-height", "0.2", "--stack", stack],
                                    cwd=ROOT, capture_output=True, text=True)
                 self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
                 errs[stack] = float(re.search(r"mean colour error ([\d.]+) dE", r.stdout).group(1))
                 outs[stack] = r.stdout
         self.assertIn("using (stacked):", outs["on"])
         self.assertIn("using (one filament per voxel):", outs["off"])
-        self.assertLess(errs["on"], errs["off"] / 2)
+        self.assertLess(errs["on"], errs["off"] - 3)      # 8.3 -> 4.2 dE at 0.6 mm voxels
 
 
 class Preview(unittest.TestCase):
