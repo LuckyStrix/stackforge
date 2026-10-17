@@ -25,6 +25,10 @@ clean and CI runs both. PySide6 is the `gui` extra; the CLIs need only numpy/Pil
   <scratch> --slice 1 --outputdir <dir> file.3mf` (template: `~/Downloads/ffSample2.3mf`, 4 slots,
   0.12/0.25). Checked this way (2026-09-30): modifier extruder overrides ARE honoured (100% of
   extruded pixels on the designed tool).
+- **The headless slice ignores object/part extruders** (Flash Studio 1.7.13, 2026-10-17): every
+  object prints on extruder 1, whatever model_settings says; modifiers are honoured. The GUI
+  honours them (the over-black wedges read dark on their bare-base patches). So a headless
+  check is only valid with each base on extruder 1; paint puts a chosen base there.
 - **One-pixel features don't print at 0.4 mm.** Each modifier region gets walls; a region one
   nozzle-width across gets no plastic (5-9% of colour pixels lost at `--resolution 0.4`, 0.1% at
   0.6). Default is 0.6 (`MIN_FEATURE_MM`). Dithers are mostly one-pixel features.
@@ -77,12 +81,19 @@ clean and CI runs both. PySide6 is the `gui` extra; the CLIs need only numpy/Pil
   Y-up metres -> Z-up mm is `(x,-z,y)` (a rotation: do not mirror, winding must stay outward). glTF
   vertex colours and `baseColorFactor` are linear; textures are sRGB. Slice-checked (all four tools used),
   never printed.
-- **paint ranks filament sets like plaque, but one filament per voxel** (`rank_sets`): colour patterns
-  are a target fn (`TARGETS`) then `_pick`, so every item is voxelised before the set is chosen.
+- **paint ranks (set, base) pairs** (`rank_sets`, `pick_best`): colour patterns are a target fn
+  (`TARGETS`) then `_pick`, so every item is voxelised before the set is chosen.
   `printed_palette`: calibrated filaments are `--depth` mm over the base (KM); uncalibrated keep
   the swatch. Swatches are badly off (light brown measures 21 dE darker); never rank on them.
-  Outer-wall slice of a head (2026-10-15): base gains on thin modifiers, 16% vs 9.5% designed at
-  `--resolution` 0.3, 24% at 0.6, so walls do NOT lose small features the way plaque tops do.
+- **paint stacks along the surface normal** (`tools/paint_stack.py`): a top face stacks per
+  layer, a wall only in bands >= 0.6 mm (sliced cube, 2026-10-17: 0.16-0.42 mm wall bands got no
+  perimeter). Every stackable pair is screened with stacks: the flat ranking sees filaments as
+  opaque and never shortlists the translucent sets stacking is for.
+- **Walls lose dithered features to the base.** Outer wall of a scanned head vs its designed
+  surface voxels (2026-10-17, 0.6 mm): base 18% designed -> 39% sliced flat, 26% -> 47% stacked;
+  at 0.3 mm it is worse, not better. Simulated dE is optimistic by that much.
+- **Tallying G-code: count only moves with X or Y.** Unretracts (`G1 E.8`) were 30-45% of all
+  positive E on a busy model and skewed every share; the 2026-10-15 wall numbers had that error.
 - **paint `--expr` goes through an AST whitelist** (`compile_expr`) before `eval`: no
   attributes, subscripts, lambdas, strings. Add a function by adding it to `_EXPR_NAMES`.
 - **Dither gains are simulated.** Blurred dE improves most with shallow stacks, but the slicer

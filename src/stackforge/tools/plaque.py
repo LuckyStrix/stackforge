@@ -630,13 +630,19 @@ def score_subset(fils, base, args, rgb):
     winners. floyd has no per-colour equivalent and is scored undithered.
     """
     g = make_gamut(fils, base, args)
+    return gamut_de(g, rgb, getattr(args, "dither", "none") in ("ordered", "blue")), g.capped
+
+
+def gamut_de(g, rgb, mix):
+    """dE (k,) of colours `rgb` (k,3 sRGB) against gamut `g`: its two-stack mix if `mix`,
+    else its nearest state. Shared with paint's stacking."""
     lab = colormath.srgb_to_lab(rgb)
-    if getattr(args, "dither", "none") in ("ordered", "blue"):
+    if mix:
         a, b, al = mix_pairs(g, rgb[:, None, :])
         a, b, al = a[:, 0], b[:, 0], al[:, 0]
         mixed = g.colors[a] + al[:, None] * (g.colors[b] - g.colors[a])
-        return np.linalg.norm(colormath.linear_to_lab(mixed) - lab, axis=-1), g.capped
-    return g.tree.query(lab, workers=-1)[0], g.capped
+        return np.linalg.norm(colormath.linear_to_lab(mixed) - lab, axis=-1)
+    return g.tree.query(lab, workers=-1)[0]
 
 
 def rank_subsets(all_fils, base, args, img, progress=None, verbose=True):

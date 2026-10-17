@@ -37,6 +37,7 @@ from scipy.ndimage import distance_transform_edt
 from stackforge.core import threemf
 from stackforge.core.filamentdb import DEFAULT_DB
 from stackforge.core import colormath, spectral
+from stackforge.tools import paint_stack
 
 MAX_VOXELS = 60_000_000   # same ceiling top_paint applies to its raster
 MIN_FEATURE_MM = 0.6      # narrowest region that gets plastic at a 0.4 mm nozzle (see CLAUDE.md)
@@ -121,9 +122,13 @@ def shell_mask(occ, res, lh, depth):
     """
     if depth <= 0:
         return occ.copy()
+    return occ & (surface_distance(occ, res, lh) <= depth)
+
+
+def surface_distance(occ, res, lh):
+    """Distance in mm from each voxel to the nearest outside voxel's centre (float32)."""
     padded = np.pad(occ, 1)          # the bounding box edge counts as outside
-    dist = distance_transform_edt(padded, sampling=(lh, res, res))[1:-1, 1:-1, 1:-1]
-    return occ & (dist <= depth)
+    return distance_transform_edt(padded, sampling=(lh, res, res))[1:-1, 1:-1, 1:-1].astype(np.float32)
 
 
 # --------------------------------------------------------------------------
@@ -406,20 +411,53 @@ def _prints_as(swatch_hex, rgb):
     return "" if shown.upper() == swatch_hex.upper() else f"  -> prints as {shown}"
 
 
-def rank_sets(palette, base, slots, targets_lin, args):
-    """Every `slots`-sized set of palette indices that keeps `base`, scored against the
-    voxels' target colours (weighted by voxel count), best first."""
+def histogram(targets_lin, max_colours=RANK_COLOURS):
+    """(rgb (k,3) sRGB, weight (k,)) of linear target colours, as `colormath.colour_histogram`."""
     srgb = np.round(colormath.linear_to_srgb(targets_lin)).astype(np.int64)
-    rgb, weight = colormath.colour_histogram(srgb, RANK_COLOURS)
-    others = [i for i in range(len(palette)) if i != base]
+    return colormath.colour_histogram(srgb, max_colours)
+
+
+def _summary(de, weight):
+    return {"mean": float(np.average(de, weights=weight)),
+            "p95": colormath.weighted_percentile(de, weight, 95), "max": float(de.max())}
+
+
+def rank_sets(palettes, bases, slots, targets_lin, args):
+    """Every `slots`-sized set of palette indices with a base from `bases`, scored against the
+    voxels' target colours (weighted by voxel count), best first.
+
+    `palettes[b]` is every candidate's colour as it prints over base b (`printed_palette`).
+    A set is tried with each of its members that is in `bases` as the base. `usage` is the
+    share of the surface whose nearest filament is the base, for `pick_best`'s tie-break.
+    `keep` lists the base first, so it lands on extruder 1: Flash Studio's GUI honours a
+    3MF's object extruder, but its headless slice prints the object on 1 whatever it says
+    (sliced 2026-10-17), and a check sliced that way would test the wrong filament.
+    """
+    rgb, weight = histogram(targets_lin)
+    n = len(next(iter(palettes.values())))
+    lab = colormath.srgb_to_lab(rgb)
     out = []
-    for combo in itertools.combinations(others, slots - 1):
-        keep = sorted((base, *combo))
-        de = score_palette(rgb, palette[keep], args)
-        out.append({"keep": keep, "mean": float(np.average(de, weights=weight)),
-                    "p95": colormath.weighted_percentile(de, weight, 95), "max": float(de.max())})
+    for combo in itertools.combinations(range(n), slots):
+        for b in (k for k in combo if k in bases):
+            keep = [b] + [k for k in combo if k != b]
+            pal = palettes[b][keep]
+            de = score_palette(rgb, pal, args)
+            near = ((lab[:, None] - colormath.srgb_to_lab(pal)[None]) ** 2).sum(-1).argmin(1)
+            usage = float(weight[near == keep.index(b)].sum() / weight.sum())
+            out.append({"keep": keep, "base": b, "usage": usage, **_summary(de, weight)})
     out.sort(key=lambda r: r[args.rank_by])
     return out
+
+
+TIE_DE = 0.1    # scores this close are a tie: nobody sees 0.1 dE, everybody sees fewer boxes
+
+
+def pick_best(rows, key):
+    """The best row by `key`; among those within TIE_DE of it, the one whose base covers most
+    of the surface (base voxels need no modifier). Swatches and opaque filaments do not
+    change with the base, so without this the base would be whichever was tried first."""
+    best = min(r[key] for r in rows)
+    return max((r for r in rows if r[key] <= best + TIE_DE), key=lambda r: r["usage"])
 
 
 # --------------------------------------------------------------------------
@@ -486,30 +524,34 @@ def _rects(layer, valid):
 # --------------------------------------------------------------------------
 
 
-def save_preview(path, lab, palette, edges=None, res=None):
+def save_preview(path, lab, palette, edges=None, res=None, shade=None):
     """Top view and front view of the colour of the first coloured voxel seen.
 
+    `shade` (nz,ny,nx,3 uint8), when given, is each voxel's colour; else its filament's.
+    Stacked voxels pass the colour of their whole stack, which is what the eye sees there.
     A voxel is `res` wide but one layer tall, so the front view is resampled to `res` per
     pixel in z too; drawn one row per layer, a 0.08 mm grid stretched it tenfold.
     """
-    pal = np.vstack([palette, [[30, 30, 34]]]).astype(np.uint8)
-    empty = len(palette)
+    if shade is None:
+        shade = np.round(np.asarray(palette)).astype(np.uint8)[np.maximum(lab, 0)]
+    background = np.array([30, 30, 34], np.uint8)
 
-    def first_hit(vol, axis, reverse):
-        v = np.flip(vol, axis) if reverse else vol
+    def first_hit(axis, reverse):
+        v = np.flip(lab, axis) if reverse else lab
+        sh = np.flip(shade, axis) if reverse else shade
         has = v >= 0
-        idx = np.argmax(has, axis=axis)
-        got = np.take_along_axis(v, np.expand_dims(idx, axis), axis).squeeze(axis)
-        return np.where(has.any(axis=axis), got, empty)
+        idx = np.expand_dims(np.argmax(has, axis=axis), axis)
+        got = np.take_along_axis(sh, idx[..., None], axis).squeeze(axis)
+        return np.where(has.any(axis=axis)[..., None], got, background)
 
-    top = first_hit(lab, 0, True)[::-1]            # looking down; y up on the page
-    front = first_hit(lab, 1, False)                # looking along +y, row = layer
+    top = first_hit(0, True)[::-1]                 # looking down; y up on the page
+    front = first_hit(1, False)                    # looking along +y, row = layer
     if edges is not None and res:
         rows = max(1, int(round(edges[-1] / res)))
         layer = np.searchsorted(edges, (np.arange(rows) + 0.5) * res) - 1
         front = front[np.clip(layer, 0, len(front) - 1)]
     front = front[::-1]                             # z up
-    a, b = pal[top], pal[front]
+    a, b = top, front
     hh = max(a.shape[0], b.shape[0])
     def pad(im, bottom):
         out = np.full((hh, im.shape[1], 3), 30, np.uint8)
@@ -536,9 +578,19 @@ def build_parser() -> argparse.ArgumentParser:
     src.add_argument("--palette", help="filament colours in extruder order, comma-separated hex")
     src.add_argument("--filaments", help="comma-separated ids from the filament database")
     ap.add_argument("--db", default=DEFAULT_DB)
-    ap.add_argument("--base-extruder", type=int, default=1,
-                    help="extruder the object already prints in; voxels given this colour "
-                         "emit no modifier")
+    ap.add_argument("--base-extruder", type=int, default=None,
+                    help="extruder the object prints in, the core under the coloured shell; voxels "
+                         "given it emit no modifier. Default: for image-* and texture, chosen with "
+                         "the filaments (best score; on a tie, the one covering most of the "
+                         "surface); else 1")
+    ap.add_argument("--stack", choices=["on", "off"], default="on",
+                    help="on: stack translucent filaments in bands along the surface normal, as "
+                         "plaque stacks layers (image-* and texture; needs every filament "
+                         "spectrally calibrated, else one filament per voxel). off: one filament "
+                         "per voxel")
+    ap.add_argument("--wall-band", type=float, default=paint_stack.WALL_BAND_MM,
+                    help="thinnest band, mm, the slicer prints on a wall; top faces stack per layer. "
+                         "0.6 at 0.42 mm lines (0.42 got no perimeter)")
     ap.add_argument("--optics", choices=["spectral", "swatch"], default="spectral",
                     help="spectral: a calibrated filament is matched as it prints, --depth mm of "
                          "it over the base (measured colour; translucent ones show the base). "
@@ -588,6 +640,120 @@ def build_parser() -> argparse.ArgumentParser:
     return ap
 
 
+SCREEN_COLOURS = 2_000   # per band class, when every stackable pair is screened with stacks
+STACK_SHORTLIST = 6      # screened pairs rescored on the full RANK_COLOURS before choosing
+
+
+class Shell:
+    """One item's coloured voxels: where they are, what colour they want, and (stacking)
+    their band class, depth below the surface and dither anchor."""
+
+    def __init__(self, index, item, occ, shell, coords, target, geo=None):
+        self.index, self.item, self.occ, self.shell = index, item, occ, shell
+        self.coords, self.target, self.geo = coords, target, geo
+
+
+def stack_geometry(dist, coords, res, lh, depth, ms, wall_band):
+    (zs, ys, xs), cd = coords
+    nrm = paint_stack.normals(dist, zs, ys, xs, res, lh)
+    d = paint_stack.true_depth(dist[zs, ys, xs], nrm, res, lh)
+    world = np.stack([cd.x0 + cd.x, cd.y0 + cd.y, cd.z], axis=1)
+    return {"cls": paint_stack.classify(nrm, depth, lh, ms, wall_band), "depth": d,
+            "cells": paint_stack.anchor_cells(world, nrm, d, res, lh)}
+
+
+def _row(r, names):
+    return (f"{r['mean']:8.2f} {r['p95']:6.2f} {r['max']:6.2f}  "
+            + ", ".join(names[k] + (" [base]" if k == r["base"] else "") for k in r["keep"]))
+
+
+def choose_filaments(fils, palettes, bases, slots, shells, names, args, ms=None):
+    """The best (set, base) for the shells' colours: a dict with keep, base and stacks.
+
+    Every pair is scored one filament per voxel (`rank_sets`). With band classes `ms`, every
+    pair that can stack (all calibrated) is screened with stacks on a coarse histogram
+    (SCREEN_COLOURS per class) and the best STACK_SHORTLIST are rescored on the full one. All
+    of them, not just the flat ranking's best: that ranking sees each filament as opaque, so
+    it would never shortlist the translucent sets stacking is for. A set that cannot stack
+    competes on its flat score. stacks is the winner's `paint_stack.Stacks`, or None to
+    paint one filament per voxel.
+    """
+    t0 = time.time()
+    with_target = [s for s in shells if s.target is not None]
+    if not with_target:
+        raise SystemExit("nothing to colour, so nothing to choose filaments for")
+    targets = np.concatenate([s.target for s in with_target])
+    key = args.rank_by
+    ranked = rank_sets(palettes, bases, slots, targets, args)
+    what = f"{len(ranked)} set/base pairs" if len(bases) > 1 else f"{len(ranked)} sets"
+    print(f"\nranked {what} of {slots} on {len(targets) / 1e3:.0f} k voxels' colours, one "
+          f"filament per voxel ({time.time() - t0:.0f}s)")
+    print(f"\n{'rank':>4} {'mean dE':>8} {'p95':>6} {'max':>6}  filaments")
+    for i, r in enumerate(ranked[:args.top], 1):
+        print(f"{i:>4} {_row(r, names)}")
+    if not ms:
+        win = pick_best(ranked, key)
+        if win is not ranked[0]:
+            print(f"  chosen: {_row(win, names)}\n    (within {TIE_DE} dE of the best, and its "
+                  f"base covers most of the surface)")
+        return {**win, "stacks": None}
+
+    def stackable(r):
+        return all(spectral.is_calibrated(fils[k]) for k in r["keep"])
+
+    can = [r for r in ranked if stackable(r)]
+    flat = [r for r in ranked if not stackable(r)]
+    if not can:
+        print("\nno candidate set is fully calibrated, so none can stack")
+        return {**pick_best(ranked, key), "stacks": None}
+
+    t0 = time.time()
+    cls = np.concatenate([s.geo["cls"] for s in with_target])
+
+    def hists(n):
+        return [histogram(targets[cls == c], n) if (cls == c).any() else None
+                for c in range(len(ms))]
+
+    def stacks_for(r):
+        return paint_stack.Stacks([fils[k] for k in r["keep"]], r["keep"].index(r["base"]),
+                                  args.depth, ms)
+
+    mix = _strength(args) > 0
+    print(f"\nscreening {len(can)} pair(s) that can stack, with stacks ...", flush=True)
+    coarse = hists(SCREEN_COLOURS)
+    screened = sorted(({**r, **_summary(*stacks_for(r).score(coarse, mix))} for r in can),
+                      key=lambda r: r[key])
+    full, short = hists(RANK_COLOURS), []
+    for r in screened[:STACK_SHORTLIST]:       # gamuts are rebuilt: keeping all would be GBs
+        st = stacks_for(r)
+        short.append({**r, **_summary(*st.score(full, mix)), "stacks": st})
+    short.sort(key=lambda r: r[key])
+    win = pick_best(short + flat, key)
+    print(f"\n{'rank':>4} {'mean dE':>8} {'p95':>6} {'max':>6}  stacked ({time.time() - t0:.0f}s)")
+    for i, r in enumerate(short, 1):
+        print(f"{i:>3}{'*' if r is win else ' '} {_row(r, names)}"
+              + ("   (a gamut hit its cap)" if r["stacks"].capped else ""))
+    if "stacks" not in win:
+        print(f"  * a set that cannot stack scores better flat: {_row(win, names)}")
+        return {**win, "stacks": None}
+    if win is not short[0]:
+        print(f"  * within {TIE_DE} dE of the best, so the base that covers most of the "
+              f"surface wins (fewer modifier boxes)")
+    return win
+
+
+def label_stacked(s, stacks, args):
+    """(labels volume, sRGB of each voxel's own stack) for one shell, painted with stacks."""
+    lab = np.full(s.occ.shape, -1, dtype=np.int16)
+    (zs, ys, xs), _ = s.coords
+    g = s.geo
+    state, shown, own = stacks.solve(s.target, g["cls"], g["cells"], _strength(args))
+    lab[zs, ys, xs] = stacks.labels(g["cls"], state, stacks.band(g["cls"], g["depth"]))
+    de = np.linalg.norm(colormath.linear_to_lab(shown) - colormath.linear_to_lab(s.target), axis=-1)
+    args.colour_report = getattr(args, "colour_report", []) + [(de.sum(), len(de))]
+    return lab, colormath.linear_to_srgb(own)
+
+
 def main(argv=None):
     ap = build_parser()
     args = ap.parse_args(argv)
@@ -603,12 +769,12 @@ def main(argv=None):
         palette = colormath.parse_palette(args.palette)
         colors = [colormath.to_hex(c) for c in palette]
         names = list(colors)
-    if not 1 <= args.base_extruder <= len(palette):
+    if args.base_extruder is not None and not 1 <= args.base_extruder <= len(palette):
         raise SystemExit(f"--base-extruder must be 1 to {len(palette)}")
 
     for flag, val in (("--resolution", args.resolution), ("--layer-height", args.layer_height),
                       ("--first-layer-height", args.first_layer_height),
-                      ("--scale-to", args.scale_to)):
+                      ("--scale-to", args.scale_to), ("--wall-band", args.wall_band)):
         if val is not None and not val > 0:
             raise SystemExit(f"{flag} must be positive (got {val})")
     if args.depth < 0 or not math.isfinite(args.depth):
@@ -620,24 +786,36 @@ def main(argv=None):
         if not glb_input:
             raise SystemExit("--pattern is required for a 3MF (a GLB defaults to texture)")
         args.pattern = "texture"
+    colour = args.pattern in COLOUR_PATTERNS
 
     slots = args.slots or (threemf.template_slots(args.template) if args.template else None) \
         or len(palette)
     ranking = len(palette) > slots
-    if ranking and args.pattern not in COLOUR_PATTERNS:
+    if ranking and not colour:
         raise SystemExit(f"{len(palette)} filaments for {slots} slots: choosing between them needs "
                          f"a colour pattern (image-* or texture). List {slots} or fewer.")
     if ranking and slots < 2:
         raise SystemExit("--slots must be at least 2 to choose between filaments")
+    auto_base = args.base_extruder is None and colour
+    if args.base_extruder is None and not colour:
+        args.base_extruder = 1
+    stacking = colour and args.stack == "on" and fils is not None and args.optics == "spectral" \
+        and args.depth > 0
+    if colour and args.stack == "on" and not stacking:
+        why = ("--palette colours have no spectra" if fils is None else
+               "--optics swatch" if args.optics == "swatch" else "--depth 0 colours all the way through")
+        print(f"  stacking off: {why}")
+
+    bases = list(range(len(palette))) if auto_base else [args.base_extruder - 1]
     if fils:
         # The slicer keeps the library swatches (`colors`); matching uses what prints.
-        palette, notes = printed_palette(fils, fils[args.base_extruder - 1], args.depth, args.optics)
-        for n in notes:
-            print(f"  ! {n}")
+        palettes = {b: printed_palette(fils, fils[b], args.depth, args.optics)[0] for b in bases}
+    else:
+        palettes = {b: palette for b in bases}
     tag = "candidate " if ranking else "T"
     for i, (c, name) in enumerate(zip(colors, names), 1):
-        base = "  (base)" if ranking and i == args.base_extruder else ""
-        print(f"  {tag}{i} {c} {name}{base}{_prints_as(c, palette[i - 1])}")
+        base = "  (base)" if not auto_base and i == args.base_extruder else ""
+        print(f"  {tag}{i} {c} {name}{base}{_prints_as(c, palettes[bases[0]][i - 1])}")
 
     threemf.require_layer_grid(args.flavor, args.template, args.layer_height)
     t_lh, t_flh = threemf.template_layer_settings(args.template) if args.template else (None, None)
@@ -645,7 +823,7 @@ def main(argv=None):
     args.first_layer_height = args.first_layer_height or t_flh or args.layer_height
     if t_lh:
         print(f"layer grid {t_flh or t_lh} mm first, then {t_lh} mm (from template)")
-    if args.pattern in COLOUR_PATTERNS and len(palette) < 2:
+    if colour and len(palette) < 2:
         raise SystemExit("image and texture patterns need at least two filaments")
     if args.pattern in IMAGE_PATTERNS and not args.image:
         raise SystemExit(f"--pattern {args.pattern} needs --image")
@@ -655,6 +833,7 @@ def main(argv=None):
             and args.resolution < MIN_FEATURE_MM - 1e-9:
         print(f"  ! dither at --resolution {args.resolution} mm: one-voxel features are narrower "
               f"than a nozzle and mostly do not print. Use {MIN_FEATURE_MM} or more.")
+    ms = paint_stack.band_counts(args.depth, args.layer_height, args.wall_band) if stacking else None
 
     print(f"reading {args.model}")
     bed = threemf.template_bed_size(args.template) if args.template else None
@@ -686,53 +865,86 @@ def main(argv=None):
         if not occ.any():
             print(f"  ! item {i} ({item.name}) voxelised to nothing; is the mesh empty or degenerate?")
             continue
-        shell = shell_mask(occ, args.resolution, args.layer_height, args.depth)
+        if stacking:
+            dist = surface_distance(occ, args.resolution, args.layer_height)
+            shell = occ & (dist <= args.depth)
+        else:
+            shell = shell_mask(occ, args.resolution, args.layer_height, args.depth)
         coords = shell_coords(shell, bounds, args.resolution, edges, args.size, item)
-        target = TARGETS[args.pattern](coords[1], args) \
-            if args.pattern in TARGETS and coords[1] is not None else None
-        shells.append((i, item, occ, shell, coords, target))
+        target = TARGETS[args.pattern](coords[1], args) if colour and coords[1] is not None else None
+        geo = stack_geometry(dist, coords, args.resolution, args.layer_height, args.depth, ms,
+                             args.wall_band) if stacking and coords[1] is not None else None
+        shells.append(Shell(i, item, occ, shell, coords, target, geo))
         print(f"  item {i}: {occ.sum() / 1e3:.0f} k solid voxels, "
               f"{shell.sum() / 1e3:.0f} k coloured ({time.time() - t0:.1f}s)")
+    if stacking:
+        cls = np.concatenate([s.geo["cls"] for s in shells if s.geo is not None] or [np.zeros(0, int)])
+        print(f"  stacking: bands along the surface normal ({args.layer_height} mm a layer on a "
+              f"top face, {args.wall_band} mm on a wall), within --depth {args.depth} mm")
+        for c, m in enumerate(ms):
+            share = 100 * (cls == c).mean() if len(cls) else 0.0
+            print(f"    {m:3d} x {args.depth / m:.2f} mm bands: {share:5.1f}% of coloured voxels")
 
-    if ranking:
-        targets = [s[5] for s in shells if s[5] is not None]
-        if not targets:
-            raise SystemExit("nothing to colour, so nothing to choose filaments for")
-        base = args.base_extruder - 1
-        n_sets = math.comb(len(palette) - 1, slots - 1)
-        print(f"\nranking {n_sets} sets of {slots} (base {names[base]} always in) "
-              f"on {sum(len(t) for t in targets) / 1e3:.0f} k voxels' colours")
-        ranked = rank_sets(palette, base, slots, np.concatenate(targets), args)
-        print(f"\n{'rank':>4} {'mean dE':>8} {'p95':>6} {'max':>6}  filaments")
-        for r, res in enumerate(ranked[:args.top], 1):
-            print(f"{r:>4} {res['mean']:8.2f} {res['p95']:6.2f} {res['max']:6.2f}  "
-                  + ", ".join(names[k] for k in res["keep"]))
-        keep = ranked[0]["keep"]
-        palette, colors, names = palette[keep], [colors[k] for k in keep], [names[k] for k in keep]
+    stacks = None
+    if colour and (ranking or auto_base):
+        win = choose_filaments(fils, palettes, bases, slots, shells, names, args, ms)
+        keep, base, stacks = win["keep"], win["base"], win["stacks"]
+        palette = palettes[base][keep]
+        colors, names = [colors[k] for k in keep], [names[k] for k in keep]
+        if fils:
+            fils = [fils[k] for k in keep]
         args.base_extruder = keep.index(base) + 1
-        print("\nusing:")
+        print("\nusing" + (" (stacked):" if stacks else " (one filament per voxel):"))
         for i, (c, name) in enumerate(zip(colors, names), 1):
             print(f"  T{i} {c} {name}" + ("  (base)" if i == args.base_extruder else "")
                   + _prints_as(c, palette[i - 1]))
         print()
+    else:
+        palette = palettes[args.base_extruder - 1]
+        if stacking:
+            if all(spectral.is_calibrated(f) for f in fils):
+                stacks = paint_stack.Stacks(fils, args.base_extruder - 1, args.depth, ms)
+            else:
+                print("  stacking off: every filament needs a spectral calibration to stack")
+    if fils:
+        for n in printed_palette(fils, fils[args.base_extruder - 1], args.depth, args.optics)[1]:
+            print(f"  ! {n}")
+    if stacks is not None and stacks.capped:
+        print("  ! a stack gamut hit its cap; the deepest stacks were not all searched")
 
     decals = {}
     total_boxes, seen_labels = 0, np.zeros(len(palette), int)
-    preview_lab = None
-    for i, item, occ, shell, coords, target in shells:
-        lab = label_grid(occ, shell, bounds, args.resolution, edges, args.pattern, args, palette,
-                         item, coords, target)
+    preview_lab = preview_shade = None
+    for s in shells:
+        shade = None
+        if stacks is not None and s.geo is not None:
+            lab, shade_v = label_stacked(s, stacks, args)
+            if args.preview:
+                (zs, ys, xs), _ = s.coords
+                shade = np.zeros(lab.shape + (3,), np.uint8)
+                shade[zs, ys, xs] = np.round(shade_v).astype(np.uint8)
+        else:
+            lab = label_grid(s.occ, s.shell, bounds, args.resolution, edges, args.pattern, args,
+                             palette, s.item, s.coords, s.target)
         parts = emit_boxes(lab, bounds, args.resolution, edges, args.base_extruder - 1)
-        decals[i] = parts
+        decals[s.index] = parts
         total_boxes += sum(len(t) // 12 for _, _, t in parts)
         seen_labels += np.bincount(lab[lab >= 0], minlength=len(palette))
-        preview_lab = lab if preview_lab is None else np.maximum(preview_lab, lab)
+        if args.preview:
+            if shade is None:
+                shade = np.round(palette).astype(np.uint8)[np.maximum(lab, 0)]
+            if preview_lab is None:
+                preview_lab, preview_shade = lab, shade
+            else:
+                mine = lab >= 0
+                preview_lab = np.where(mine, lab, preview_lab)
+                preview_shade[mine] = shade[mine]
 
     rep = getattr(args, "colour_report", [])
     if rep:
         de = sum(r[0] for r in rep) / max(1, sum(r[1] for r in rep))
-        print(f"  mean colour error {de:.1f} dE (target vs the area-average of the printed mix; "
-              f"simulated, not measured)")
+        print(f"  mean colour error {de:.1f} dE (target vs the area-average of the printed "
+              f"{'stacks' if stacks is not None else 'mix'}; simulated, not measured)")
     tot = max(1, seen_labels.sum())
     for f, c in enumerate(seen_labels):
         tag = "  (base extruder: no modifier)" if f == args.base_extruder - 1 else ""
@@ -747,7 +959,7 @@ def main(argv=None):
             print(f"  ! --depth {args.depth} mm reaches below the template's solid shell "
                   f"({solid:.2f} mm); colour under that lands on sparse infill.")
     if args.preview and preview_lab is not None:
-        save_preview(args.preview, preview_lab, palette, edges, args.resolution)
+        save_preview(args.preview, preview_lab, palette, edges, args.resolution, preview_shade)
         print(f"  preview -> {args.preview}")
 
     threemf.get_writer(args.flavor)(

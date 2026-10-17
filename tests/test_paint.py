@@ -123,20 +123,21 @@ class Ranking(unittest.TestCase):
         from stackforge.core import colormath
         target = colormath.srgb_to_linear(np.tile([[141, 119, 99]], (500, 1)).astype(float))
         for dither in ("ordered", "off"):
-            best = sc.rank_sets(self.PAL, 0, 2, target, self.ns(dither=dither))[0]
+            best = sc.rank_sets({0: self.PAL}, [0], 2, target, self.ns(dither=dither))[0]
             self.assertEqual(best["keep"], [0, 3], dither)
 
     def test_every_set_keeps_the_base_and_has_slots_members(self):
         from stackforge.core import colormath
         target = colormath.srgb_to_linear(np.array([[200, 50, 50], [50, 50, 200]], float))
-        ranked = sc.rank_sets(self.PAL, 2, 3, target, self.ns())
+        ranked = sc.rank_sets({2: self.PAL}, [2], 3, target, self.ns())
         self.assertEqual(len(ranked), 6)                          # C(4, 2)
         for r in ranked:
-            self.assertIn(2, r["keep"])
-            self.assertEqual(len(r["keep"]), 3)
+            self.assertEqual(r["keep"][0], 2)                    # base first: extruder 1
+            self.assertEqual(len(set(r["keep"])), 3)
         self.assertEqual([r["mean"] for r in ranked], sorted(r["mean"] for r in ranked))
 
-    def test_cli_ranks_down_to_slots(self):
+    def run_brown_cube(self, *extra):
+        """Paint a cube from an all-mid-brown image with PAL; (stdout, extruders in the 3MF)."""
         from PIL import Image
         with tempfile.TemporaryDirectory() as d:
             src = os.path.join(d, "cube.3mf")
@@ -147,16 +148,35 @@ class Ranking(unittest.TestCase):
             out = os.path.join(d, "out.3mf")
             hexes = ",".join("#%02X%02X%02X" % tuple(int(v) for v in c) for c in self.PAL)
             r = subprocess.run([sys.executable, "-m", "stackforge.tools.paint", src, "-o", out,
-                                "--palette", hexes, "--slots", "2", "--pattern", "image-planar",
-                                "--image", img, "--resolution", "1.0", "--layer-height", "0.2"],
+                                "--palette", hexes, "--pattern", "image-planar", "--image", img,
+                                "--resolution", "1.0", "--layer-height", "0.2", *extra],
                                cwd=ROOT, capture_output=True, text=True)
             self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
-            self.assertIn("ranking 4 sets of 2", r.stdout)
-            self.assertIn("T2 #78553C", r.stdout)                 # the mid brown was chosen
             with zipfile.ZipFile(out) as z:
                 cfg = z.read("Metadata/model_settings.config").decode()
-            used = set(re.findall(r'key="extruder" value="(\d+)"', cfg))
-            self.assertEqual(used, {"1", "2"})                    # two extruders, not five
+            return r.stdout, set(re.findall(r'key="extruder" value="(\d+)"', cfg))
+
+    def test_cli_ranks_down_to_slots(self):
+        out, used = self.run_brown_cube("--slots", "2", "--base-extruder", "1")
+        self.assertIn("ranked 4 sets of 2", out)
+        self.assertIn("T2 #78553C", out)                          # the mid brown was chosen
+        self.assertEqual(used, {"1", "2"})                        # two extruders, not five
+
+    def test_cli_chooses_the_base(self):
+        """Without --base-extruder the base is chosen too: here the brown, which then
+        covers the whole surface and needs no modifier at all."""
+        out, used = self.run_brown_cube("--slots", "2")
+        self.assertIn("ranked 20 set/base pairs of 2", out)
+        self.assertIn("T1 #78553C #78553C  (base)", out)          # the base is always extruder 1
+        self.assertIn("0 boxes", out)
+        self.assertEqual(used, {"1"})
+
+    def test_tie_goes_to_the_base_covering_most(self):
+        rows = [{"mean": 5.00, "usage": 0.1, "id": "a"}, {"mean": 5.05, "usage": 0.6, "id": "b"},
+                {"mean": 5.30, "usage": 0.9, "id": "c"}]
+        self.assertEqual(sc.pick_best(rows, "mean")["id"], "b")     # within 0.1 dE: a tie
+        rows[1]["mean"] = 5.2
+        self.assertEqual(sc.pick_best(rows, "mean")["id"], "a")     # 0.2 dE is not
 
     def test_decorative_pattern_cannot_rank(self):
         with self.assertRaises(SystemExit) as cm:
@@ -198,6 +218,107 @@ class PrintedColour(unittest.TestCase):
         pal, notes = sc.printed_palette([self.d["demo-white"], plain], self.d["demo-white"], 1.2)
         np.testing.assert_allclose(pal[1], [0x33, 0x66, 0x99])
         self.assertTrue(any("swatch" in n and "Plain" in n for n in notes))
+
+
+class Stacking(unittest.TestCase):
+    def setUp(self):
+        from stackforge.core import spectral
+        from stackforge.tools import paint_stack
+        self.ps = paint_stack
+        self.sp = spectral
+        d = {f.id: f for f in spectral.demo_filaments()}
+        self.fils = [d["demo-white"], d["demo-red"], d["demo-yellow"], d["demo-black"]]
+
+    def test_band_counts(self):
+        self.assertEqual(self.ps.band_counts(1.2, 0.08, 0.6), [15, 7, 3, 2])
+        self.assertEqual(self.ps.band_counts(1.2, 0.2, 0.6), [6, 3, 2])
+        self.assertEqual(self.ps.band_counts(0.4, 0.08, 0.6), [5, 2, 1])   # shallower than a wall band
+        self.assertEqual(self.ps.band_counts(0.08, 0.08, 0.6), [1])
+
+    def test_normals_and_classes_on_a_cube(self):
+        res, lh = 0.5, 0.2
+        edges = sc.layer_edges(10.0, lh, lh)
+        occ = sc.voxelize(cube_item(), (0, 0, 10, 10), res, edges)
+        dist = sc.surface_distance(occ, res, lh)
+        zs, ys, xs = np.array([len(edges) - 2, 25]), np.array([10, 10]), np.array([10, 0])
+        n = self.ps.normals(dist, zs, ys, xs, res, lh)
+        np.testing.assert_allclose(n[0], [0, 0, 1], atol=1e-6)            # top face
+        np.testing.assert_allclose(n[1], [-1, 0, 0], atol=1e-6)           # the x = 0 wall
+        ms = self.ps.band_counts(1.2, lh, 0.6)
+        self.assertEqual(list(self.ps.classify(n, 1.2, lh, ms)), [0, len(ms) - 1])
+        d = self.ps.true_depth(dist[zs, ys, xs], n, res, lh)
+        np.testing.assert_allclose(d, [lh / 2, res / 2], atol=1e-6)      # outermost voxel centres
+
+    def test_slopes_get_bands_in_between(self):
+        ms = self.ps.band_counts(1.2, 0.08, 0.6)                          # [15, 7, 3, 2]
+        t = np.radians([0, 20, 45, 90])                                   # tilt of the normal from up
+        n = np.stack([np.sin(t), np.zeros(4), np.cos(t)], 1)
+        got = [ms[c] for c in self.ps.classify(n, 1.2, 0.08, ms)]
+        self.assertEqual(got, [15, 3, 2, 2])          # 20 deg: 0.6 sin 20 = 0.21 mm -> 5 fit -> 3
+
+    def test_column_shares_its_anchor(self):
+        nrm = np.tile([[0.6, 0.0, 0.8]], (3, 1))
+        surface = np.array([5.0, 5.0, 5.0])
+        depth = np.array([0.1, 0.5, 0.9])
+        world = surface - nrm * depth[:, None]
+        cells = self.ps.anchor_cells(world, nrm, depth, 0.5, 0.2)
+        self.assertTrue((cells == cells[0]).all())
+
+    def test_labels_decode_like_plaques_stack(self):
+        st = self.ps.Stacks(self.fils, 0, 0.24, [3, 1])
+        g = st.gamuts[0]
+        states = np.arange(len(g.colors))
+        cls = np.zeros(len(states), int)
+        for j in range(4):
+            got = st.labels(cls, states, np.full(len(states), j))
+            want = [g.stack(int(s))[::-1][j] if j < 3 else 0 for s in states]
+            self.assertEqual(got.tolist(), want, f"band {j}")
+
+    def test_solve_finds_a_stack_colour(self):
+        from stackforge.core import colormath
+        st = self.ps.Stacks(self.fils, 0, 0.24, [3, 1])
+        g = st.gamuts[0]
+        pick = np.linspace(1, len(g.colors) - 1, 25).astype(int)
+        target = g.colors[pick]
+        cls = np.zeros(len(pick), int)
+        _, shown, own = st.solve(target, cls, np.zeros((len(pick), 3), int), 0.0)
+        de = np.linalg.norm(colormath.linear_to_lab(own) - colormath.linear_to_lab(target), axis=-1)
+        self.assertLess(de.max(), 1e-6)
+        np.testing.assert_allclose(shown, own)
+
+    def test_cli_stacking_beats_one_filament_per_voxel(self):
+        """A pink that is 0.2 mm of red over white: no single filament has it, a top face's
+        stack does exactly. The walls (half the cube) only get 0.6 mm bands, so not all of
+        the error goes: 8.3 dE flat, 3.6 stacked."""
+        from PIL import Image
+        from stackforge.core.filamentdb import DB
+        white, red = self.fils[0], self.fils[1]
+        pink = self.sp.spectrum_to_srgb(self.sp.layer(self.sp.r_inf(*self.sp.ks(white)),
+                                                      *self.sp.ks(red), 0.2))
+        with tempfile.TemporaryDirectory() as d:
+            db = DB(os.path.join(d, "f.json"))
+            for f in self.fils:
+                db.filaments[f.id] = f
+            db.save()
+            src = os.path.join(d, "cube.3mf")
+            c = cube_item()
+            mf.write(src, [(c.verts, c.tris)])
+            img = os.path.join(d, "pink.png")
+            Image.fromarray(np.full((4, 4, 3), np.round(pink), np.uint8)).save(img)
+            errs, outs = {}, {}
+            for stack in ("on", "off"):
+                r = subprocess.run([sys.executable, "-m", "stackforge.tools.paint", src,
+                                    "-o", os.path.join(d, f"{stack}.3mf"), "--db", db.path,
+                                    "--filaments", ",".join(f.id for f in self.fils),
+                                    "--pattern", "image-planar", "--image", img, "--dither", "off",
+                                    "--resolution", "1.0", "--layer-height", "0.2", "--stack", stack],
+                                   cwd=ROOT, capture_output=True, text=True)
+                self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+                errs[stack] = float(re.search(r"mean colour error ([\d.]+) dE", r.stdout).group(1))
+                outs[stack] = r.stdout
+        self.assertIn("using (stacked):", outs["on"])
+        self.assertIn("using (one filament per voxel):", outs["off"])
+        self.assertLess(errs["on"], errs["off"] / 2)
 
 
 class Preview(unittest.TestCase):

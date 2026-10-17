@@ -76,6 +76,8 @@ VISIBLE_WHEN: dict = {
     ("paint", "slots"): ("pattern", {"texture", "image-planar", "image-cylindrical", "image-spherical"}),
     ("paint", "rank_by"): ("pattern", {"texture", "image-planar", "image-cylindrical", "image-spherical"}),
     ("paint", "top"): ("pattern", {"texture", "image-planar", "image-cylindrical", "image-spherical"}),
+    ("paint", "stack"): ("pattern", {"texture", "image-planar", "image-cylindrical", "image-spherical"}),
+    ("paint", "wall_band"): ("pattern", {"texture", "image-planar", "image-cylindrical", "image-spherical"}),
 }
 
 # dest -> project binding key; filled from the project bar, excluded from presets

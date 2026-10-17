@@ -791,17 +791,37 @@ needs a green-ish filament. `stackforge-make-samples` writes `globe.glb` to try 
 *Realistic colour* mode is this path.
 
 **Choosing the filaments.** List more filaments than you have slots and paint picks the set:
-every `--slots`-sized set that keeps the base filament (`--base-extruder`) is scored against the
-voxels' own target colours, by mean dE (`--rank-by p95` for the tail), and the best is written.
-`--slots` defaults to the template's slot count. It scores the same thing the run reports: the
-dithered pair's area average, or the nearest filament with `--dither off`.
+every `--slots`-sized set is scored against the voxels' own target colours, by mean dE
+(`--rank-by p95` for the tail), and the best is written. `--slots` defaults to the template's
+slot count. It scores the same thing the run reports: the dithered pair's area average, or the
+nearest filament with `--dither off`.
+
+**Choosing the base.** Without `--base-extruder`, each set is tried with each of its members
+as the base (the core under the coloured shell, and what a translucent filament shows
+through). Scores within 0.1 dE are a tie, won by the base that already covers most of the
+surface, since base voxels need no modifier. The chosen base is written as extruder 1: the
+Flash Studio GUI honours a 3MF's object extruder, but its headless slice prints the object on
+extruder 1 regardless, so anything else could not be checked that way.
+
+**Stacking** (`--stack on`, the default with calibrated filaments): translucent filaments are
+layered in bands along the surface normal, as plaque layers a plaque. How thin a band can be
+depends on which way the surface faces. A top face stacks one layer per band (0.16 mm bands
+printed exactly); a wall only gets a band once it is ~0.6 mm thick (`--wall-band`: 0.16-0.42 mm
+wall bands got no perimeter at all). So `--depth 1.2` is up to 15 bands of 0.08 mm on a top
+face and 2 of 0.6 mm on a wall, with slopes in between, each band count with its own stack
+gamut. Every set that can stack (all calibrated) is screened with stacks, not just the best
+one-filament-per-voxel sets: that ranking sees each filament as opaque and would never
+shortlist the translucent sets stacking is for. On the scanned head, 57% of the surface is
+wall-steep, and the stacked winner (white base, light grey, black, PolyLite orange: thin
+orange over white warms the skin) is 9.6 dE simulated against 10.0 without stacking. Opaque
+filaments barely stack: four of them gave 4k distinct 15-band stacks, a translucent set 65k.
 
 **What a filament looks like** (`--optics`, default `spectral`): a spectrally calibrated
 filament is matched as `--depth` mm of it over the base (Kubelka-Munk, as plaque), so the
 measured colour replaces the library swatch, and a translucent one (PolyLite red, orange,
 yellow) shows the base through. An uncalibrated filament keeps its swatch, and the run names
-it. The 3MF keeps the swatches for the slicer's display. Each voxel is still one opaque-ish
-filament: no stacking of different filaments, so dark tones are reached by dithering in black.
+it. The 3MF keeps the swatches for the slicer's display. With `--stack off` each voxel is one
+filament, so dark tones are reached by dithering in black.
 
 On a scanned head (skin about L\* 52) the measured colours mattered more than translucency:
 light brown measures `#BC9E81` against its `#EDD5A6` swatch, light grey `#82888F` against
@@ -841,11 +861,12 @@ grid drop out on alternate layers).
   names `x y z r theta phi pi` and the listed numpy functions (`sin cos tan arctan2 sqrt abs
   floor ceil mod where minimum maximum exp log sign round`) are accepted; attributes,
   subscripts, lambdas, comprehensions and strings are refused. Safe on untrusted input.
-- **Slice-checked on a curved model** (2026-10-15, a 75 mm scanned head, 0.08 mm layers, Flash
-  Studio 1.7.13): the outer wall follows the modifiers. Against a design of 9.5/44/42/4.5% per
-  tool, the outer wall came out 24/27/42/7% at `--resolution 0.6` and 16/34/45/4% at 0.3: the
-  base gains where a modifier is thin, less so at 0.3. At 0.3 that is 450k boxes, a 47 MB file
-  and a 41 s slice. Never printed.
+- **Slice-checked on a curved model** (a 75 mm scanned head, 0.08 mm layers, Flash Studio
+  1.7.13; recounted 2026-10-17 on extrusion moves only, after unretracts had skewed the first
+  count): the modifiers are honoured, but **walls lose dithered one-voxel features to the
+  base**. Designed 9.5/44/42/4.5% per tool (base first), the outer wall came out
+  33.5/30/33/3.5% at `--resolution 0.6` and 37.6/33/29/0.7% at 0.3: finer is worse. Simulated
+  dE is optimistic by that much; the print shows more base. Never printed.
 - No interactive painting window. Dithering exists for texture and image patterns
   (`--dither`), but its gains are simulated only: the slicer drops the one-pixel features a
   dither is made of (see *Caveats*).
