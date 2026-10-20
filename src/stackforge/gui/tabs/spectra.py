@@ -166,8 +166,14 @@ class SpectraViewer(QWidget):
         self.log.setToolTip("Log reflectance / transmittance axis (1% to 100%): spreads out dark "
                             "filaments, which sit flat on the bottom of the linear one")
         self.log.toggled.connect(lambda *_: self.refresh())
+        self.ghost_box = QCheckBox("Other layers")
+        self.ghost_box.setChecked(True)
+        self.ghost_box.setToolTip("Faint curves for every other layer count. Turn off to compare "
+                                  "many filaments at one thickness")
+        self.ghost_box.toggled.connect(lambda *_: self.refresh())
         ctl.addWidget(self.view, 1)
         ctl.addWidget(self.log)
+        ctl.addWidget(self.ghost_box)
         for lbl, wdg in (("Light", self.illum), ("Layer", self.lh), ("Up to", self.maxl)):
             ctl.addSpacing(8)
             ctl.addWidget(QLabel(lbl))
@@ -454,7 +460,7 @@ class SpectraViewer(QWidget):
                 curves = [np.ones(sp.NB)] + [sp.transmittance(K, S, n * lh) for n in range(1, N + 1)]
             else:
                 curves = [K / S]
-            series.append(Series(f.name, col, curves, ghosts=view != "ks"))
+            series.append(Series(f.name, col, curves, ghosts=view != "ks" and self.ghost_box.isChecked()))
             info.append(self._info_line(f, R[min(layer, N)]))
             if self.readings and view == "reflectance":
                 series += self._measured(f, layer, col)

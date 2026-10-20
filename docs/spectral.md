@@ -96,7 +96,7 @@ Designer) warns when a calibrated filament is used on a different layer grid.
 - **Spectra tab:** pick calibrated filaments (several overlay) and a base, then drag the layer
   slider. The tab has:
   - three views: reflectance over the base; transmittance through the layers; K/S on a log scale
-  - faint ghost curves for every other layer count, a swatch strip, and a hover read-out
+  - faint ghost curves for every other layer count (the "Other layers" box hides them), a swatch strip, and a hover read-out
   - the stack builder ("2 orange over 3 blue over white", drawn dashed)
   - the viewing-light switch, a metamerism check: "shift under A" is the dE between the stack in
     daylight and under a lamp
