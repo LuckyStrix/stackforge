@@ -28,7 +28,7 @@ from __future__ import annotations
 import numpy as np
 
 from stackforge.core import colormath, spectral
-from stackforge.tools.plaque import SpectralGamut, gamut_match, mix_pairs
+from stackforge.tools.plaque import SpectralGamut, gamut_match, mix_pairs, query_workers
 
 WALL_BAND_MM = 0.6     # thinnest wall band with classic walls at 0.42 mm lines (0.4 printed none)
 ARACHNE_WALL_BAND_MM = 0.3   # with Arachne walls: 0.3 printed (and 0.2), checked on a head
@@ -126,11 +126,35 @@ def columns(anchors, depth_in):
     return col, first
 
 
-class Stacks:
-    """One SpectralGamut per band class for a filament set over its base."""
+def solve_gamut(g, target_lin, cells, strength):
+    """(state, the colour its area shows (linear), its state's own colour) per target in one
+    gamut, or anything with its `tree`, `colors` and `lab` (paint_budget passes a subset).
 
-    def __init__(self, fils, base, classes, grid=GRID, cap=CAP):
+    With strength > 0 a target takes one of the two states whose mix is closest (plaque's
+    `mix_pairs`), by the threshold at its anchor cell; strength 0 is the nearest state.
+    """
+    if strength > 0:
+        a, b, al = (v[:, 0] for v in mix_pairs(g, colormath.linear_to_srgb(target_lin)[:, None, :]))
+        thr = 0.5 + (colormath.dither_threshold(*cells.T) - 0.5) * strength
+        state = np.where(al > thr, b, a)
+        shown = g.colors[a] + al[:, None] * (g.colors[b] - g.colors[a])
+    else:
+        _, state = g.tree.query(colormath.linear_to_lab(target_lin),
+                                workers=query_workers(len(target_lin)))
+        shown = g.colors[state]
+    return state, shown, g.colors[state]
+
+
+class Stacks:
+    """One SpectralGamut per band class for a filament set over its base.
+
+    `ids` maps the set's own filament indices to the caller's (paint_budget builds stacks
+    from subsets of the chosen filaments); labels come out in the caller's indices.
+    """
+
+    def __init__(self, fils, base, classes, grid=GRID, cap=CAP, ids=None):
         self.fils, self.base = list(fils), base
+        self.ids = np.arange(len(self.fils)) if ids is None else np.asarray(ids, np.int64)
         self.ms = [m for m, _ in classes]
         self.us = [u for _, u in classes]
         spectral.require_calibrated(self.fils, what="paint stacking",
@@ -138,40 +162,28 @@ class Stacks:
         self.gamuts = [SpectralGamut(self.fils, self.fils[base], u, m, grid=grid, cap=cap,
                                      verbose=False) for m, u in classes]
         self.capped = any(g.capped for g in self.gamuts)
+        self._band_fils = {}
 
     def band(self, cls, depth_in):
         """Band index from the top per voxel (0 = outermost)."""
         return np.floor(depth_in / np.asarray(self.us)[cls] + 1e-6).astype(np.int64)
 
     def solve(self, target_lin, cls, cells, strength):
-        """(state per voxel, the colour its area shows (linear), its state's own colour).
-
-        With strength > 0 a voxel takes one of the two states whose mix is closest
-        (plaque's `mix_pairs`), by the threshold at its anchor cell; strength 0 is the
-        nearest state.
-        """
+        """(state per voxel, the colour its area shows (linear), its state's own colour),
+        each voxel solved in its band class's gamut (`solve_gamut`)."""
         state = np.zeros(len(target_lin), np.int64)
         shown = np.zeros_like(target_lin)
         own = np.zeros_like(target_lin)
-        srgb = colormath.linear_to_srgb(target_lin)
         for c, g in enumerate(self.gamuts):
             sel = np.nonzero(cls == c)[0]
-            if not len(sel):
-                continue
-            if strength > 0:
-                a, b, al = (v[:, 0] for v in mix_pairs(g, srgb[sel, None, :]))
-                thr = 0.5 + (colormath.dither_threshold(*cells[sel].T) - 0.5) * strength
-                state[sel] = np.where(al > thr, b, a)
-                shown[sel] = g.colors[a] + al[:, None] * (g.colors[b] - g.colors[a])
-            else:
-                _, state[sel] = g.tree.query(colormath.linear_to_lab(target_lin[sel]), workers=-1)
-                shown[sel] = g.colors[state[sel]]
-            own[sel] = g.colors[state[sel]]
+            if len(sel):
+                state[sel], shown[sel], own[sel] = solve_gamut(g, target_lin[sel], cells[sel],
+                                                               strength)
         return state, shown, own
 
     def labels(self, cls, state, band):
-        """Filament index per voxel: the filament of its band (from the top) in its stack;
-        the base below a short stack and below the last band."""
+        """Filament index per voxel (the caller's, see `ids`): the filament of its band (from
+        the top) in its stack; the base below a short stack and below the last band."""
         out = np.full(len(state), self.base, np.int64)
         for c, (g, m) in enumerate(zip(self.gamuts, self.ms)):
             sel = np.nonzero(cls == c)[0]
@@ -183,7 +195,21 @@ class Stacks:
                 cur[down] = g.parent[cur[down]]
             f = g.fil[cur]
             out[sel] = np.where((j < m) & (cur > 0) & (f >= 0), f, self.base)
-        return out
+        return self.ids[out]
+
+    def band_fils(self, c):
+        """(states, m) filament (the caller's index) of each band from the top, per state of
+        class c's gamut; the base where the stack is shorter."""
+        if c not in self._band_fils:
+            g, m = self.gamuts[c], self.ms[c]
+            out = np.empty((len(g.fil), m), np.int64)
+            cur = np.arange(len(g.fil))
+            for k in range(m):
+                f = g.fil[cur]
+                out[:, k] = np.where((cur > 0) & (f >= 0), f, self.base)
+                cur = np.where(cur > 0, g.parent[np.maximum(cur, 0)], cur)
+            self._band_fils[c] = self.ids[out]
+        return self._band_fils[c]
 
     def _base_share(self, c, state):
         """Share of each state's m bands that are the base (voxels needing no modifier), in

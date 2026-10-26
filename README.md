@@ -852,6 +852,48 @@ the surface without plastic. Sliced (Flash Studio 1.7.13, the head, stacked): at
 share within 2 points of the design; at 0.3 mm, 94% and 93%. `--walls template` leaves the
 template's walls alone.
 
+**Tool changes** (`--max-toolchanges N`, `--toolchange-curve FILE.json`). On a toolchanger
+every layer that prints k filaments costs k - 1 changes, and one more if it does not use the
+tool the layer below ended on. The scanned head in four filaments sliced to 2697 changes over
+935 layers, nearly all of them printing all four (~5.2 h of changes at the Creator 5's 7 s,
+in a 30.6 h print). With a limit, each layer prints only some of the filaments, always the
+base, chosen for the least colour error over the whole print within that many changes.
+Every run prints its count, which is an upper bound: the slicer picks the order of a layer's
+tools, so paint counts whichever last tool costs most. `--toolchange-curve` prints and writes
+the trade-off (the Paint tab draws it with a slider that reruns with the chosen limit). On
+the head (0.6 mm voxels, stacked, simulated dE):
+
+| changes, at most | sliced | print time | mean dE | p95 |
+|---|---|---|---|---|
+| 2700 (no limit) | 2697 | 30.6 h | 9.6 | 14.7 |
+| 1338 (`--max-toolchanges 1350`) | 1327 | 20.7 h | 12.2 | 23.2 |
+| 836 (`--max-toolchanges 900`) | 827 | 16.1 h | 17.7 | 32.8 |
+
+A limit gets the best plan on the curve that fits it, so it can land some way under it: the
+curve has points where the trade-off bends, not at every count (on the head, nothing between
+836 and 902).
+
+The print time falls by more than the changes themselves: each one also primes on the
+tower. Every subset of the filaments that holds the base is solved once over the model;
+the plan is then chosen layer by layer for a sweep of weights between error and changes.
+Stacked columns that cross layers with different subsets are solved again against the
+subset of each band's layer, so no voxel prints a filament its layer does not have. The
+filament set is chosen before the limit, without it.
+
+**Pose** (`--rotate X,Y,Z`, degrees about X, then Y, then Z). The model is turned about its
+bounding-box centre and set back on the bed where it was, before anything is voxelised, so
+the 3MF carries the posed model. Pose it here, never in the slicer: rotating the painted 3MF
+there moves the colour boxes off the layer grid. Fewer layers usually means fewer tool
+changes, though not always: a model whose colours change with height can need more tools
+per layer lying down. The head lying face down (`--rotate=-90,0,0`): 585 layers instead of
+936, sliced to 1670 tool changes (paint counted 1678) and 23.9 h instead of 2697 and 30.6 h,
+at the same simulated colour (9.7 dE). That pose overhangs about 19 cm2 past 45 degrees, so
+it needs supports, which the template had turned off. The Paint tab's *Pose* box turns the
+model with buttons or angles, draws it from the top, front and side, shows its size, layers
+and overhang area as it turns, and *Estimate tool changes* runs paint as a `--dry-run` at
+1.2 mm voxels with one filament per voxel (the head upright: 2639 against the full run's
+2700), to compare poses.
+
 **What a filament looks like** (`--optics`, default `spectral`): a spectrally calibrated
 filament is matched as `--depth` mm of it over the base (Kubelka-Munk, as plaque), so the
 measured colour replaces the library swatch, and a translucent one (PolyLite red, orange,

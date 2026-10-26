@@ -694,6 +694,18 @@ def template_slots(template):
     return len(cols) if isinstance(cols, list) and cols else None
 
 
+def template_tool_change_time(template):
+    """Seconds a tool change takes on the template's printer (`machine_tool_change_time`,
+    a toolchanger's setting), or None if it has none."""
+    try:
+        with zipfile.ZipFile(template) as tz:
+            settings = json.loads(tz.read("Metadata/project_settings.config"))
+    except (KeyError, zipfile.BadZipFile, OSError, ValueError):
+        return None
+    t = _first_num(settings.get("machine_tool_change_time"))
+    return t if t else None
+
+
 def check_template_slots(template, n) -> None:
     """Refuse up front a template with fewer filament slots than filaments in use."""
     have = template_slots(template)

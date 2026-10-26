@@ -37,6 +37,7 @@ OVERRIDES: dict = {
     ("paint", "*", "image"): "image",
     ("paint", "*", "palette"): "hex_list",
     ("paint", "*", "filaments"): "filament_ids",
+    ("paint", "*", "toolchange_curve"): "file_out",
     ("calibrate", "*", "filament"): "filament_id",
     ("calibrate", "wedge", "base"): "filament_id",
     ("dither_compare", "*", "image"): "image",
@@ -78,6 +79,8 @@ VISIBLE_WHEN: dict = {
     ("paint", "top"): ("pattern", {"texture", "image-planar", "image-cylindrical", "image-spherical"}),
     ("paint", "stack"): ("pattern", {"texture", "image-planar", "image-cylindrical", "image-spherical"}),
     ("paint", "wall_band"): ("pattern", {"texture", "image-planar", "image-cylindrical", "image-spherical"}),
+    ("paint", "max_toolchanges"): ("pattern", {"texture", "image-planar", "image-cylindrical", "image-spherical"}),
+    ("paint", "toolchange_curve"): ("pattern", {"texture", "image-planar", "image-cylindrical", "image-spherical"}),
 }
 
 # dest -> project binding key; filled from the project bar, excluded from presets
@@ -110,6 +113,8 @@ LABELS = {
     "per_channel": "Fit each colour channel", "write": "Save the fit to the database",
     "wedge_sheet_in": "Wedge sheet (from Calibrate)", "readings": "Readings file (from Measure)",
     "base_patch": "Read the bare-base patch first", "no_base_patch": "No bare-base patch",
+    "max_toolchanges": "Max tool changes", "toolchange_curve": "Tool-change curve (JSON)",
+    "rotate": "Rotate X,Y,Z (degrees)", "dry_run": "Dry run (write nothing)",
 }
 
 

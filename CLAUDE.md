@@ -108,6 +108,21 @@ clean and CI runs both. PySide6 is the `gui` extra; the CLIs need only numpy/Pil
   true surface and look up what the painted slice prints there.
 - **Tallying G-code: count only moves with X or Y.** Unretracts (`G1 E.8`) were 30-45% of all
   positive E on a busy model and skewed every share; the 2026-10-15 wall numbers had that error.
+- **paint's tool-change count is a bound** (`tools/paint_budget.py`). Flash Studio starts a
+  layer on the tool it holds and orders the rest itself (flush volumes), so `step` carries the
+  set of possible last tools. Sliced (Creator 5 template, the head, 2026-10-18): no limit 2697
+  vs 2700 counted, `--max-toolchanges 900` 827 vs 836, 1350 1327 vs 1338. Plans are chosen on
+  their evaluated count (`Budget.choose`): re-solving mixed columns adds ~20 changes to the
+  subset-solve prediction. A layer's tools
+  come from its labels plus the base wherever a solid voxel is uncoloured (`layer_tools`).
+  On Windows the slicer is `C:/Program Files/Flashforge/Flash Studio Desktop/flash studio.exe`
+  (same `--datadir --slice 1 --outputdir` flags); the template is `~/Downloads/stackforge.3mf`.
+  Small cKDTree queries with `workers=-1` cost ~1 ms each in thread start-up.
+- **paint `--rotate` poses the model before voxelising** (`core/pose.py`), never after:
+  the painted 3MF rotated in the slicer would put the colour between layers. Turned about the
+  bbox centre, then the same XY centre and min z = 0. The GUI's Pose box is paint-only
+  (top_paint's `--rotate` turns its image). Face-down head sliced 2026-10-18: 1670 changes vs
+  1678 counted, 585 layers; the template has supports off.
 - **paint `--expr` goes through an AST whitelist** (`compile_expr`) before `eval`: no
   attributes, subscripts, lambdas, strings. Add a function by adding it to `_EXPR_NAMES`.
 - **Dither gains are simulated.** Blurred dE improves most with shallow stacks, but the slicer

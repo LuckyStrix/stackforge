@@ -37,8 +37,8 @@ from scipy.ndimage import binary_erosion, distance_transform_edt
 
 from stackforge.core import threemf
 from stackforge.core.filamentdb import DEFAULT_DB
-from stackforge.core import colormath, spectral
-from stackforge.tools import paint_stack
+from stackforge.core import colormath, pose, spectral
+from stackforge.tools import paint_budget, paint_stack
 
 MAX_VOXELS = 60_000_000   # same ceiling top_paint applies to its raster
 MIN_FEATURE_MM = 0.6      # narrowest region that gets plastic at a 0.4 mm nozzle (see CLAUDE.md)
@@ -696,6 +696,21 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--part-type", choices=["modifier", "part"], default="modifier")
     ap.add_argument("--template", help="a project .3mf exported from your slicer")
     ap.add_argument("--preview", help="PNG: top and front view of the painted colours")
+    ap.add_argument("--max-toolchanges", type=int, default=None,
+                    help="limit the tool changes: each layer prints only some of the "
+                         "filaments (always the base), chosen for the least colour error "
+                         "within this many changes over the print (image-* and texture). "
+                         "The count is an upper bound; the slicer can only come in under it")
+    ap.add_argument("--rotate", default=None,
+                    help="pose the model first: X,Y,Z degrees, turned about X, then Y, then Z "
+                         "and set back on the bed. Fewer layers can mean fewer tool changes. "
+                         "Pose it here, not in the slicer: rotating the painted 3MF there "
+                         "puts the colour between layers")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="do everything but write the 3MF (the GUI's tool-change estimate)")
+    ap.add_argument("--toolchange-curve", default=None,
+                    help="JSON: colour error against tool changes, for choosing "
+                         "--max-toolchanges (the GUI's slider reads it). Also printed")
     return ap
 
 
@@ -854,6 +869,49 @@ def label_stacked(s, stacks, args):
     return lab, colormath.linear_to_srgb(own)
 
 
+def _hours(changes, secs):
+    """' (~1.2 h at 7 s each)' from the template's tool-change time, or ''."""
+    return f" (~{changes * secs / 3600:.1f} h at {secs:g} s each)" if secs else ""
+
+
+def budget_tools(shells, palette, stacks, fils, nz, change_time, args):
+    """{shell index: (labels, dE, own sRGB) per coloured voxel} under --max-toolchanges, or
+    None when only the curve was asked for. Prints the curve (and writes it, with
+    --toolchange-curve) and the plan chosen."""
+    def flat(s, pal):
+        return _pick(s.target, s.coords[1], args, pal), args.last_de
+
+    if len(palette) > paint_budget.MAX_TOOLS and args.max_toolchanges is None:
+        # only the curve was asked for (the GUI asks on every colour run): not worth failing
+        print(f"\n  no tool-change curve: it takes at most {paint_budget.MAX_TOOLS} filaments, "
+              f"and {len(palette)} are in use")
+        return None
+    b = paint_budget.Budget(shells, palette, stacks, fils, args.base_extruder - 1, args, nz,
+                            pick={"strength": _strength(args), "flat": flat},
+                            keep_own=bool(args.preview))
+    ev = b.choose(args.max_toolchanges) if args.max_toolchanges is not None else None
+    if args.toolchange_curve:
+        rows = b.curve()
+        print("\n  tool changes against colour error (changes at most; dE simulated, over the "
+              "surface):")
+        print(f"  {'changes':>8} {'mean dE':>8} {'p95':>6}  layers printing 1..{len(palette)}")
+        for i, r in enumerate(rows):
+            tag = "  (every filament on every layer it needs)" if i == len(rows) - 1 else ""
+            print(f"  {r['changes']:>8} {r['mean']:8.2f} {r['p95']:6.2f}  "
+                  f"{' / '.join(map(str, r['layers']))}{_hours(r['changes'], change_time)}{tag}")
+        paint_budget.curve_json(args.toolchange_curve, rows, change_time, ev)
+        print(f"  curve -> {args.toolchange_curve}")
+    if ev is None:
+        return None
+    note = "" if ev["changes"] <= args.max_toolchanges else \
+        f"; nothing fits {args.max_toolchanges}, this is the fewest"
+    print(f"\n  --max-toolchanges {args.max_toolchanges}: at most {ev['changes']} changes"
+          f"{_hours(ev['changes'], change_time)}, mean {ev['mean']:.2f} dE, p95 "
+          f"{ev['p95']:.2f}{note}")
+    return {sh.s.index: (ev["labels"][i], ev["de"][i], ev["own"][i])
+            for i, sh in enumerate(b.shells)}
+
+
 def main(argv=None):
     ap = build_parser()
     args = ap.parse_args(argv)
@@ -889,6 +947,16 @@ def main(argv=None):
             raise SystemExit("--pattern is required for a 3MF (a GLB defaults to texture)")
         args.pattern = "texture"
     colour = args.pattern in COLOUR_PATTERNS
+    try:
+        angles = pose.parse_rotate(args.rotate) if args.rotate else None
+    except ValueError as e:
+        raise SystemExit(str(e))
+    budgeting = args.max_toolchanges is not None or bool(args.toolchange_curve)
+    if budgeting and not colour:
+        raise SystemExit("--max-toolchanges and --toolchange-curve need a colour pattern "
+                         "(image-* or texture): a decorative pattern has no colour to trade")
+    if args.max_toolchanges is not None and args.max_toolchanges < 0:
+        raise SystemExit(f"--max-toolchanges must be 0 or more (got {args.max_toolchanges})")
 
     slots = args.slots or (threemf.template_slots(args.template) if args.template else None) \
         or len(palette)
@@ -963,6 +1031,10 @@ def main(argv=None):
     print(f"reading {args.model}")
     bed = threemf.template_bed_size(args.template) if args.template else None
     items = threemf.read_model(args.model, scale_to=args.scale_to, bed=bed)
+    if angles and any(angles):
+        pose.rotate_items(items, angles)
+        print(f"  posed: rotated {pose.fmt_rotate(angles)} degrees (X, then Y, then Z), "
+              f"set back on the bed")
     allv = np.vstack([i.verts for i in items])
     lo, hi = allv.min(0), allv.max(0)
     bounds = (lo[0], lo[1], hi[0], hi[1])
@@ -1046,13 +1118,27 @@ def main(argv=None):
         if stacks.capped:
             print("  ! a stack gamut hit its cap; the deepest stacks were not all searched")
 
+    change_time = threemf.template_tool_change_time(args.template) if args.template else None
+    chosen = budget_tools(shells, palette, stacks, fils, nz, change_time, args) \
+        if budgeting else None
+
     decals, report = {}, []
     total_boxes, seen_labels = 0, np.zeros(len(palette), int)
+    used = np.zeros(nz, np.int64)
     preview_lab = preview_shade = None
     for s in shells:
         shade = None
         args.last_de = None
-        if stacks is not None and s.geo is not None:
+        if chosen is not None and s.index in chosen:
+            labels, de, own = chosen[s.index]
+            (zs, ys, xs), _ = s.coords
+            lab = np.full(s.occ.shape, -1, dtype=np.int16)
+            lab[zs, ys, xs] = labels
+            args.last_de = de
+            if args.preview and stacks is not None:
+                shade = np.zeros(lab.shape + (3,), np.uint8)
+                shade[zs, ys, xs] = np.round(own).astype(np.uint8)
+        elif stacks is not None and s.geo is not None:
             lab, shade_v = label_stacked(s, stacks, args)
             if args.preview:      # a stacked voxel's colour is its stack's, not its filament's
                 (zs, ys, xs), _ = s.coords
@@ -1063,6 +1149,7 @@ def main(argv=None):
                              palette, s.item, s.coords, s.target)
         if args.last_de is not None:
             report.append(args.last_de[s.surf])
+        used |= paint_budget.layer_tools(lab, s.occ, args.base_extruder - 1)
         # Only a modifier is clipped to its object: an overhanging part would print outside it.
         grown, pad = overhang(lab, s.occ) if args.part_type == "modifier" else (lab, 0)
         shift = pad * args.resolution
@@ -1090,6 +1177,10 @@ def main(argv=None):
         tag = "  (base extruder: no modifier)" if f == args.base_extruder - 1 else ""
         print(f"  T{f + 1} {100 * c / tot:5.1f}% of coloured voxels{tag}")
     print(f"  {total_boxes} boxes ({total_boxes * 12} triangles)")
+    changes = paint_budget.count_changes(used)
+    by = paint_budget.tools_histogram(used, len(palette))
+    print(f"  tool changes: at most {changes}{_hours(changes, change_time)} over {nz} layers "
+          f"(layers printing 1..{len(palette)} filaments: {' / '.join(map(str, by))})")
     if total_boxes > 250_000:
         print("  ! that is a lot of geometry and your slicer will be slow to load it.\n"
               "    Raise --resolution, lower --depth, or use a simpler pattern.")
@@ -1102,6 +1193,9 @@ def main(argv=None):
         save_preview(args.preview, preview_lab, palette, edges, args.resolution, preview_shade)
         print(f"  preview -> {args.preview}")
 
+    if args.dry_run:
+        print("dry run: nothing written")
+        return
     threemf.get_writer(args.flavor)(
         args.output, items, decals, args.base_extruder, args.part_type,
         template=args.template, colors=colors,
