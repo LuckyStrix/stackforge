@@ -216,8 +216,22 @@ def _image_target(a, u, v):
     return colormath.srgb_to_linear(_sample(_load(a), u, v))
 
 
+def _model_frame(cd, a):
+    """`cd` in the model's own frame, before --rotate: an image is projected onto the faces
+    it was made for, so a pose changes the layers, not the artwork. `a.unpose` is
+    (fn taking posed points back, the unposed bbox origin, its size) from main."""
+    up = getattr(a, "unpose", None)
+    if up is None:
+        return cd
+    back, lo, size = up
+    p = back(np.stack([cd.x0 + cd.x, cd.y0 + cd.y, cd.z], axis=1))
+    return Coords(p[:, 0] - lo[0], p[:, 1] - lo[1], p[:, 2], size, item=cd.item, res=cd.res,
+                  origin=(lo[0], lo[1]), cells=cd.cells)
+
+
 def t_image_spherical(cd, a):
     """Equirectangular map (Earth/Mars/Moon style): u from azimuth, v from elevation."""
+    cd = _model_frame(cd, a)
     u = ((cd.theta + math.pi) / (2 * math.pi) + a.lon_offset / 360.0) % 1.0
     v = 0.5 - cd.phi / math.pi
     return _image_target(a, u, v)
@@ -225,6 +239,7 @@ def t_image_spherical(cd, a):
 
 def t_image_cylindrical(cd, a):
     """Wrap around the vertical axis; v runs down the model's height."""
+    cd = _model_frame(cd, a)
     u = ((cd.theta + math.pi) / (2 * math.pi) + a.lon_offset / 360.0) % 1.0
     v = 1.0 - cd.z / max(cd.size[2], 1e-9)
     return _image_target(a, u, v)
@@ -232,6 +247,7 @@ def t_image_cylindrical(cd, a):
 
 def t_image_planar(cd, a):
     """Project along --axis, like top_paint but for any direction."""
+    cd = _model_frame(cd, a)
     ax = "xyz".index(a.axis)
     o = [i for i in range(3) if i != ax]
     co = [cd.x, cd.y, cd.z]
@@ -705,7 +721,8 @@ def build_parser() -> argparse.ArgumentParser:
                     help="pose the model first: X,Y,Z degrees, turned about X, then Y, then Z "
                          "and set back on the bed. Fewer layers can mean fewer tool changes. "
                          "Pose it here, not in the slicer: rotating the painted 3MF there "
-                         "puts the colour between layers")
+                         "puts the colour between layers. An image-* pattern stays on the "
+                         "faces it is projected onto unposed")
     ap.add_argument("--dry-run", action="store_true",
                     help="do everything but write the 3MF (the GUI's tool-change estimate)")
     ap.add_argument("--toolchange-curve", default=None,
@@ -1032,6 +1049,11 @@ def main(argv=None):
     bed = threemf.template_bed_size(args.template) if args.template else None
     items = threemf.read_model(args.model, scale_to=args.scale_to, bed=bed)
     if angles and any(angles):
+        own = np.vstack([i.verts for i in items])
+        olo, ohi = own.min(0), own.max(0)
+        # sized as main sizes an unposed model: XY from its bbox, z from the bed
+        args.unpose = (pose.unposer([i.verts for i in items], angles), olo,
+                       (ohi[0] - olo[0], ohi[1] - olo[1], ohi[2]))
         pose.rotate_items(items, angles)
         print(f"  posed: rotated {pose.fmt_rotate(angles)} degrees (X, then Y, then Z), "
               f"set back on the bed")

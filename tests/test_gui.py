@@ -252,6 +252,8 @@ class Pose(unittest.TestCase):
             self.assertIn("20 layers", box.info.text())
             p.form.set_values({"rotate": "0,0,45"})              # typed in the form
             self.assertEqual(box.angles(), (0.0, 0.0, 45.0))
+            p.form.set_values({"rotate": "270,0,0"})             # past the spin boxes' range
+            self.assertEqual(box.angles(), (-90.0, 0.0, 0.0))
             box.set_angles((0.0, 0.0, 0.0))
             self.assertNotIn("rotate", {k for k, v in p.form.values().items() if v})
             box.turn(0, 90)
@@ -265,6 +267,8 @@ class Pose(unittest.TestCase):
         from stackforge.tools import top_paint
         p = ToolPanel(introspect(top_paint.build_parser(), "top_paint"), "top_paint")
         self.assertIsNone(p.pose)
+        # its --rotate turns the image: not labelled as paint's three-axis pose
+        self.assertEqual(p.form.entries["rotate"].label.text(), "Rotate")
 
 
 class Pickers(unittest.TestCase):

@@ -28,6 +28,37 @@ class Rotation(unittest.TestCase):
         np.testing.assert_allclose(pose.matrix((90, 0, 0)) @ [0, 1, 0], [0, 0, 1], atol=1e-12)
         np.testing.assert_allclose(pose.matrix((90, 0, 90)) @ [1, 0, 0], [0, 1, 0], atol=1e-12)
 
+    def test_normalise_angle(self):
+        for a, want in ((270, -90), (-180, 180), (180, 180), (540, 180), (-90, -90), (0, 0)):
+            self.assertAlmostEqual(pose.normalise_angle(a), want)
+
+    def test_unposer_inverts_the_pose(self):
+        v, _ = box(2, 3, 1, 12, 7, 21)
+        angles = (30, -60, 100)
+        posed = pose.rotate_points([v], angles)[0]
+        np.testing.assert_allclose(pose.unposer([v], angles)(posed), v, atol=1e-9)
+
+    def test_image_stays_on_its_faces_when_posed(self):
+        """image-planar on a posed model samples the image where the unposed run does."""
+        from types import SimpleNamespace
+        from PIL import Image
+        rng = np.random.default_rng(1)
+        v, _ = box(0, 0, 0, 10, 4, 20)
+        pts = rng.uniform([0, 0, 0], [10, 4, 20], (500, 3))
+        with tempfile.TemporaryDirectory() as d:
+            img = os.path.join(d, "i.png")
+            Image.fromarray(rng.integers(0, 255, (16, 16, 3), dtype=np.uint8)).save(img)
+            a = SimpleNamespace(image=img, axis="y")
+            size = (10, 4, 20)
+            want = paint.t_image_planar(paint.Coords(*pts.T, size), a)
+            angles = (90, 0, 30)
+            posed = pose.rotate_points([v, pts], angles)[1]
+            plo = pose.rotate_points([v], angles)[0].min(0)
+            a.unpose = (pose.unposer([v], angles), v.min(0), size)
+            cd = paint.Coords(posed[:, 0] - plo[0], posed[:, 1] - plo[1], posed[:, 2], (1, 1, 1),
+                              origin=(plo[0], plo[1]))
+            np.testing.assert_allclose(paint.t_image_planar(cd, a), want)
+
     def test_turned_model_stays_where_it_was_on_the_bed(self):
         v, _ = box(100, 50, 0, 110, 70, 40)           # 10 x 20 x 40, centred at (105, 60)
         (r,) = pose.rotate_points([v], (90, 0, 0))

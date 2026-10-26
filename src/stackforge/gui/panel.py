@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+import time
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QCheckBox, QHBoxLayout, QMessageBox, QPushButton, QSplitter, QVBoxLayout,
@@ -129,6 +130,7 @@ class ToolPanel(QWidget):
                     self._tmpdir = tempfile.mkdtemp(prefix="stackforge-")
                 vals[CURVE_DEST] = os.path.join(self._tmpdir, CURVE_DEST + ".json")
             self._curve_path = vals[CURVE_DEST]
+            self._curve_since = time.time()     # a run that writes no curve leaves the last one
         return av.build_argv(self.form.root_spec, vals, self.command)
 
     def run_with_limit(self, limit):
@@ -179,7 +181,8 @@ class ToolPanel(QWidget):
         if self.view and job.returncode == 0 and self._preview_path and os.path.exists(self._preview_path):
             from PIL import Image
             self.view.set_image(Image.open(self._preview_path).convert("RGB"))
-        if self.curve and job.returncode == 0 and self._curve_path and os.path.exists(self._curve_path):
+        if (self.curve and job.returncode == 0 and self._curve_path and os.path.exists(self._curve_path)
+                and os.path.getmtime(self._curve_path) >= self._curve_since):
             from stackforge.gui.toolchange import load_curve
             try:
                 self.curve.set_curve(load_curve(self._curve_path))

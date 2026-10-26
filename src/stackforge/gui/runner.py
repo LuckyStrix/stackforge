@@ -48,6 +48,7 @@ def run_tool(tool: str, argv: list) -> int:
     decodes), then the tool's main()."""
     import importlib
     import io
+    import traceback
     for name in ("stdout", "stderr"):
         stream = getattr(sys, name)
         if stream is not None:
@@ -59,6 +60,11 @@ def run_tool(tool: str, argv: list) -> int:
         rc = importlib.import_module(TOOL_MODULES[tool]).main()
     except SystemExit as exc:
         rc = exc.code
+    except BaseException:
+        # A windowed bundle has no console: left to the bootloader, the traceback would go
+        # to a dialog instead of the pipe the GUI's terminal reads.
+        traceback.print_exc()
+        return 1
     if isinstance(rc, str):
         print(rc, file=sys.stderr)
         return 1

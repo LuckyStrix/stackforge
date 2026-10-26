@@ -114,12 +114,18 @@ LABELS = {
     "wedge_sheet_in": "Wedge sheet (from Calibrate)", "readings": "Readings file (from Measure)",
     "base_patch": "Read the bare-base patch first", "no_base_patch": "No bare-base patch",
     "max_toolchanges": "Max tool changes", "toolchange_curve": "Tool-change curve (JSON)",
-    "rotate": "Rotate X,Y,Z (degrees)", "dry_run": "Dry run (write nothing)",
+    "dry_run": "Dry run (write nothing)",
+}
+# (tool, dest) -> label, for a dest that means different things in different tools
+TOOL_LABELS = {
+    ("paint", "rotate"): "Rotate X,Y,Z (degrees)",     # top_paint's --rotate turns its image
 }
 
 
-def label_for(f: FieldSpec) -> str:
+def label_for(f: FieldSpec, tool: str = "") -> str:
     """A readable field label; the raw flag is the tooltip."""
+    if (tool, f.dest) in TOOL_LABELS:
+        return TOOL_LABELS[tool, f.dest]
     if f.dest in LABELS:
         return LABELS[f.dest]
     return f.dest.replace("_", " ").capitalize()

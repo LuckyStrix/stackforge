@@ -150,10 +150,12 @@ class PoseBox(QWidget):
             a = pose.parse_rotate(text) if text else (0.0, 0.0, 0.0)
         except ValueError:
             a = None
+        if a is not None:
+            a = tuple(pose.normalise_angle(x) for x in a)
         if a is not None and any(abs(x - y) > 1e-9 for x, y in zip(a, self.angles())):
             self._syncing = True
             for sp, v in zip(self.spins, a):
-                sp.setValue(v)
+                sp.setValue(v)          # normalised: the spin boxes clamp to -180..180
             self._syncing = False
             self.redraw()
         path, scale = vals.get("model"), vals.get("scale_to")

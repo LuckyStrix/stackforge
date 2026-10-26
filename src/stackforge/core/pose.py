@@ -42,18 +42,35 @@ def matrix(angles) -> np.ndarray:
     return rz @ ry @ rx
 
 
-def rotate_points(verts_list, angles):
-    """Rotated copies of each (n,3) array, turned together about their joint bounding-box
-    centre and put back with the same XY centre and the lowest point at z = 0."""
+def normalise_angle(a: float) -> float:
+    """The same turn in (-180, 180] degrees."""
+    return -((-a + 180.0) % 360.0 - 180.0)
+
+
+def _placement(verts_list, angles):
+    """(centre, rotation, shift) of `rotate_points`: posed = (v - c) @ r.T + c + shift."""
     allv = np.vstack(verts_list)
     lo, hi = allv.min(0), allv.max(0)
     c = (lo + hi) / 2
     r = matrix(angles)
-    out = [(v - c) @ r.T + c for v in verts_list]
-    rv = np.vstack(out)
+    rv = (allv - c) @ r.T + c
     rlo, rhi = rv.min(0), rv.max(0)
     shift = np.array([c[0] - (rlo[0] + rhi[0]) / 2, c[1] - (rlo[1] + rhi[1]) / 2, -rlo[2]])
-    return [v + shift for v in out]
+    return c, r, shift
+
+
+def rotate_points(verts_list, angles):
+    """Rotated copies of each (n,3) array, turned together about their joint bounding-box
+    centre and put back with the same XY centre and the lowest point at z = 0."""
+    c, r, shift = _placement(verts_list, angles)
+    return [(v - c) @ r.T + c + shift for v in verts_list]
+
+
+def unposer(verts_list, angles):
+    """fn(points) taking points of the posed model (`rotate_points` of `verts_list`) back to
+    where they were before the pose."""
+    c, r, shift = _placement(verts_list, angles)
+    return lambda p: (np.asarray(p, float) - shift - c) @ r + c
 
 
 def rotate_items(items, angles):

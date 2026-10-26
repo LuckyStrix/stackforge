@@ -66,6 +66,8 @@ class DriftTests(unittest.TestCase):
             else:
                 ok = (cmd, dest) in pairs
             self.assertTrue(ok, f"override {tool} {cmd} {dest} names a flag that no longer exists")
+        for tool, dest in overrides.TOOL_LABELS:
+            self.assertIn(dest, {d for _, d in have.get(tool, set())}, (tool, dest))
 
     def test_no_dest_collision_along_a_command_path(self):
         for name, _, spec in specs():

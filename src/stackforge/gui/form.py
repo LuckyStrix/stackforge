@@ -149,7 +149,7 @@ class CommandForm(QWidget):
         w = widgets.build(f, kind, self._changed, self.source)
         if f.default not in (None, [], False) and f.kind != "bool":
             w.set(f.default)
-        label = QLabel(overrides.label_for(f) + (" *" if f.required else ""))
+        label = QLabel(overrides.label_for(f, self.tool) + (" *" if f.required else ""))
         label.setToolTip(f"{f.flag}\n{f.help}" if f.help else f.flag)
         cell = QWidget()
         cl = QVBoxLayout(cell)
