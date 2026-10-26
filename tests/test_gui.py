@@ -160,6 +160,117 @@ class Panels(unittest.TestCase):
                 self.assertEqual(entries(gui_out), entries(cli_out), tool)
 
 
+class Toolchanges(unittest.TestCase):
+    """paint's tool-change curve: shown after a colour run, its slider reruns with a limit."""
+
+    DATA = {"tool_change_time_s": 7.0, "chosen": None, "points": [
+        {"changes": 0, "mean": 30.0, "p95": 50.0, "max": 60.0, "layers_by_tools": [10, 0]},
+        {"changes": 6, "mean": 12.0, "p95": 20.0, "max": 30.0, "layers_by_tools": [4, 6]},
+        {"changes": 9, "mean": 10.0, "p95": 15.0, "max": 25.0, "layers_by_tools": [1, 9]}]}
+
+    def test_slider_walks_the_points_and_the_last_is_no_limit(self):
+        from stackforge.gui.toolchange import ToolchangeBox
+        got = []
+        box = ToolchangeBox(got.append)
+        self.assertFalse(box.isVisibleTo(None) and box.data)
+        box.set_curve(self.DATA)
+        self.assertEqual(box.slider.value(), 2)
+        self.assertIsNone(box.limit())
+        self.assertIn("no limit", box.info.text())
+        box.slider.setValue(1)
+        self.assertEqual(box.limit(), 6)
+        self.assertIn("~0.0 h at 7 s", box.info.text())
+        box.resize(500, 300)
+        box.grab()                                   # paints without raising
+        box._use()
+        self.assertEqual(got, [6])
+        box.set_curve({**self.DATA, "chosen": self.DATA["points"][1]})
+        self.assertEqual(box.slider.value(), 1)     # a limited run comes back to its point
+        box.show_error("bad file")
+        box.grab()
+        self.assertIn("bad file", box.info.text())
+
+    def test_colour_run_shows_the_curve_and_reruns_with_the_limit(self):
+        from PIL import Image
+        import numpy as np
+        from stackforge.gui.tabs.paint import _surface_parser
+        from stackforge.tools import make_samples
+        with tempfile.TemporaryDirectory() as d:
+            src = os.path.join(d, "cube.3mf")
+            make_samples.write(src, [make_samples.box(0, 0, 0, 10, 10, 10)])
+            img = np.zeros((16, 8, 3), np.uint8)
+            for i, c in enumerate([(230, 230, 230), (200, 30, 30), (240, 200, 40), (30, 30, 30)]):
+                img[i * 4:(i + 1) * 4] = c
+            Image.fromarray(img).save(os.path.join(d, "bands.png"))
+            p = ToolPanel(introspect(_surface_parser(True)(), "paint"), "paint")
+            p.form.set_values({"model": src, "output": os.path.join(d, "o.3mf"),
+                               "palette": "#e6e6e6,#c81e1e,#f0c828,#1e1e1e",
+                               "pattern": "image-planar", "axis": "x",
+                               "image": os.path.join(d, "bands.png"), "resolution": 1.0,
+                               "layer_height": 0.2, "base_extruder": 1})
+            run_panel(p)
+            self.assertEqual(p.job.returncode, 0, p.term.screen.text)
+            self.assertIn("--toolchange-curve", p.job.cmd)
+            self.assertTrue(p.curve.isVisibleTo(p))
+            pts = p.curve.data["points"]
+            p.curve.slider.setValue(0)
+            p.curve._use()
+            pump(lambda: p.job.done and not p.term._timer.isActive(), 120)
+            self.assertEqual(p.job.returncode, 0, p.term.screen.text)
+            i = p.job.cmd.index("--max-toolchanges")
+            self.assertEqual(int(p.job.cmd[i + 1]), pts[0]["changes"])
+            self.assertEqual(p.curve.slider.value(), 0)
+            p.curve_on.setChecked(False)               # opting out skips the curve's cost
+            self.assertNotIn("--toolchange-curve", p._argv())
+
+    def test_decorative_patterns_get_no_curve(self):
+        from stackforge.gui.tabs.paint import _surface_parser
+        p = ToolPanel(introspect(_surface_parser(False)(), "paint"), "paint")
+        p.form.set_values({"model": "m.3mf", "output": "o.3mf", "palette": "#fff,#000",
+                           "pattern": "stripes"})
+        self.assertNotIn("--toolchange-curve", p._argv())
+
+
+class Pose(unittest.TestCase):
+    """The Pose box and paint's --rotate field follow each other; the estimate runs paint."""
+
+    def test_pose_box(self):
+        from stackforge.gui.tabs.paint import _surface_parser
+        from stackforge.tools import make_samples
+        with tempfile.TemporaryDirectory() as d:
+            src = os.path.join(d, "slab.3mf")
+            make_samples.write(src, [make_samples.box(0, 0, 0, 10, 4, 20)])
+            p = ToolPanel(introspect(_surface_parser(False)(), "paint"), "paint")
+            box = p.pose
+            p.form.set_values({"model": src, "output": os.path.join(d, "o.3mf"),
+                               "palette": "#ffffff,#000000", "pattern": "stripes",
+                               "layer_height": 0.2})
+            pump(lambda: box.mesh is not None, 20)
+            self.assertIn("100 layers at 0.2 mm", box.info.text())
+            box.turn(0, 90)
+            self.assertEqual(p.form.values()["rotate"], "90,0,0")
+            self.assertIn("20 layers", box.info.text())
+            p.form.set_values({"rotate": "0,0,45"})              # typed in the form
+            self.assertEqual(box.angles(), (0.0, 0.0, 45.0))
+            p.form.set_values({"rotate": "270,0,0"})             # past the spin boxes' range
+            self.assertEqual(box.angles(), (-90.0, 0.0, 0.0))
+            box.set_angles((0.0, 0.0, 0.0))
+            self.assertNotIn("rotate", {k for k, v in p.form.values().items() if v})
+            box.turn(0, 90)
+            box.estimate()
+            pump(lambda: box.job is None, 120)
+            self.assertIn("about", box.est.text(), box.est.text())
+            self.assertIn("over 20 layers", box.est.text())
+            self.assertFalse(os.path.exists(os.path.join(d, "o.3mf")))   # a dry run
+
+    def test_top_paint_has_no_pose(self):
+        from stackforge.tools import top_paint
+        p = ToolPanel(introspect(top_paint.build_parser(), "top_paint"), "top_paint")
+        self.assertIsNone(p.pose)
+        # its --rotate turns the image: not labelled as paint's three-axis pose
+        self.assertEqual(p.form.entries["rotate"].label.text(), "Rotate")
+
+
 class Pickers(unittest.TestCase):
     """Filaments and colours are chosen by looking at them, never by typing an id."""
 

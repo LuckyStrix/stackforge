@@ -288,6 +288,12 @@ BLUR_MM = 0.6
 MIX_ALPHAS = (0.125, 0.25, 0.375, 0.5)
 
 
+def query_workers(n):
+    """cKDTree workers for a query of n points: all cores pay ~1 ms a call in thread
+    start-up, more than a small query takes (paint's per-class and mixed-column groups)."""
+    return -1 if n >= 4096 else 1
+
+
 def mix_pairs(gamut, img):
     """Per pixel, the two gamut states whose linear-light average best matches it.
 
@@ -305,7 +311,7 @@ def mix_pairs(gamut, img):
     """
     tgt = colormath.srgb_to_linear(np.asarray(img, dtype=np.float64)).reshape(-1, 3)
     tgt_lab = colormath.linear_to_lab(tgt)
-    _, a = gamut.tree.query(tgt_lab, workers=-1)
+    _, a = gamut.tree.query(tgt_lab, workers=query_workers(len(tgt_lab)))
     ca = gamut.colors[a]
 
     best_b = a.copy()
@@ -313,7 +319,7 @@ def mix_pairs(gamut, img):
     best_err = np.linalg.norm(gamut.lab[a] - tgt_lab, axis=-1)
     for al in MIX_ALPHAS:
         aim = np.clip(ca + (tgt - ca) / al, 0.0, 1.0)
-        _, b = gamut.tree.query(colormath.linear_to_lab(aim), workers=-1)
+        _, b = gamut.tree.query(colormath.linear_to_lab(aim), workers=query_workers(len(aim)))
         d = gamut.colors[b] - ca
         # Refine the fraction for the state actually found, capped at 1/2 so
         # `a` stays the dominant colour.
@@ -630,13 +636,26 @@ def score_subset(fils, base, args, rgb):
     winners. floyd has no per-colour equivalent and is scored undithered.
     """
     g = make_gamut(fils, base, args)
+    return gamut_de(g, rgb, getattr(args, "dither", "none") in ("ordered", "blue")), g.capped
+
+
+def gamut_de(g, rgb, mix):
+    """dE (k,) of colours `rgb` (k,3 sRGB) against gamut `g`: its two-stack mix if `mix`,
+    else its nearest state."""
+    return gamut_match(g, rgb, mix)[0]
+
+
+def gamut_match(g, rgb, mix):
+    """(dE, a, b, alpha) of colours `rgb` (k,3 sRGB) against gamut `g`: each shows state b a
+    fraction alpha of the time and a the rest (`mix_pairs`), or with `mix` off its nearest
+    state a (b = a, alpha = 0). Shared with paint's stacking, which needs the states too."""
     lab = colormath.srgb_to_lab(rgb)
-    if getattr(args, "dither", "none") in ("ordered", "blue"):
-        a, b, al = mix_pairs(g, rgb[:, None, :])
-        a, b, al = a[:, 0], b[:, 0], al[:, 0]
+    if mix:
+        a, b, al = (v[:, 0] for v in mix_pairs(g, rgb[:, None, :]))
         mixed = g.colors[a] + al[:, None] * (g.colors[b] - g.colors[a])
-        return np.linalg.norm(colormath.linear_to_lab(mixed) - lab, axis=-1), g.capped
-    return g.tree.query(lab, workers=-1)[0], g.capped
+        return np.linalg.norm(colormath.linear_to_lab(mixed) - lab, axis=-1), a, b, al
+    de, a = g.tree.query(lab, workers=-1)
+    return de, a, a, np.zeros(len(a))
 
 
 def rank_subsets(all_fils, base, args, img, progress=None, verbose=True):

@@ -18,6 +18,16 @@ image ──► gamut search ──► per-pixel stack ──► 3MF (modifier v
 
 ## Quick start
 
+**Just want to run it?** Download the app for your system from the
+[Releases](../../releases) page: `stackforge-windows.exe`, `stackforge-linux` or
+`stackforge-macos.zip`. It is one file with nothing to install; double-click it (Linux:
+`chmod +x stackforge-linux` first; macOS: unzip, then right-click > Open the first time, the
+app is unsigned; Windows SmartScreen may ask too: *More info > Run anyway*). Then do steps 2
+and 4 below and use the **Plaque** tab. A new filament library has no spectral calibrations,
+so the designer starts on *RGB: td estimates*: add your spools on the **Filaments** tab with
+their colour and td (the HueForge-style transmission distance) and design with those. The
+command-line tools are in the app as forms; to use them from a shell, install from source.
+
 **1. Install** (once). Needs Python 3.10+. Debian/Ubuntu refuse a system-wide `pip install`,
 so use a virtual environment:
 
@@ -785,23 +795,111 @@ glTF is Y-up metres; it is rotated to Z-up and scaled to millimetres (`--scale-t
 largest dimension instead), put on z=0 and centred on the bed from `--template`. Compressed
 files (Draco, meshopt, KTX2) are refused with a message; re-export without compression.
 `--dither off` gives plain nearest-filament; the run prints a mean dE (simulated, not
-measured). Dithering is made of one-voxel features, so keep `--resolution` at 0.6 mm or more
-(the default 0.8 is fine). The result is only as good as your palette: a texture with green in it
+measured). Dithering is made of one-voxel features; they print down to 0.3 mm voxels with
+paint's Arachne walls (see *Walls* below), and only from 0.6 mm with `--walls template` on a
+classic-wall profile. The result is only as good as your palette: a texture with green in it
 needs a green-ish filament. `stackforge-make-samples` writes `globe.glb` to try this on. The Paint tab's
 *Realistic colour* mode is this path.
 
 **Choosing the filaments.** List more filaments than you have slots and paint picks the set:
-every `--slots`-sized set that keeps the base filament (`--base-extruder`) is scored against the
-voxels' own target colours, by mean dE (`--rank-by p95` for the tail), and the best is written.
-`--slots` defaults to the template's slot count. It scores the same thing the run reports: the
-dithered pair's area average, or the nearest filament with `--dither off`.
+every `--slots`-sized set is scored against the voxels' own target colours, by mean dE
+(`--rank-by p95` for the tail), and the best is written. `--slots` defaults to the template's
+slot count. It scores the same thing the run reports: the dithered pair's area average, or the
+nearest filament with `--dither off`.
+
+**Choosing the base.** Without `--base-extruder`, each set is tried with each of its members
+as the base (the core under the coloured shell, and what a translucent filament shows
+through). Scores within 0.1 dE are a tie, won by the base that already covers most of the
+surface, since base voxels need no modifier. When paint picks a subset, the base is written as
+extruder 1: the Flash Studio GUI honours a 3MF's object extruder, but its headless slice prints
+the object on extruder 1 regardless, so anything else could not be checked that way. When all
+the listed filaments are used, they keep your order (your slots) and the base is marked.
+
+**Stacking** (`--stack on`, the default with calibrated filaments): translucent filaments are
+layered in bands along the surface normal, as plaque layers a plaque. How thin a band can be
+depends on which way the surface faces. A top face stacks one layer per band (0.16 mm bands
+printed exactly); a wall band is a ring as thin as the band, and with paint's Arachne walls
+0.3 mm bands print (`--wall-band`, default 0.3; classic walls printed nothing under 0.5 mm,
+so `--walls template` defaults it to 0.6). A band is never thinner than a voxel, so at the
+default voxels `--depth 1.2` is up to 15 bands of 0.08 mm on a top face and 2 of 0.6 mm on a
+wall, and at `--resolution 0.3` a wall gets 4 of 0.3 mm; slopes take the classes between,
+each band count with its own stack gamut. Every set that can stack (all calibrated) is screened with stacks, not just the best
+one-filament-per-voxel sets: that ranking sees each filament as opaque and would never
+shortlist the translucent sets stacking is for. A band is also never thinner than a voxel
+along the normal, and a wall's bands are its whole voxels (one 0.8 mm voxel in a 1.2 mm
+`--depth` is one 0.8 mm band, as printed), so a gently tilted top face gets fewer bands than a
+flat one. Scores count the surface voxels, one per point of the surface: counted per voxel, a
+top face 15 voxels deep would outweigh a wall 2 deep. On the scanned head at 0.6 mm voxels,
+56% of the surface is wall-steep and under 3% gets more than 3 bands; the best stacked set
+(white base, light grey, black, PolyLite orange: thin orange over white warms the skin) is
+9.5 dE simulated, against 9.7 without stacking. At `--resolution 0.3` the 0.3 mm wall bands
+make translucent PolyLite worth stacking: ranked again, white base, black, PolyLite red and
+yellow reach 8.6 dE, at the cost of ~400k boxes (a 42 MB 3MF, slow to load). Opaque
+filaments barely stack: four of them gave 4k distinct 15-band stacks, a translucent set 65k.
+Ranking 15 filaments this way takes about 2.5 minutes; past 2000 stackable pairs only the
+best 2000 one-filament sets are screened.
+
+**Walls** (`--walls arachne`, the default). Two things make the slicer print what paint
+designs on a wall. The colour boxes reach 1.5 voxels past the surface: the voxel staircase
+stops short of the true curved surface, and the sliver between was the object's own (base)
+filament, which classic walls dropped (pits in 21% of a scanned head's surface) and Arachne
+printed (30-50% of the surface came out base). The slicer clips a modifier to its object, so
+the overhang costs only boxes (~15% more); `--part-type part` is not clipped, so its boxes
+stop at the voxels. And each object gets Arachne walls with a 50%
+minimum bead, written per object so the template is untouched: the template's 85% left 27% of
+the surface without plastic. Sliced (Flash Studio 1.7.13, the head, stacked): at 0.6 mm voxels
+95% of the true surface has plastic and 94% of it is the designed filament, each filament's
+share within 2 points of the design; at 0.3 mm, 94% and 93%. `--walls template` leaves the
+template's walls alone.
+
+**Tool changes** (`--max-toolchanges N`, `--toolchange-curve FILE.json`). On a toolchanger
+every layer that prints k filaments costs k - 1 changes, and one more if it does not use the
+tool the layer below ended on. The scanned head in four filaments sliced to 2697 changes over
+935 layers, nearly all of them printing all four (~5.2 h of changes at the Creator 5's 7 s,
+in a 30.6 h print). With a limit, each layer prints only some of the filaments, always the
+base, chosen for the least colour error over the whole print within that many changes.
+Every run prints its count, which is an upper bound: the slicer picks the order of a layer's
+tools, so paint counts whichever last tool costs most. `--toolchange-curve` prints and writes
+the trade-off (the Paint tab draws it with a slider that reruns with the chosen limit). On
+the head (0.6 mm voxels, stacked, simulated dE):
+
+| changes, at most | sliced | print time | mean dE | p95 |
+|---|---|---|---|---|
+| 2700 (no limit) | 2697 | 30.6 h | 9.6 | 14.7 |
+| 1338 (`--max-toolchanges 1350`) | 1327 | 20.7 h | 12.2 | 23.2 |
+| 836 (`--max-toolchanges 900`) | 827 | 16.1 h | 17.7 | 32.8 |
+
+A limit gets the best plan on the curve that fits it, so it can land some way under it: the
+curve has points where the trade-off bends, not at every count (on the head, nothing between
+836 and 902).
+
+The print time falls by more than the changes themselves: each one also primes on the
+tower. Every subset of the filaments that holds the base is solved once over the model;
+the plan is then chosen layer by layer for a sweep of weights between error and changes.
+Stacked columns that cross layers with different subsets are solved again against the
+subset of each band's layer, so no voxel prints a filament its layer does not have. The
+filament set is chosen before the limit, without it.
+
+**Pose** (`--rotate X,Y,Z`, degrees about X, then Y, then Z). The model is turned about its
+bounding-box centre and set back on the bed where it was, before anything is voxelised, so
+the 3MF carries the posed model. Pose it here, never in the slicer: rotating the painted 3MF
+there moves the colour boxes off the layer grid. Fewer layers usually means fewer tool
+changes, though not always: a model whose colours change with height can need more tools
+per layer lying down. The head lying face down (`--rotate=-90,0,0`): 585 layers instead of
+936, sliced to 1670 tool changes (paint counted 1678) and 23.9 h instead of 2697 and 30.6 h,
+at the same simulated colour (9.7 dE). That pose overhangs about 19 cm2 past 45 degrees, so
+it needs supports, which the template had turned off. The Paint tab's *Pose* box turns the
+model with buttons or angles, draws it from the top, front and side, shows its size, layers
+and overhang area as it turns, and *Estimate tool changes* runs paint as a `--dry-run` at
+1.2 mm voxels with one filament per voxel (the head upright: 2639 against the full run's
+2700), to compare poses.
 
 **What a filament looks like** (`--optics`, default `spectral`): a spectrally calibrated
 filament is matched as `--depth` mm of it over the base (Kubelka-Munk, as plaque), so the
 measured colour replaces the library swatch, and a translucent one (PolyLite red, orange,
 yellow) shows the base through. An uncalibrated filament keeps its swatch, and the run names
-it. The 3MF keeps the swatches for the slicer's display. Each voxel is still one opaque-ish
-filament: no stacking of different filaments, so dark tones are reached by dithering in black.
+it. The 3MF keeps the swatches for the slicer's display. With `--stack off` each voxel is one
+filament, so dark tones are reached by dithering in black.
 
 On a scanned head (skin about L\* 52) the measured colours mattered more than translucency:
 light brown measures `#BC9E81` against its `#EDD5A6` swatch, light grey `#82888F` against
@@ -841,14 +939,16 @@ grid drop out on alternate layers).
   names `x y z r theta phi pi` and the listed numpy functions (`sin cos tan arctan2 sqrt abs
   floor ceil mod where minimum maximum exp log sign round`) are accepted; attributes,
   subscripts, lambdas, comprehensions and strings are refused. Safe on untrusted input.
-- **Slice-checked on a curved model** (2026-10-15, a 75 mm scanned head, 0.08 mm layers, Flash
-  Studio 1.7.13): the outer wall follows the modifiers. Against a design of 9.5/44/42/4.5% per
-  tool, the outer wall came out 24/27/42/7% at `--resolution 0.6` and 16/34/45/4% at 0.3: the
-  base gains where a modifier is thin, less so at 0.3. At 0.3 that is 450k boxes, a 47 MB file
-  and a 41 s slice. Never printed.
+- **Slice-checked on a curved model** (a 75 mm scanned head, 0.08 mm layers, Flash Studio
+  1.7.13, 2026-10-17): the true surface (the unpainted model's outer wall) was walked in
+  0.1 mm steps and the painted slice's plastic there compared with the designed voxel. With
+  the *Walls* fixes, 94-95% of the surface has plastic and 93-94% of that is the designed
+  filament, at 0.6 and 0.3 mm voxels. An earlier count said walls lost dithered features to
+  the base; it tallied every `Outer wall` move, but the slicer types the edge of every colour
+  region that way, buried ones included. Never printed.
 - No interactive painting window. Dithering exists for texture and image patterns
-  (`--dither`), but its gains are simulated only: the slicer drops the one-pixel features a
-  dither is made of (see *Caveats*).
+  (`--dither`); the slicer keeps its one-voxel features with the *Walls* fixes, but the
+  colour gain itself is simulated, not measured.
 
 ## stackforge-measure
 
@@ -904,6 +1004,9 @@ plinth) and `globe.glb` (a textured globe) for trying things without real files.
   slice test runs when Flash Studio is installed, `STACKFORGE_SKIP_SLICER=1` skips it) and
   `ruff check src tests` lints. CI runs both. Tests keep their settings and filament library
   in a throwaway config folder (`tests/conftest.py`).
+- The one-file app: `pip install -e ".[gui,release]"`, then `pyinstaller packaging/stackforge.spec`
+  (output in `dist/`). Pushing a `v*` tag builds it for Windows, Linux and macOS and attaches
+  them to a GitHub release (`.github/workflows/release.yml`).
 - `CLAUDE.md` has the load-bearing invariants (layer grid, version gate) before you change code.
 - Ideas and plans: `docs/plans/surfacecolor.md`, `docs/ideas.md`.
 

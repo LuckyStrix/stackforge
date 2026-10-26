@@ -15,6 +15,7 @@ dependencies = ["numpy", "Pillow", "scipy"]
 [project.optional-dependencies]
 gui = ["PySide6"]
 dev = ["pytest", "ruff", "PySide6"]
+release = ["pyinstaller"]   # packaging/stackforge.spec: the one-file app
 
 [project.scripts]
 stackforge = "stackforge.gui.app:main"

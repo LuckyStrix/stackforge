@@ -432,6 +432,14 @@ class PlaqueDesigner(QWidget):
         self._loading = True
         self.list.clear()
         rows = sorted(self.db.filaments.values(), key=lambda f: (f.brand, f.series, f.name))
+        if first and self._spectral() and not any(spectral.is_calibrated(f) for f in rows):
+            # A fresh library has no spectral fits: start on the td estimates rather than a
+            # list of disabled rows. A saved preset's "optics" still wins (_apply_preset).
+            self.c_optics.blockSignals(True)
+            self.set_optics("rgb")
+            self.c_optics.blockSignals(False)
+            self.c_illum.setEnabled(False)
+            self.lbl_optics.setText(OPTICS_HINT["rgb"])
         spec = self._spectral()
         for fil in rows:
             prov = PROVENANCE_LABEL.get(fil.provenance, fil.provenance)

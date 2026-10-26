@@ -37,6 +37,7 @@ OVERRIDES: dict = {
     ("paint", "*", "image"): "image",
     ("paint", "*", "palette"): "hex_list",
     ("paint", "*", "filaments"): "filament_ids",
+    ("paint", "*", "toolchange_curve"): "file_out",
     ("calibrate", "*", "filament"): "filament_id",
     ("calibrate", "wedge", "base"): "filament_id",
     ("dither_compare", "*", "image"): "image",
@@ -76,6 +77,10 @@ VISIBLE_WHEN: dict = {
     ("paint", "slots"): ("pattern", {"texture", "image-planar", "image-cylindrical", "image-spherical"}),
     ("paint", "rank_by"): ("pattern", {"texture", "image-planar", "image-cylindrical", "image-spherical"}),
     ("paint", "top"): ("pattern", {"texture", "image-planar", "image-cylindrical", "image-spherical"}),
+    ("paint", "stack"): ("pattern", {"texture", "image-planar", "image-cylindrical", "image-spherical"}),
+    ("paint", "wall_band"): ("pattern", {"texture", "image-planar", "image-cylindrical", "image-spherical"}),
+    ("paint", "max_toolchanges"): ("pattern", {"texture", "image-planar", "image-cylindrical", "image-spherical"}),
+    ("paint", "toolchange_curve"): ("pattern", {"texture", "image-planar", "image-cylindrical", "image-spherical"}),
 }
 
 # dest -> project binding key; filled from the project bar, excluded from presets
@@ -108,11 +113,19 @@ LABELS = {
     "per_channel": "Fit each colour channel", "write": "Save the fit to the database",
     "wedge_sheet_in": "Wedge sheet (from Calibrate)", "readings": "Readings file (from Measure)",
     "base_patch": "Read the bare-base patch first", "no_base_patch": "No bare-base patch",
+    "max_toolchanges": "Max tool changes", "toolchange_curve": "Tool-change curve (JSON)",
+    "dry_run": "Dry run (write nothing)",
+}
+# (tool, dest) -> label, for a dest that means different things in different tools
+TOOL_LABELS = {
+    ("paint", "rotate"): "Rotate X,Y,Z (degrees)",     # top_paint's --rotate turns its image
 }
 
 
-def label_for(f: FieldSpec) -> str:
+def label_for(f: FieldSpec, tool: str = "") -> str:
     """A readable field label; the raw flag is the tooltip."""
+    if (tool, f.dest) in TOOL_LABELS:
+        return TOOL_LABELS[tool, f.dest]
     if f.dest in LABELS:
         return LABELS[f.dest]
     return f.dest.replace("_", " ").capitalize()
