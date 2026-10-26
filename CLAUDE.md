@@ -50,7 +50,13 @@ clean and CI runs both. PySide6 is the `gui` extra; the CLIs need only numpy/Pil
   gone from the CLI and the Guided page: `main` exits with a pointer to `stackforge-spectral fit`.
   `fit_td` stays as a tested library function with no entry point; do not wire it back in.
   `plaque --optics` and the Designer default to `spectral`; `rgb` has to be asked for (the RGB
-  tests pass `--optics rgb`).
+  tests pass `--optics rgb`). One exception: the Designer opens on `rgb` when no filament in
+  the library is spectrally calibrated (a fresh install), and a saved preset still wins.
+- **The bundled app has no python** (`packaging/`, PyInstaller one-file). The GUI's tool
+  subprocess is the executable again with `--run-tool <tool>` (`runner.tool_command`,
+  dispatched in `packaging/launcher.py` before Qt loads); tools are found by name, so the
+  spec collects every `stackforge` submodule. Built and smoke-tested on Windows only
+  (2026-10-25); the Linux and macOS builds in `release.yml` are untested.
 - **Spectral optics take calibrated filaments only** (`core/spectral.py`, `docs/spectral.md`).
   `plaque --optics spectral` and `SpectralGamut` refuse any filament or base without a
   `Filament.spectral` block (Kubelka-Munk K, S per 10 nm band, 380-730), which only

@@ -18,6 +18,16 @@ image ──► gamut search ──► per-pixel stack ──► 3MF (modifier v
 
 ## Quick start
 
+**Just want to run it?** Download the app for your system from the
+[Releases](../../releases) page: `stackforge-windows.exe`, `stackforge-linux` or
+`stackforge-macos.zip`. It is one file with nothing to install; double-click it (Linux:
+`chmod +x stackforge-linux` first; macOS: unzip, then right-click > Open the first time, the
+app is unsigned; Windows SmartScreen may ask too: *More info > Run anyway*). Then do steps 2
+and 4 below and use the **Plaque** tab. A new filament library has no spectral calibrations,
+so the designer starts on *RGB: td estimates*: add your spools on the **Filaments** tab with
+their colour and td (the HueForge-style transmission distance) and design with those. The
+command-line tools are in the app as forms; to use them from a shell, install from source.
+
 **1. Install** (once). Needs Python 3.10+. Debian/Ubuntu refuse a system-wide `pip install`,
 so use a virtual environment:
 
@@ -952,6 +962,9 @@ plinth) and `globe.glb` (a textured globe) for trying things without real files.
   slice test runs when Flash Studio is installed, `STACKFORGE_SKIP_SLICER=1` skips it) and
   `ruff check src tests` lints. CI runs both. Tests keep their settings and filament library
   in a throwaway config folder (`tests/conftest.py`).
+- The one-file app: `pip install -e ".[gui,release]"`, then `pyinstaller packaging/stackforge.spec`
+  (output in `dist/`). Pushing a `v*` tag builds it for Windows, Linux and macOS and attaches
+  them to a GitHub release (`.github/workflows/release.yml`).
 - `CLAUDE.md` has the load-bearing invariants (layer grid, version gate) before you change code.
 - Ideas and plans: `docs/plans/surfacecolor.md`, `docs/ideas.md`.
 

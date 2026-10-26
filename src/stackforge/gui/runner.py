@@ -33,7 +33,36 @@ def console_script(tool: str) -> str:
 
 
 def tool_command(tool: str, argv: list) -> list:
+    if getattr(sys, "frozen", False):
+        # A bundled build (PyInstaller) has no python to `-m` with: the app runs the tool
+        # itself (packaging/launcher.py -> run_tool).
+        return [sys.executable, RUN_TOOL, tool, *argv]
     return [sys.executable, "-u", "-m", TOOL_MODULES[tool], *argv]
+
+
+RUN_TOOL = "--run-tool"
+
+
+def run_tool(tool: str, argv: list) -> int:
+    """`python -u -m <tool> argv` for a bundled build: unbuffered UTF-8 output (what Job
+    decodes), then the tool's main()."""
+    import importlib
+    import io
+    for name in ("stdout", "stderr"):
+        stream = getattr(sys, name)
+        if stream is not None:
+            raw = open(stream.fileno(), "wb", buffering=0, closefd=False)
+            setattr(sys, name, io.TextIOWrapper(raw, encoding="utf-8", errors="replace",
+                                                write_through=True))
+    sys.argv = [console_script(tool), *argv]
+    try:
+        rc = importlib.import_module(TOOL_MODULES[tool]).main()
+    except SystemExit as exc:
+        rc = exc.code
+    if isinstance(rc, str):
+        print(rc, file=sys.stderr)
+        return 1
+    return rc or 0
 
 
 class Job:
